@@ -2,9 +2,13 @@
 
 Desde backend: `uv run pytest -q`, `uv run ruff check app tests`,
 `uv run ruff format app --check`, `uv run ty check app`.
-La última ejecución confirmada aprobó 94 tests, con dos warnings de deprecación upstream.
+La última ejecución confirmada aprobó 95 tests, con dos warnings de deprecación upstream.
 El conftest dirige todas las pruebas a `renpdf_chat_test` y storage temporal;
 ejecuta Alembic antes de iniciar. Nunca usa la base personal para teardown.
+
+Se comprobó también un volumen PostgreSQL nuevo y aislado: el script de inicio
+creó `renpdf_chat`, el rol `renpdf_app`, su acceso por contraseña y pgvector.
+El contenedor temporal se eliminó al terminar; los volúmenes personales se conservaron.
 
 Desde raíz: `npm ci --ignore-scripts`, `npm run lint`, `npm run build`,
 `npm run generate-client`. El lockfile contiene bindings Windows/Linux;
@@ -29,6 +33,13 @@ En PowerShell puede usarse `../node_modules/.bin/playwright.cmd` para preservar
 los argumentos. `RUN_CLOUD_E2E=1` autoriza Gemini sólo sobre el fixture sintético
 creado por esa prueba, durante un día. Sin el flag se verifica el rechazo cloud.
 Playwright guarda screenshots/traces locales; no activa analítica externa.
+La ejecución Chromium contra la imagen compilada actual aprobó 14 tests,
+incluyendo Gemini real, permisos, índices, citas, zoom/rotación y recarga.
+
+Una muestra puntual de `docker stats` durante la evaluación sintética registró
+458 MiB para API, 305 MiB para worker, 245 MiB para scheduler, 64 MiB para
+PostgreSQL y 10 MiB para Redis. No incluye Docker Desktop ni el sistema operativo
+y no representa el pico de memoria ni un benchmark de PDFs grandes.
 
 Evaluación real: `uv run --package app python scripts/evaluate_rag.py --cloud --vision`.
 Sin --cloud sólo recupera localmente. Guarda configuración y métricas en

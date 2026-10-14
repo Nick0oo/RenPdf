@@ -4,71 +4,71 @@
   "measurements": [
     {
       "kind": "index",
-      "seconds": 6.92,
+      "seconds": 6.976,
       "state": "SUCCEEDED",
       "error_code": null
     },
     {
       "kind": "index",
-      "seconds": 3.166,
-      "state": "SUCCEEDED",
-      "error_code": null
-    },
-    {
-      "kind": "chat",
-      "seconds": 2.672,
-      "state": "COMPLETE"
-    },
-    {
-      "kind": "chat",
-      "seconds": 2.46,
-      "state": "COMPLETE"
-    },
-    {
-      "kind": "chat",
-      "seconds": 2.82,
-      "state": "COMPLETE"
-    },
-    {
-      "kind": "chat",
-      "seconds": 2.347,
-      "state": "COMPLETE"
-    },
-    {
-      "kind": "chat",
-      "seconds": 2.388,
-      "state": "COMPLETE"
-    },
-    {
-      "kind": "chat",
-      "seconds": 2.605,
-      "state": "COMPLETE"
-    },
-    {
-      "kind": "chat",
-      "seconds": 3.086,
-      "state": "COMPLETE"
-    },
-    {
-      "kind": "questions",
-      "seconds": 3.856,
-      "state": "SUCCEEDED",
-      "error_code": null
-    },
-    {
-      "kind": "summary",
       "seconds": 3.08,
       "state": "SUCCEEDED",
       "error_code": null
     },
     {
       "kind": "chat",
-      "seconds": 3.224,
+      "seconds": 2.98,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 3.202,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.819,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 3.192,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.698,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 3.417,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.623,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "questions",
+      "seconds": 123.102,
+      "state": "SUCCEEDED",
+      "error_code": null
+    },
+    {
+      "kind": "summary",
+      "seconds": 9.245,
+      "state": "SUCCEEDED",
+      "error_code": null
+    },
+    {
+      "kind": "chat",
+      "seconds": 5.847,
       "state": "COMPLETE"
     },
     {
       "kind": "index",
-      "seconds": 6.905,
+      "seconds": 7.099,
       "state": "SUCCEEDED",
       "error_code": null
     }
@@ -111,7 +111,7 @@
       "page_count": 2,
       "status": "READY",
       "current_version_id": "168c0d02-dbe0-4e56-997e-afbb1cf96f13",
-      "active_index_id": "1226b0f2-14b3-40c3-beb7-50596bbc57fd",
+      "active_index_id": "0bb696da-e70c-4b83-8ac8-ec877960079f",
       "warning": "Extracción ligera PyMuPDF; Docling no está configurado.",
       "created_at": "2026-10-14T20:09:08.065432Z"
     },
@@ -123,7 +123,7 @@
       "page_count": 2,
       "status": "READY",
       "current_version_id": "766625ff-0e5c-48ed-8e13-73613ac314df",
-      "active_index_id": "81b1206a-3f73-4fe8-adee-25c3b13024c9",
+      "active_index_id": "8d7b32e5-57c3-42e5-95a2-b558217d4d62",
       "warning": "Extracción ligera PyMuPDF; Docling no está configurado.",
       "created_at": "2026-10-14T20:09:10.197827Z"
     },
@@ -155,7 +155,7 @@
   "ocr": {
     "verified": true
   },
-  "conversation_id": "b7410642-9c24-4540-8c06-15b6109610f2",
+  "conversation_id": "d0697f11-fd3c-4046-8ee9-aeb4567d1947",
   "multidocument": {
     "answer": "El informe en español indica una capacidad solar instalada de 120 MWh [Fuente 2] [Fuente 3] [Fuente 4]. El informe en inglés reporta una capacidad solar de 90 MWh [Fuente 1].",
     "documents_cited": 2
@@ -169,7 +169,7 @@
     "summary_persisted": true
   },
   "vision": {
-    "answer": "La figura es un triángulo de color verde azulado y está etiquetada como \"Figura A\" [Fuente 1].",
+    "answer": "A partir de la imagen visible, la figura tiene forma de **triángulo** y es de color **verde azulado** (o verde azul / turquesa), identificada en su base con el texto \"Figura A\" [Fuente 1].",
     "cited": true
   },
   "multimodal_embeddings": {

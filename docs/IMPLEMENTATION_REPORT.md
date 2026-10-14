@@ -7,7 +7,7 @@ JSON son evidencia reproducible con fixtures sintéticos.
 | Fase | Implementación / archivos principales | Migración y verificación | Pendiente |
 |---|---|---|---|
 | 0 Diagnóstico | ENVIRONMENT_AUDIT; Git, Windows/WSL2, hardware, runtimes, servicios | Repo limpio inicial; base oficial; catálogos reales | Inferencia local pesada evitada por RAM |
-| 1 Fundación | config, auth cookie, bootstrap, Compose, init_env/configure_local | Migraciones template + dominio; login; PG18/vector, Redis, reinicio | TLS/reverse proxy para futura exposición pública |
+| 1 Fundación | config, auth cookie, bootstrap, Compose, init_env/configure_local | Migraciones template + dominio; login; PG18/vector, Redis, reinicio e inicio en volumen nuevo aislado | TLS/reverse proxy para futura exposición pública |
 | 2 Documentos/workspaces | domain, routes, storage/local, ResearchDesk | Upload/dedup/hash/download y visor reales | S3 futuro, opcional |
 | 3 Ingesta | workers, parsing/pdf/runner/isolated, fixtures | Extracción/tablas; Tesseract Docker; checkpoint reanudado en PG | Docling/HybridChunker requieren artefactos locales |
 | 4 Recuperación | providers, rag/retrieval, EmbeddingProfile/Index | Gemini 768; pgvector; FTS/GIN/RRF; filtros y perfiles | HNSW pospuesto por escala; reranker ausente |
@@ -53,3 +53,9 @@ Cinco preguntas ES/EN: Recall@8=1, MRR=1, página en primer resultado=1, cobertu
 de citas=1, citas inválidas=0. Una pregunta sin información produjo abstención
 y cero fuentes. Dataset pequeño, no calidad general. evaluation-results.json
 conserva tiempos medidos; restart-results.json conserva verificación del reinicio.
+
+Verificación final: 95 tests de backend y 14 tests Chromium aprobados; Ruff,
+ty, Biome y build de producción Docker aprobados. La auditoría npm de dependencias
+de producción informó cero vulnerabilidades. El reinicio conservó cinco PDFs,
+sus hashes e índices activos y seis conversaciones con sus citas. La evaluación
+real de Gemini volvió a comprobar OCR, visión de la figura y embeddings multimodales.
