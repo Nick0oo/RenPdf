@@ -4,6 +4,14 @@ node_modules/
 # Configuración local: no versionar variables ni secretos.
 .env
 .env.*
+!.env.example
+storage/
+tmp/
+frontend/playwright/.auth/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/openapi.json
 .venv/
 __pycache__/
 .ruff_cache/

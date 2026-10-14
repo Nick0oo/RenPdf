@@ -1,0 +1,13 @@
+{
+  "digital_es.pdf": {"pages": 2, "questions": [
+    {"question": "capacidad solar instalada", "answer": "120 MWh", "page": 1},
+    {"question": "reducción anual emisiones", "answer": "42 toneladas", "page": 1},
+    {"question": "Producción por fuente", "answer": "Solar 120, Eólica 80, Total 200", "page": 2}
+  ], "malicious_content_page": 1, "table_page": 2, "figure_page": 2},
+  "english_conflict.pdf": {"pages": 2, "questions": [
+    {"question": "reported solar capacity", "answer": "90 MWh", "page": 1},
+    {"question": "water consumption", "answer": "25 cubic metres", "page": 2}
+  ]},
+  "scanned.pdf": {"pages": 1, "requires_ocr": true, "answer": "LUNA-42"},
+  "absent_question": {"question": "quasar plutonio", "expected": "no_evidence"}
+}

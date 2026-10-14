@@ -12,7 +12,7 @@ import { handleError } from "@/utils"
 import useCustomToast from "./useCustomToast"
 
 const isLoggedIn = () => {
-  return localStorage.getItem("access_token") !== null
+  return localStorage.getItem("renpdf_signed_in") === "1"
 }
 
 const useAuth = () => {
@@ -39,10 +39,11 @@ const useAuth = () => {
   })
 
   const login = async (data: AccessToken) => {
-    const response = await LoginService.loginAccessToken({
+    await LoginService.loginAccessToken({
       body: data,
     })
-    localStorage.setItem("access_token", response.data.access_token)
+    localStorage.removeItem("access_token")
+    localStorage.setItem("renpdf_signed_in", "1")
   }
 
   const loginMutation = useMutation({
@@ -54,7 +55,9 @@ const useAuth = () => {
   })
 
   const logout = () => {
-    localStorage.removeItem("access_token")
+    void LoginService.logout()
+    localStorage.removeItem("renpdf_signed_in")
+    queryClient.clear()
     navigate({ to: "/login" })
   }
 

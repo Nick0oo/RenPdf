@@ -3,6 +3,47 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.research-markdown p {
+  margin: 0.45rem 0;
+  line-height: 1.75;
+}
+.research-markdown ul,
+.research-markdown ol {
+  padding-left: 1.2rem;
+  list-style: revert;
+}
+.research-markdown pre {
+  overflow: auto;
+  border-radius: 0.5rem;
+  padding: 0.8rem;
+  background: var(--muted);
+}
+.research-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  display: block;
+  overflow: auto;
+}
+.research-markdown td,
+.research-markdown th {
+  border: 1px solid var(--border);
+  padding: 0.4rem;
+}
+.research-markdown h1,
+.research-markdown h2,
+.research-markdown h3 {
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+.research-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+  .research-split {
+    grid-template-columns: minmax(0, var(--pdf-width)) 8px minmax(0, 1fr);
+  }
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

@@ -129,12 +129,9 @@ function Login() {
             </LoadingButton>
           </div>
 
-          <div className="text-center text-sm">
-            Don't have an account yet?{" "}
-            <RouterLink to="/signup" className="underline underline-offset-4">
-              Sign up
-            </RouterLink>
-          </div>
+          <p className="text-center text-sm text-muted-foreground">
+            Biblioteca personal. Usa la cuenta configurada en tu servidor.
+          </p>
         </form>
       </Form>
     </AuthLayout>

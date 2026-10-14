@@ -1,0 +1,182 @@
+{
+  "synthetic_data_only": true,
+  "cloud_opt_in": true,
+  "measurements": [
+    {
+      "kind": "index",
+      "seconds": 6.92,
+      "state": "SUCCEEDED",
+      "error_code": null
+    },
+    {
+      "kind": "index",
+      "seconds": 3.166,
+      "state": "SUCCEEDED",
+      "error_code": null
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.672,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.46,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.82,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.347,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.388,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 2.605,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "chat",
+      "seconds": 3.086,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "questions",
+      "seconds": 3.856,
+      "state": "SUCCEEDED",
+      "error_code": null
+    },
+    {
+      "kind": "summary",
+      "seconds": 3.08,
+      "state": "SUCCEEDED",
+      "error_code": null
+    },
+    {
+      "kind": "chat",
+      "seconds": 3.224,
+      "state": "COMPLETE"
+    },
+    {
+      "kind": "index",
+      "seconds": 6.905,
+      "state": "SUCCEEDED",
+      "error_code": null
+    }
+  ],
+  "providers": {
+    "gemini": {
+      "status": "AVAILABLE",
+      "model_count": 49
+    },
+    "ollama": {
+      "status": "AVAILABLE",
+      "model_count": 1
+    },
+    "llamacpp": {
+      "status": "NOT_CONFIGURED",
+      "model_count": 0
+    },
+    "openai-compatible": {
+      "status": "NOT_CONFIGURED",
+      "model_count": 0
+    }
+  },
+  "rag": {
+    "queries": 5,
+    "recall_at_8": 1.0,
+    "mrr": 1.0,
+    "first_page_accuracy": 1.0,
+    "citation_coverage": 1.0,
+    "invalid_citations": 0,
+    "numeric_answer_accuracy": 1.0,
+    "semantic_profile": "gemini-embedding-2/768"
+  },
+  "workspace_id": "6e93fbeb-9ade-4a18-9758-c387e357666c",
+  "documents": {
+    "digital_es.pdf": {
+      "id": "ac24f307-bc47-48f9-86dc-f33e3766bba3",
+      "title": "digital_es.pdf",
+      "original_filename": "digital_es.pdf",
+      "file_size": 4544,
+      "page_count": 2,
+      "status": "READY",
+      "current_version_id": "168c0d02-dbe0-4e56-997e-afbb1cf96f13",
+      "active_index_id": "1226b0f2-14b3-40c3-beb7-50596bbc57fd",
+      "warning": "Extracción ligera PyMuPDF; Docling no está configurado.",
+      "created_at": "2026-10-14T20:09:08.065432Z"
+    },
+    "english_conflict.pdf": {
+      "id": "40fcb1a9-9086-4feb-9b1e-00f7b69e6b3f",
+      "title": "english_conflict.pdf",
+      "original_filename": "english_conflict.pdf",
+      "file_size": 2103,
+      "page_count": 2,
+      "status": "READY",
+      "current_version_id": "766625ff-0e5c-48ed-8e13-73613ac314df",
+      "active_index_id": "81b1206a-3f73-4fe8-adee-25c3b13024c9",
+      "warning": "Extracción ligera PyMuPDF; Docling no está configurado.",
+      "created_at": "2026-10-14T20:09:10.197827Z"
+    },
+    "scanned.pdf": {
+      "id": "3a3d2d65-82c9-470c-80c9-b269ff217462",
+      "title": "scanned.pdf",
+      "original_filename": "scanned.pdf",
+      "file_size": 4908807,
+      "page_count": 1,
+      "status": "EXTRACTED",
+      "current_version_id": "1a54daf4-271f-478c-a4e6-35aa2fe1e3be",
+      "active_index_id": null,
+      "warning": "Extracción ligera PyMuPDF; Docling no está configurado.",
+      "created_at": "2026-10-14T20:09:11.287719Z"
+    },
+    "crop_rotated.pdf": {
+      "id": "846d7fb3-4366-489e-b8e9-ff56531feae8",
+      "title": "crop_rotated.pdf",
+      "original_filename": "crop_rotated.pdf",
+      "file_size": 1306,
+      "page_count": 1,
+      "status": "EXTRACTED",
+      "current_version_id": "4ef0a26f-2f7b-491e-92b4-63f5ee674315",
+      "active_index_id": null,
+      "warning": "Extracción ligera PyMuPDF; Docling no está configurado.",
+      "created_at": "2026-10-14T20:09:13.149708Z"
+    }
+  },
+  "ocr": {
+    "verified": true
+  },
+  "conversation_id": "b7410642-9c24-4540-8c06-15b6109610f2",
+  "multidocument": {
+    "answer": "El informe en español indica una capacidad solar instalada de 120 MWh [Fuente 2] [Fuente 3] [Fuente 4]. El informe en inglés reporta una capacidad solar de 90 MWh [Fuente 1].",
+    "documents_cited": 2
+  },
+  "no_evidence": {
+    "answer": "No encontré información suficiente en las evidencias recuperadas para responder esta pregunta.",
+    "sources": 0
+  },
+  "enrichment": {
+    "questions": 5,
+    "summary_persisted": true
+  },
+  "vision": {
+    "answer": "La figura es un triángulo de color verde azulado y está etiquetada como \"Figura A\" [Fuente 1].",
+    "cited": true
+  },
+  "multimodal_embeddings": {
+    "state": "VERIFIED",
+    "provider": "gemini",
+    "model": "gemini-embedding-2",
+    "dimensions": 768
+  },
+  "outcome": "PASSED"
+}
