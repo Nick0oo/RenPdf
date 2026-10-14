@@ -3,7 +3,71 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.research-markdown p {
+  margin: 0.45rem 0;
+  line-height: 1.75;
+}
+.research-markdown > :first-child {
+  margin-top: 0;
+}
+.research-markdown > :last-child {
+  margin-bottom: 0;
+}
+.research-markdown li {
+  margin: 0.35rem 0;
+  line-height: 1.7;
+}
+.research-markdown blockquote {
+  margin: 1rem 0;
+  border-left: 3px solid var(--primary);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+}
+.research-markdown :not(pre) > code {
+  border-radius: 0.25rem;
+  background: var(--muted);
+  padding: 0.15rem 0.35rem;
+  font-size: 0.85em;
+}
+.research-markdown ul,
+.research-markdown ol {
+  padding-left: 1.2rem;
+  list-style: revert;
+}
+.research-markdown pre {
+  overflow: auto;
+  border-radius: 0.5rem;
+  padding: 0.8rem;
+  background: var(--muted);
+}
+.research-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  display: block;
+  overflow: auto;
+}
+.research-markdown td,
+.research-markdown th {
+  border: 1px solid var(--border);
+  padding: 0.4rem;
+}
+.research-markdown h1,
+.research-markdown h2,
+.research-markdown h3 {
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+.research-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+  .research-split {
+    grid-template-columns: minmax(0, var(--pdf-width)) 8px minmax(0, 1fr);
+  }
+}
+
 @theme inline {
+  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -44,21 +108,21 @@
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: #192b27;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.5982 0.10687 182.4689);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #087b71;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
+  --muted: #f4f7f6;
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
+  --destructive: #b42318;
+  --border: #dde5e1;
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
@@ -83,8 +147,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.10687 182.4689);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #49c8b5;
+  --primary-foreground: #142824;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -115,10 +179,21 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
   }
   button,
   [role="button"] {
     cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
   }
 }

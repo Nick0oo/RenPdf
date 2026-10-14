@@ -6,6 +6,7 @@ import { defineConfig } from "vite"
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: { host: "127.0.0.1", proxy: { "/api": "http://127.0.0.1:8000" } },
   build: {
     outDir: "../backend/app/frontend",
     emptyOutDir: true,

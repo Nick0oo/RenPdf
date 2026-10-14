@@ -1,4 +1,9 @@
 .git
+# Mantener la configuración local fuera de las imágenes.
+.env
+.env.*
+**/.env
+**/.env.*
 **/__pycache__
 **/.venv
 backend/htmlcov
@@ -8,3 +13,7 @@ frontend/node_modules
 frontend/playwright-report
 frontend/test-results
 node_modules
+storage
+tmp
+backend/tests
+docs

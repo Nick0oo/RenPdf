@@ -1,88 +1,121 @@
 services:
-
-  proxy:
-    image: traefik:v3.7
-    volumes:
-      # Add Docker as a mounted volume, so that Traefik can read the labels of other services
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    command:
-      # Enable Docker in Traefik, so that it reads labels from Docker services
-      - --providers.docker
-      # Do not expose all Docker services, only the ones explicitly exposed
-      - --providers.docker.exposedbydefault=false
-      # Create an entrypoint "http" listening on port 80
-      - --entrypoints.http.address=:80
-      # Enable the access log, with HTTP requests
-      - --accesslog
-      # Enable the Traefik log, for configurations and errors
-      - --log
-
   db:
-    image: postgres:18
+    image: pgvector/pgvector:0.8.7-pg18
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: app
+      REN_DATABASE_PASSWORD: ${REN_DATABASE_PASSWORD:?Run scripts/configure_local.py}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - app-db-data:/var/lib/postgresql
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Variable not set}
-      - POSTGRES_DB=app
-
-  adminer:
-    image: adminer
-    depends_on:
-      - db
-    environment:
-      - ADMINER_DESIGN=pepa-linha-dark
-    labels:
-      # Enable Traefik for this service
-      - traefik.enable=true
-      # Route HTTP traffic for the Adminer subdomain
-      - traefik.http.routers.adminer-http.rule=Host(`adminer.${DOMAIN:-localhost}`)
-      - traefik.http.routers.adminer-http.entrypoints=http
-      # Define the port inside of the Docker service to use
-      - traefik.http.services.adminer.loadbalancer.server.port=8080
-
-  backend:
-    image: backend:latest
-    depends_on:
-      db:
-        condition: service_healthy
-        restart: true
-    environment:
-      PROJECT_NAME: ${PROJECT_NAME:?Variable not set}
-      SECRET_KEY: ${SECRET_KEY:?Variable not set}
-      FIRST_SUPERUSER: ${FIRST_SUPERUSER:?Variable not set}
-      FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD:?Variable not set}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL}
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Variable not set}@db:5432/app
-      SENTRY_DSN: ${SENTRY_DSN:-}
-
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/renpdf.sh:ro
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - app-redis-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+  prestart:
+    image: renpdf-backend:local
     build:
       context: .
       dockerfile: backend/Dockerfile
-    labels:
-      # Enable Traefik for this service
-      - traefik.enable=true
-
-      # Define the port inside of the Docker service to use
-      - traefik.http.services.backend.loadbalancer.server.port=8000
-
-      # Route HTTP traffic for this domain
-      - traefik.http.routers.backend-http.rule=Host(`${DOMAIN:-localhost}`)
-      - traefik.http.routers.backend-http.entrypoints=http
-
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "app.bootstrap"]
+    environment: &app-environment
+      PROJECT_NAME: RenPdf
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY}
+      FIRST_SUPERUSER: ${FIRST_SUPERUSER:?Set FIRST_SUPERUSER}
+      FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD:?Set FIRST_SUPERUSER_PASSWORD}
+      DATABASE_URL: postgresql://renpdf_app:${REN_DATABASE_PASSWORD:?Set REN_DATABASE_PASSWORD}@db:5432/renpdf_chat
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ROOT: /data/documents
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-${GOOGLE_GENERATIVE_AI_API_KEY:-${GOOGLE_API_KEY:-}}}
+      OLLAMA_BASE_URL: ${DOCKER_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-4096}
+      OLLAMA_NUM_THREADS: ${OLLAMA_NUM_THREADS:-2}
+      OLLAMA_NUM_GPU: ${OLLAMA_NUM_GPU:-0}
+      LLAMACPP_BASE_URL: ${DOCKER_LLAMACPP_BASE_URL:-}
+      LLAMACPP_MODE: ${LLAMACPP_MODE:-unknown}
+      LLAMACPP_MODEL_VERSION: ${LLAMACPP_MODEL_VERSION:-}
+      LLAMACPP_EMBEDDING_DIMENSIONS: ${LLAMACPP_EMBEDDING_DIMENSIONS:-768}
+      OPENAI_COMPATIBLE_BASE_URL: ${OPENAI_COMPATIBLE_BASE_URL:-}
+      OPENAI_COMPATIBLE_API_KEY: ${OPENAI_COMPATIBLE_API_KEY:-}
+      DEFAULT_CHAT_PROVIDER: ${DEFAULT_CHAT_PROVIDER:-gemini}
+      DEFAULT_CHAT_MODEL: ${DEFAULT_CHAT_MODEL:-}
+      DEFAULT_EMBEDDING_PROVIDER: ${DEFAULT_EMBEDDING_PROVIDER:-gemini}
+      DEFAULT_EMBEDDING_MODEL: ${DEFAULT_EMBEDDING_MODEL:-gemini-embedding-2}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-768}
+      FRONTEND_HOST: ${FRONTEND_HOST:-http://localhost:5173}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-50}
+      MAX_DOCUMENT_PAGES: ${MAX_DOCUMENT_PAGES:-500}
+      ENABLE_OCR: ${ENABLE_OCR:-true}
+      OCR_LANGUAGE: ${OCR_LANGUAGE:-eng+spa}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      PARSER_ENGINE: ${PARSER_ENGINE:-auto}
+      PARSER_PAGE_TIMEOUT_SECONDS: ${PARSER_PAGE_TIMEOUT_SECONDS:-90}
+      PARSER_MEMORY_LIMIT_MB: ${PARSER_MEMORY_LIMIT_MB:-1536}
+      PARSER_RECYCLE_PAGES: ${PARSER_RECYCLE_PAGES:-8}
+      PROVIDER_ALLOWED_HOSTS: ${PROVIDER_ALLOWED_HOSTS:-["localhost","127.0.0.1","host.docker.internal","generativelanguage.googleapis.com"]}
+      OMP_NUM_THREADS: "2"
+      TOKENIZERS_PARALLELISM: "false"
+  backend:
+    image: renpdf-backend:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      prestart:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment: *app-environment
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./storage:/data/documents
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/utils/health-check/')"]
+      interval: 15s
+      retries: 5
+  worker:
+    image: renpdf-backend:local
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--pool=solo", "--concurrency=1", "--loglevel=WARNING"]
+    environment: *app-environment
+    depends_on:
+      prestart:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./storage:/data/documents
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  scheduler:
+    image: renpdf-backend:local
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "beat", "--loglevel=WARNING", "--schedule=/tmp/celerybeat"]
+    environment: *app-environment
+    depends_on:
+      redis:
+        condition: service_healthy
+      prestart:
+        condition: service_completed_successfully
 volumes:
   app-db-data:
+  app-redis-data:

@@ -13,14 +13,17 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
  */
 export default defineConfig({
   testDir: './tests',
+  // The public-signup/admin/items/mail workflows belong to the original template.
+  // Personal-product acceptance is explicit; the source tests remain for reference.
+  testMatch: /(?:login\.spec|research\.spec|personal-security\.spec|app-recovery\.spec)\.ts$/,
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'blob' : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -88,7 +91,7 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: 'bun run dev',
+        command: 'npm run dev',
         url: baseURL,
         reuseExistingServer: !process.env.CI,
       },

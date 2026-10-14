@@ -5,6 +5,96 @@ export type ClientOptions = {
 };
 
 /**
+ * AnnotationInput
+ */
+export type AnnotationInput = {
+    /**
+     * Document Id
+     */
+    document_id: string;
+    /**
+     * Page Number
+     */
+    page_number: number;
+    /**
+     * Kind
+     */
+    kind?: 'note' | 'highlight' | 'bookmark';
+    /**
+     * Text
+     */
+    text?: string;
+    bbox?: BBox | null;
+};
+
+/**
+ * AnnotationPublic
+ */
+export type AnnotationPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Document Id
+     */
+    document_id: string;
+    /**
+     * Version Id
+     */
+    version_id: string;
+    /**
+     * Page Number
+     */
+    page_number: number;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Text
+     */
+    text: string;
+    bbox: BBox | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * BBox
+ */
+export type BBox = {
+    /**
+     * X
+     */
+    x: number;
+    /**
+     * Y
+     */
+    y: number;
+    /**
+     * Width
+     */
+    width: number;
+    /**
+     * Height
+     */
+    height: number;
+};
+
+/**
+ * Body_documents-upload_document
+ */
+export type Body_documents_upload_document = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -35,6 +125,268 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * ConsentInput
+ */
+export type ConsentInput = {
+    /**
+     * Provider
+     */
+    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    /**
+     * Scope
+     */
+    scope: 'embeddings' | 'multimodal_embeddings' | 'chat' | 'vision' | 'original_pdf';
+    /**
+     * Expires In Days
+     */
+    expires_in_days?: number;
+};
+
+/**
+ * ConsentPublic
+ */
+export type ConsentPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Document Id
+     */
+    document_id: string;
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Scope
+     */
+    scope: string;
+    /**
+     * Granted At
+     */
+    granted_at: string;
+    /**
+     * Expires At
+     */
+    expires_at: string;
+    /**
+     * Revoked At
+     */
+    revoked_at: string | null;
+};
+
+/**
+ * ConversationInput
+ */
+export type ConversationInput = {
+    /**
+     * Title
+     */
+    title?: string;
+    /**
+     * Provider
+     */
+    provider?: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    /**
+     * Model
+     */
+    model?: string;
+};
+
+/**
+ * ConversationPublic
+ */
+export type ConversationPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Workspace Id
+     */
+    workspace_id: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * DocumentPublic
+ */
+export type DocumentPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Original Filename
+     */
+    original_filename: string;
+    /**
+     * File Size
+     */
+    file_size: number;
+    /**
+     * Page Count
+     */
+    page_count: number;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Current Version Id
+     */
+    current_version_id: string | null;
+    /**
+     * Active Index Id
+     */
+    active_index_id: string | null;
+    /**
+     * Warning
+     */
+    warning: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * ElementPublic
+ */
+export type ElementPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Element Type
+     */
+    element_type: string;
+    /**
+     * Text
+     */
+    text: string;
+    bbox: BBox | null;
+    /**
+     * Extraction Method
+     */
+    extraction_method: string;
+    /**
+     * Confidence
+     */
+    confidence: number | null;
+    /**
+     * Structured Content
+     */
+    structured_content: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * EnrichmentInput
+ */
+export type EnrichmentInput = {
+    /**
+     * Purpose
+     */
+    purpose?: 'questions' | 'summary';
+};
+
+/**
+ * EnrichmentPublic
+ */
+export type EnrichmentPublic = {
+    /**
+     * Questions
+     */
+    questions?: Array<SuggestedQuestion>;
+    /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Provider
+     */
+    provider?: string | null;
+    /**
+     * Model
+     */
+    model?: string | null;
+};
+
+/**
+ * EvidencePublic
+ */
+export type EvidencePublic = {
+    /**
+     * Chunk Id
+     */
+    chunk_id: string;
+    /**
+     * Element Id
+     */
+    element_id: string;
+    /**
+     * Document Id
+     */
+    document_id: string;
+    /**
+     * Version Id
+     */
+    version_id: string;
+    /**
+     * Document Title
+     */
+    document_title: string;
+    /**
+     * Page Number
+     */
+    page_number: number;
+    /**
+     * Text
+     */
+    text: string;
+    bbox: BBox | null;
+    /**
+     * Rotation
+     */
+    rotation: number;
+    /**
+     * Precision
+     */
+    precision?: string;
+    /**
+     * Label
+     */
+    label?: number;
+    /**
+     * Score
+     */
+    score?: number;
+};
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -42,6 +394,28 @@ export type HTTPValidationError = {
      * Detail
      */
     detail?: Array<ValidationError>;
+};
+
+/**
+ * IndexInput
+ */
+export type IndexInput = {
+    /**
+     * Provider
+     */
+    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Dimensions
+     */
+    dimensions?: number;
+    /**
+     * Modality
+     */
+    modality?: 'text' | 'multimodal';
 };
 
 /**
@@ -113,6 +487,60 @@ export type ItemsPublic = {
 };
 
 /**
+ * JobPublic
+ */
+export type JobPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Document Id
+     */
+    document_id: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Stage
+     */
+    stage: string;
+    /**
+     * Progress
+     */
+    progress: number;
+    /**
+     * Checkpoint
+     */
+    checkpoint: number;
+    /**
+     * Cancel Requested
+     */
+    cancel_requested: boolean;
+    /**
+     * Error Code
+     */
+    error_code: string | null;
+    /**
+     * Error Message
+     */
+    error_message: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
  * Message
  */
 export type Message = {
@@ -120,6 +548,125 @@ export type Message = {
      * Message
      */
     message: string;
+};
+
+/**
+ * MessagePublic
+ */
+export type MessagePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role: string;
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Provider
+     */
+    provider: string | null;
+    /**
+     * Model
+     */
+    model: string | null;
+    /**
+     * Retrieval Mode
+     */
+    retrieval_mode: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Citations
+     */
+    citations?: Array<EvidencePublic>;
+    /**
+     * Usage
+     */
+    usage?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * ModelCapabilities
+ */
+export type ModelCapabilities = {
+    /**
+     * Text
+     */
+    text?: 'declared' | 'verified' | 'unknown' | 'unsupported';
+    /**
+     * Vision
+     */
+    vision?: 'declared' | 'verified' | 'unknown' | 'unsupported';
+    /**
+     * Embeddings
+     */
+    embeddings?: 'declared' | 'verified' | 'unknown' | 'unsupported';
+    /**
+     * Streaming
+     */
+    streaming?: 'declared' | 'verified' | 'unknown' | 'unsupported';
+    /**
+     * Reranking
+     */
+    reranking?: 'declared' | 'verified' | 'unknown' | 'unsupported';
+    /**
+     * Structured Output
+     */
+    structured_output?: 'declared' | 'verified' | 'unknown' | 'unsupported';
+    /**
+     * Context Window
+     */
+    context_window?: number | null;
+    /**
+     * Embedding Dimensions
+     */
+    embedding_dimensions?: number | null;
+};
+
+/**
+ * ModelDescriptor
+ */
+export type ModelDescriptor = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Version
+     */
+    version: string;
+    capabilities?: ModelCapabilities;
+};
+
+/**
+ * ModelSelection
+ */
+export type ModelSelection = {
+    /**
+     * Provider
+     */
+    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    /**
+     * Model
+     */
+    model: string;
 };
 
 /**
@@ -137,25 +684,143 @@ export type NewPassword = {
 };
 
 /**
- * PrivateUserCreate
+ * ProviderConfig
  */
-export type PrivateUserCreate = {
+export type ProviderConfig = {
     /**
-     * Email
+     * Name
      */
-    email: string;
+    name: string;
     /**
-     * Password
+     * Endpoint
      */
-    password: string;
+    endpoint: string | null;
     /**
-     * Full Name
+     * Is Cloud
      */
-    full_name: string;
+    is_cloud: boolean;
     /**
-     * Is Verified
+     * Status
      */
-    is_verified?: boolean;
+    status: string;
+    /**
+     * Models
+     */
+    models?: Array<ModelDescriptor>;
+    /**
+     * Checked At
+     */
+    checked_at: string;
+    /**
+     * Error Code
+     */
+    error_code?: string | null;
+};
+
+/**
+ * QuestionInput
+ */
+export type QuestionInput = {
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Document Ids
+     */
+    document_ids?: Array<string>;
+    /**
+     * Selected Element Id
+     */
+    selected_element_id?: string | null;
+    /**
+     * Vision Element Id
+     */
+    vision_element_id?: string | null;
+};
+
+/**
+ * RenameInput
+ */
+export type RenameInput = {
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
+ * RoutingInput
+ */
+export type RoutingInput = {
+    /**
+     * Provider
+     */
+    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Task
+     */
+    task: 'chat' | 'embeddings' | 'vision' | 'rerank' | 'questions' | 'summary';
+    /**
+     * Scope Key
+     */
+    scope_key?: string;
+    /**
+     * Timeout Seconds
+     */
+    timeout_seconds?: number;
+    /**
+     * Max Tokens
+     */
+    max_tokens?: number;
+};
+
+/**
+ * RoutingPublic
+ */
+export type RoutingPublic = {
+    /**
+     * Task
+     */
+    task: string;
+    /**
+     * Scope Key
+     */
+    scope_key: string;
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Timeout Seconds
+     */
+    timeout_seconds: number;
+    /**
+     * Max Tokens
+     */
+    max_tokens: number;
+};
+
+/**
+ * SuggestedQuestion
+ */
+export type SuggestedQuestion = {
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Element Ids
+     */
+    element_ids: Array<string>;
 };
 
 /**
@@ -342,6 +1007,42 @@ export type ValidationError = {
     };
 };
 
+/**
+ * WorkspaceInput
+ */
+export type WorkspaceInput = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string;
+};
+
+/**
+ * WorkspacePublic
+ */
+export type WorkspacePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;
     path?: never;
@@ -366,6 +1067,22 @@ export type loginLoginAccessTokenResponses = {
 };
 
 export type loginLoginAccessTokenResponse = loginLoginAccessTokenResponses[keyof loginLoginAccessTokenResponses];
+
+export type loginLogoutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/login/logout';
+};
+
+export type loginLogoutResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type loginLogoutResponse = loginLogoutResponses[keyof loginLogoutResponses];
 
 export type loginTestTokenData = {
     body?: never;
@@ -921,27 +1638,1207 @@ export type itemsUpdateItemResponses = {
 
 export type itemsUpdateItemResponse = itemsUpdateItemResponses[keyof itemsUpdateItemResponses];
 
-export type privateCreateUserData = {
-    body: PrivateUserCreate;
+export type documentsListDocumentsData = {
+    body?: never;
     path?: never;
-    query?: never;
-    url: '/api/v1/private/users/';
+    query?: {
+        /**
+         * Q
+         */
+        q?: string;
+    };
+    url: '/api/v1/documents/';
 };
 
-export type privateCreateUserErrors = {
+export type documentsListDocumentsErrors = {
     /**
      * Validation Error
      */
     422: HTTPValidationError;
 };
 
-export type privateCreateUserError = privateCreateUserErrors[keyof privateCreateUserErrors];
+export type documentsListDocumentsError = documentsListDocumentsErrors[keyof documentsListDocumentsErrors];
 
-export type privateCreateUserResponses = {
+export type documentsListDocumentsResponses = {
+    /**
+     * Response Documents-List Documents
+     *
+     * Successful Response
+     */
+    200: Array<DocumentPublic>;
+};
+
+export type documentsListDocumentsResponse = documentsListDocumentsResponses[keyof documentsListDocumentsResponses];
+
+export type documentsUploadDocumentData = {
+    body: Body_documents_upload_document;
+    path?: never;
+    query?: never;
+    url: '/api/v1/documents/';
+};
+
+export type documentsUploadDocumentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsUploadDocumentError = documentsUploadDocumentErrors[keyof documentsUploadDocumentErrors];
+
+export type documentsUploadDocumentResponses = {
     /**
      * Successful Response
      */
-    200: UserPublic;
+    200: DocumentPublic;
 };
 
-export type privateCreateUserResponse = privateCreateUserResponses[keyof privateCreateUserResponses];
+export type documentsUploadDocumentResponse = documentsUploadDocumentResponses[keyof documentsUploadDocumentResponses];
+
+export type documentsDeleteDocumentData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}';
+};
+
+export type documentsDeleteDocumentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsDeleteDocumentError = documentsDeleteDocumentErrors[keyof documentsDeleteDocumentErrors];
+
+export type documentsDeleteDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type documentsGetDocumentData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}';
+};
+
+export type documentsGetDocumentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsGetDocumentError = documentsGetDocumentErrors[keyof documentsGetDocumentErrors];
+
+export type documentsGetDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocumentPublic;
+};
+
+export type documentsGetDocumentResponse = documentsGetDocumentResponses[keyof documentsGetDocumentResponses];
+
+export type documentsRenameDocumentData = {
+    body: RenameInput;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}';
+};
+
+export type documentsRenameDocumentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsRenameDocumentError = documentsRenameDocumentErrors[keyof documentsRenameDocumentErrors];
+
+export type documentsRenameDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocumentPublic;
+};
+
+export type documentsRenameDocumentResponse = documentsRenameDocumentResponses[keyof documentsRenameDocumentResponses];
+
+export type documentsDocumentFileData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/file';
+};
+
+export type documentsDocumentFileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsDocumentFileError = documentsDocumentFileErrors[keyof documentsDocumentFileErrors];
+
+export type documentsDocumentFileResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type documentsThumbnailData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/thumbnail';
+};
+
+export type documentsThumbnailErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsThumbnailError = documentsThumbnailErrors[keyof documentsThumbnailErrors];
+
+export type documentsThumbnailResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type documentsPageElementsApiData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+        /**
+         * Page Number
+         */
+        page_number: number;
+    };
+    query?: {
+        /**
+         * Version Id
+         */
+        version_id?: string | null;
+    };
+    url: '/api/v1/documents/{document_id}/pages/{page_number}/elements';
+};
+
+export type documentsPageElementsApiErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsPageElementsApiError = documentsPageElementsApiErrors[keyof documentsPageElementsApiErrors];
+
+export type documentsPageElementsApiResponses = {
+    /**
+     * Response Documents-Page Elements Api
+     *
+     * Successful Response
+     */
+    200: Array<ElementPublic>;
+};
+
+export type documentsPageElementsApiResponse = documentsPageElementsApiResponses[keyof documentsPageElementsApiResponses];
+
+export type documentsElementImageData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+        /**
+         * Element Id
+         */
+        element_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/elements/{element_id}/image';
+};
+
+export type documentsElementImageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsElementImageError = documentsElementImageErrors[keyof documentsElementImageErrors];
+
+export type documentsElementImageResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type documentsReprocessData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/process';
+};
+
+export type documentsReprocessErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsReprocessError = documentsReprocessErrors[keyof documentsReprocessErrors];
+
+export type documentsReprocessResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPublic;
+};
+
+export type documentsReprocessResponse = documentsReprocessResponses[keyof documentsReprocessResponses];
+
+export type documentsReindexData = {
+    body: IndexInput;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/index';
+};
+
+export type documentsReindexErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsReindexError = documentsReindexErrors[keyof documentsReindexErrors];
+
+export type documentsReindexResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPublic;
+};
+
+export type documentsReindexResponse = documentsReindexResponses[keyof documentsReindexResponses];
+
+export type documentsDocumentJobsData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/jobs';
+};
+
+export type documentsDocumentJobsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsDocumentJobsError = documentsDocumentJobsErrors[keyof documentsDocumentJobsErrors];
+
+export type documentsDocumentJobsResponses = {
+    /**
+     * Response Documents-Document Jobs
+     *
+     * Successful Response
+     */
+    200: Array<JobPublic>;
+};
+
+export type documentsDocumentJobsResponse = documentsDocumentJobsResponses[keyof documentsDocumentJobsResponses];
+
+export type documentsCancelJobData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/jobs/{job_id}/cancel';
+};
+
+export type documentsCancelJobErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsCancelJobError = documentsCancelJobErrors[keyof documentsCancelJobErrors];
+
+export type documentsCancelJobResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPublic;
+};
+
+export type documentsCancelJobResponse = documentsCancelJobResponses[keyof documentsCancelJobResponses];
+
+export type documentsRetryJobData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/jobs/{job_id}/retry';
+};
+
+export type documentsRetryJobErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsRetryJobError = documentsRetryJobErrors[keyof documentsRetryJobErrors];
+
+export type documentsRetryJobResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPublic;
+};
+
+export type documentsRetryJobResponse = documentsRetryJobResponses[keyof documentsRetryJobResponses];
+
+export type documentsConsentsData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/consents';
+};
+
+export type documentsConsentsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsConsentsError = documentsConsentsErrors[keyof documentsConsentsErrors];
+
+export type documentsConsentsResponses = {
+    /**
+     * Response Documents-Consents
+     *
+     * Successful Response
+     */
+    200: Array<ConsentPublic>;
+};
+
+export type documentsConsentsResponse = documentsConsentsResponses[keyof documentsConsentsResponses];
+
+export type documentsGrantConsentData = {
+    body: ConsentInput;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/consents';
+};
+
+export type documentsGrantConsentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsGrantConsentError = documentsGrantConsentErrors[keyof documentsGrantConsentErrors];
+
+export type documentsGrantConsentResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConsentPublic;
+};
+
+export type documentsGrantConsentResponse = documentsGrantConsentResponses[keyof documentsGrantConsentResponses];
+
+export type documentsRevokeConsentData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+        /**
+         * Consent Id
+         */
+        consent_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/consents/{consent_id}';
+};
+
+export type documentsRevokeConsentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsRevokeConsentError = documentsRevokeConsentErrors[keyof documentsRevokeConsentErrors];
+
+export type documentsRevokeConsentResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConsentPublic;
+};
+
+export type documentsRevokeConsentResponse = documentsRevokeConsentResponses[keyof documentsRevokeConsentResponses];
+
+export type documentsReadEnrichmentData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/enrichment';
+};
+
+export type documentsReadEnrichmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsReadEnrichmentError = documentsReadEnrichmentErrors[keyof documentsReadEnrichmentErrors];
+
+export type documentsReadEnrichmentResponses = {
+    /**
+     * Successful Response
+     */
+    200: EnrichmentPublic;
+};
+
+export type documentsReadEnrichmentResponse = documentsReadEnrichmentResponses[keyof documentsReadEnrichmentResponses];
+
+export type documentsGenerateEnrichmentData = {
+    body: EnrichmentInput;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/enrichment';
+};
+
+export type documentsGenerateEnrichmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsGenerateEnrichmentError = documentsGenerateEnrichmentErrors[keyof documentsGenerateEnrichmentErrors];
+
+export type documentsGenerateEnrichmentResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPublic;
+};
+
+export type documentsGenerateEnrichmentResponse = documentsGenerateEnrichmentResponses[keyof documentsGenerateEnrichmentResponses];
+
+export type workspacesListWorkspacesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/workspaces/';
+};
+
+export type workspacesListWorkspacesResponses = {
+    /**
+     * Response Workspaces-List Workspaces
+     *
+     * Successful Response
+     */
+    200: Array<WorkspacePublic>;
+};
+
+export type workspacesListWorkspacesResponse = workspacesListWorkspacesResponses[keyof workspacesListWorkspacesResponses];
+
+export type workspacesCreateWorkspaceData = {
+    body: WorkspaceInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/workspaces/';
+};
+
+export type workspacesCreateWorkspaceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesCreateWorkspaceError = workspacesCreateWorkspaceErrors[keyof workspacesCreateWorkspaceErrors];
+
+export type workspacesCreateWorkspaceResponses = {
+    /**
+     * Successful Response
+     */
+    200: WorkspacePublic;
+};
+
+export type workspacesCreateWorkspaceResponse = workspacesCreateWorkspaceResponses[keyof workspacesCreateWorkspaceResponses];
+
+export type workspacesDeleteWorkspaceData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}';
+};
+
+export type workspacesDeleteWorkspaceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesDeleteWorkspaceError = workspacesDeleteWorkspaceErrors[keyof workspacesDeleteWorkspaceErrors];
+
+export type workspacesDeleteWorkspaceResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type workspacesUpdateWorkspaceData = {
+    body: WorkspaceInput;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}';
+};
+
+export type workspacesUpdateWorkspaceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesUpdateWorkspaceError = workspacesUpdateWorkspaceErrors[keyof workspacesUpdateWorkspaceErrors];
+
+export type workspacesUpdateWorkspaceResponses = {
+    /**
+     * Successful Response
+     */
+    200: WorkspacePublic;
+};
+
+export type workspacesUpdateWorkspaceResponse = workspacesUpdateWorkspaceResponses[keyof workspacesUpdateWorkspaceResponses];
+
+export type workspacesListWorkspaceDocumentsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/documents';
+};
+
+export type workspacesListWorkspaceDocumentsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesListWorkspaceDocumentsError = workspacesListWorkspaceDocumentsErrors[keyof workspacesListWorkspaceDocumentsErrors];
+
+export type workspacesListWorkspaceDocumentsResponses = {
+    /**
+     * Response Workspaces-List Workspace Documents
+     *
+     * Successful Response
+     */
+    200: Array<DocumentPublic>;
+};
+
+export type workspacesListWorkspaceDocumentsResponse = workspacesListWorkspaceDocumentsResponses[keyof workspacesListWorkspaceDocumentsResponses];
+
+export type workspacesDetachDocumentData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/documents/{document_id}';
+};
+
+export type workspacesDetachDocumentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesDetachDocumentError = workspacesDetachDocumentErrors[keyof workspacesDetachDocumentErrors];
+
+export type workspacesDetachDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type workspacesAttachDocumentData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/documents/{document_id}';
+};
+
+export type workspacesAttachDocumentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesAttachDocumentError = workspacesAttachDocumentErrors[keyof workspacesAttachDocumentErrors];
+
+export type workspacesAttachDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type workspacesListAnnotationsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/annotations';
+};
+
+export type workspacesListAnnotationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesListAnnotationsError = workspacesListAnnotationsErrors[keyof workspacesListAnnotationsErrors];
+
+export type workspacesListAnnotationsResponses = {
+    /**
+     * Response Workspaces-List Annotations
+     *
+     * Successful Response
+     */
+    200: Array<AnnotationPublic>;
+};
+
+export type workspacesListAnnotationsResponse = workspacesListAnnotationsResponses[keyof workspacesListAnnotationsResponses];
+
+export type workspacesCreateAnnotationData = {
+    body: AnnotationInput;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/annotations';
+};
+
+export type workspacesCreateAnnotationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesCreateAnnotationError = workspacesCreateAnnotationErrors[keyof workspacesCreateAnnotationErrors];
+
+export type workspacesCreateAnnotationResponses = {
+    /**
+     * Successful Response
+     */
+    200: AnnotationPublic;
+};
+
+export type workspacesCreateAnnotationResponse = workspacesCreateAnnotationResponses[keyof workspacesCreateAnnotationResponses];
+
+export type workspacesDeleteAnnotationData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Annotation Id
+         */
+        annotation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/annotations/{annotation_id}';
+};
+
+export type workspacesDeleteAnnotationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesDeleteAnnotationError = workspacesDeleteAnnotationErrors[keyof workspacesDeleteAnnotationErrors];
+
+export type workspacesDeleteAnnotationResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type workspacesSearchWorkspaceData = {
+    body: QuestionInput;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/search';
+};
+
+export type workspacesSearchWorkspaceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type workspacesSearchWorkspaceError = workspacesSearchWorkspaceErrors[keyof workspacesSearchWorkspaceErrors];
+
+export type workspacesSearchWorkspaceResponses = {
+    /**
+     * Response Workspaces-Search Workspace
+     *
+     * Successful Response
+     */
+    200: Array<EvidencePublic>;
+};
+
+export type workspacesSearchWorkspaceResponse = workspacesSearchWorkspaceResponses[keyof workspacesSearchWorkspaceResponses];
+
+export type providersProviderCatalogData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/providers/';
+};
+
+export type providersProviderCatalogResponses = {
+    /**
+     * Response Providers-Provider Catalog
+     *
+     * Successful Response
+     */
+    200: Array<ProviderConfig>;
+};
+
+export type providersProviderCatalogResponse = providersProviderCatalogResponses[keyof providersProviderCatalogResponses];
+
+export type providersReadRoutingData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/providers/routing';
+};
+
+export type providersReadRoutingResponses = {
+    /**
+     * Response Providers-Read Routing
+     *
+     * Successful Response
+     */
+    200: Array<RoutingPublic>;
+};
+
+export type providersReadRoutingResponse = providersReadRoutingResponses[keyof providersReadRoutingResponses];
+
+export type providersSaveRoutingData = {
+    body: RoutingInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/providers/routing';
+};
+
+export type providersSaveRoutingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type providersSaveRoutingError = providersSaveRoutingErrors[keyof providersSaveRoutingErrors];
+
+export type providersSaveRoutingResponses = {
+    /**
+     * Successful Response
+     */
+    200: RoutingPublic;
+};
+
+export type providersSaveRoutingResponse = providersSaveRoutingResponses[keyof providersSaveRoutingResponses];
+
+export type providersDiagnosticsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/providers/diagnostics';
+};
+
+export type providersDiagnosticsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type chatConversationsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/conversations';
+};
+
+export type chatConversationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type chatConversationsError = chatConversationsErrors[keyof chatConversationsErrors];
+
+export type chatConversationsResponses = {
+    /**
+     * Response Chat-Conversations
+     *
+     * Successful Response
+     */
+    200: Array<ConversationPublic>;
+};
+
+export type chatConversationsResponse = chatConversationsResponses[keyof chatConversationsResponses];
+
+export type chatCreateConversationData = {
+    body: ConversationInput;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+    };
+    query?: never;
+    url: '/api/v1/workspaces/{workspace_id}/conversations';
+};
+
+export type chatCreateConversationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type chatCreateConversationError = chatCreateConversationErrors[keyof chatCreateConversationErrors];
+
+export type chatCreateConversationResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConversationPublic;
+};
+
+export type chatCreateConversationResponse = chatCreateConversationResponses[keyof chatCreateConversationResponses];
+
+export type chatSelectConversationModelData = {
+    body: ModelSelection;
+    path: {
+        /**
+         * Conversation Id
+         */
+        conversation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/conversations/{conversation_id}/model';
+};
+
+export type chatSelectConversationModelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type chatSelectConversationModelError = chatSelectConversationModelErrors[keyof chatSelectConversationModelErrors];
+
+export type chatSelectConversationModelResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConversationPublic;
+};
+
+export type chatSelectConversationModelResponse = chatSelectConversationModelResponses[keyof chatSelectConversationModelResponses];
+
+export type chatMessagesData = {
+    body?: never;
+    path: {
+        /**
+         * Conversation Id
+         */
+        conversation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/conversations/{conversation_id}/messages';
+};
+
+export type chatMessagesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type chatMessagesError = chatMessagesErrors[keyof chatMessagesErrors];
+
+export type chatMessagesResponses = {
+    /**
+     * Response Chat-Messages
+     *
+     * Successful Response
+     */
+    200: Array<MessagePublic>;
+};
+
+export type chatMessagesResponse = chatMessagesResponses[keyof chatMessagesResponses];
+
+export type chatAskData = {
+    body: QuestionInput;
+    path: {
+        /**
+         * Conversation Id
+         */
+        conversation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/conversations/{conversation_id}/messages';
+};
+
+export type chatAskErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type chatAskError = chatAskErrors[keyof chatAskErrors];
+
+export type chatAskResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type chatCancelGenerationData = {
+    body?: never;
+    path: {
+        /**
+         * Conversation Id
+         */
+        conversation_id: string;
+        /**
+         * Message Id
+         */
+        message_id: string;
+    };
+    query?: never;
+    url: '/api/v1/conversations/{conversation_id}/messages/{message_id}/cancel';
+};
+
+export type chatCancelGenerationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type chatCancelGenerationError = chatCancelGenerationErrors[keyof chatCancelGenerationErrors];
+
+export type chatCancelGenerationResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type chatExportConversationData = {
+    body?: never;
+    path: {
+        /**
+         * Conversation Id
+         */
+        conversation_id: string;
+    };
+    query?: {
+        /**
+         * Format
+         */
+        format?: string;
+    };
+    url: '/api/v1/conversations/{conversation_id}/export';
+};
+
+export type chatExportConversationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type chatExportConversationError = chatExportConversationErrors[keyof chatExportConversationErrors];
+
+export type chatExportConversationResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};

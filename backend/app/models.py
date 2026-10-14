@@ -124,3 +124,7 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# Register domain metadata for Alembic without replacing template auth models.
+from app import domain as domain  # noqa: E402

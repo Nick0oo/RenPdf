@@ -1,88 +1,98 @@
-# Full Stack FastAPI Template
+# RenPdf
 
-[![Test Docker Compose](../../actions/workflows/test-docker-compose.yml/badge.svg)](../../actions/workflows/test-docker-compose.yml)
-[![Test Backend](../../actions/workflows/test-backend.yml/badge.svg)](../../actions/workflows/test-backend.yml)
+ChatPDF personal y autohospedado sobre el Full Stack FastAPI Template oficial.
+PDFs persistentes, workspaces, extracción por páginas, OCR, pgvector + búsqueda
+bilingüe, chat con Gemini u Ollama, citas verificadas y visor PDF.js con regiones reales.
 
-## Technology Stack and Features
+La aplicación funciona sin inferencia cloud: login, biblioteca, lectura y
+extracción local permanecen disponibles. No se envían documentos a un proveedor
+hasta autorizar su propósito. Las API keys se configuran sólo en el servidor.
 
-- ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
-  - 🧰 [SQLModel](https://sqlmodel.tiangolo.com) for the Python SQL database interactions (ORM).
-  - 🔍 [Pydantic](https://docs.pydantic.dev), used by FastAPI, for the data validation and settings management.
-  - 💾 [PostgreSQL](https://www.postgresql.org) as the SQL database.
-- 🚀 [React](https://react.dev) for the frontend.
-  - 🧩 Built into the backend application and served by FastAPI on the same domain as the API.
-  - 💃 Using TypeScript, hooks, [Vite](https://vitejs.dev), and other parts of a modern frontend stack.
-  - 🎨 [Tailwind CSS](https://tailwindcss.com) and [shadcn/ui](https://ui.shadcn.com) for the frontend components.
-  - 🤖 An automatically generated frontend client.
-  - 🧪 [Playwright](https://playwright.dev) for end-to-end testing.
-  - 🦇 Dark mode support.
-- ☁️ [FastAPI Cloud](https://fastapicloud.com) for deployment.
-- 🐋 [Docker Compose](https://www.docker.com) for local services and self-hosted deployment.
-  - 📞 [Traefik](https://traefik.io) as a reverse proxy with automatic HTTPS.
-- 🔒 Secure password hashing by default.
-- 🔑 JWT (JSON Web Token) authentication.
-- 📫 Email-based password recovery.
-- ✉️ [React Email](https://react.email) for email templates.
-- 📬 [Mailpit](https://mailpit.axllent.org) for local email testing during development.
-- ✅ Tests with [Pytest](https://pytest.org).
-- 🏭 CI (continuous integration) and CD (continuous deployment) based on GitHub Actions.
+## Inicio
 
-### Dashboard Login
+Requisitos: Docker Desktop/WSL2, Python 3.14 + uv, Node 24 + npm.
 
-![Dashboard login screenshot](img/login.png)
+```powershell
+uv sync --package app
+uv run --package app python scripts/init_env.py
+docker compose up -d db redis
+uv run --package app python scripts/configure_local.py
+docker compose up -d --build backend worker scheduler
+```
 
-### Dashboard - Admin
+Abre [RenPdf](http://localhost:8000). La cuenta y su contraseña están en el `.env`
+local: FIRST_SUPERUSER y FIRST_SUPERUSER_PASSWORD. No están en documentación ni
+código. En este entorno ya se prepararon las bases dedicadas y los servicios.
 
-![Admin dashboard screenshot](img/dashboard.png)
+Para desarrollo del frontend: `npm ci --ignore-scripts` y `npm run dev`, en la raíz.
+Hot reload en [localhost:5173](http://localhost:5173). API Swagger en
+[localhost:8000/docs](http://localhost:8000/docs).
 
-### Dashboard - Items
+## Flujo de investigación
 
-![Items dashboard screenshot](img/dashboard-items.png)
+1. Importa un PDF. Su archivo se guarda y el worker extrae contenido sin usar LLM.
+2. Pulsa **Chatear con PDF** para abrir su conversación; puedes añadir más fuentes.
+3. En Modelos selecciona chat, embeddings, visión, preguntas y resumen.
+4. Si usas nube, en Fuentes y permisos autoriza cada propósito para ese proveedor.
+5. Crea el índice para búsqueda semántica y espera su estado persistido. Puedes
+   consultar texto extraído antes con búsqueda léxica; un índice incompleto nunca se activa.
+6. Pregunta, abre las citas, inspecciona regiones, toma notas o exporta la conversación.
 
-### Dashboard - Dark Mode
+Ollama y llama.cpp son opcionales, con endpoints en el entorno. La app no descarga
+modelos automáticamente. En este equipo se instaló llama.cpp CPU con EmbeddingGemma 2
+de texto (~310 MB) y se comprobó chat con Gemma4 ya existente. Para reproducir la
+instalación manual: `uv run --package app python scripts/install_llamacpp.py` y
+`./scripts/start_llamacpp.ps1`. Véase [despliegue](docs/DEPLOYMENT.md).
+Gemini reconoce GEMINI_API_KEY, GOOGLE_API_KEY y GOOGLE_GENERATIVE_AI_API_KEY.
+El modelo se elige del catálogo real; la existencia de un catálogo no verifica
+inferencia. Embeddings iniciales: 768 dimensiones, perfiles aislados por versión.
+Para imágenes, Gemini Embedding 2 exige una autorización multimodal adicional.
 
-![Dark mode dashboard screenshot](img/dashboard-dark.png)
+## Verificación
 
-### React Email Templates
+```powershell
+# Desde backend/
+uv run pytest -q
+uv run ruff check app tests
+uv run ruff format app --check
+uv run ty check app
 
-![Email templates screenshot](img/react-email.png)
+# Desde la raíz
+npm run lint
+npm run build
+npm run generate-client
+npm audit
 
-### Mailpit - Local Email Testing
+# Desde frontend/, con API y frontend activos
+../node_modules/.bin/playwright.cmd test --reporter=line
+```
 
-![Mailpit screenshot](img/mailpit.png)
+El conftest impide usar una base personal para la limpieza de tests. La suite
+Playwright mantenida cubre el producto personal; tests del template para registro
+público/admin/items/email se conservan como referencia y no son su aceptación.
+RUN_CLOUD_E2E=1 habilita inferencia sólo para el fixture sintético del E2E.
 
-### Interactive API Documentation
+Evaluación opt-in: `uv run --package app python scripts/evaluate_rag.py --cloud --vision`.
+Usa únicamente fixtures públicos sintéticos y registra sus consentimientos.
+Resultados en [evaluation-results.json](docs/evaluation-results.json).
+Prueba de reinicio en [restart-results.json](docs/restart-results.json).
+Evaluación totalmente local: `uv run --package app python scripts/evaluate_local.py`;
+[resultado](docs/local-evaluation-results.json) con Docling, pgvector y chat CPU reales.
 
-![API docs](img/docs.png)
+## Documentación
 
-## How to Use It
+[Arquitectura](docs/ARCHITECTURE.md) · [Auditoría](docs/ENVIRONMENT_AUDIT.md) ·
+[Datos](docs/DATA_MODEL.md) · [API](docs/API.md) · [RAG](docs/RAG_PIPELINE.md) ·
+[Proveedores](docs/MODEL_PROVIDERS.md) · [Citas](docs/CITATION_SYSTEM.md) ·
+[Seguridad](docs/SECURITY.md) · [Pruebas](docs/TESTING.md) ·
+[Despliegue](docs/DEPLOYMENT.md) · [ADR](docs/DECISIONS.md) ·
+[Limitaciones](docs/KNOWN_LIMITATIONS.md) · [Matriz por fases](docs/IMPLEMENTATION_REPORT.md) ·
+[Auditoría de diseño](docs/DESIGN_AUDIT.md).
 
-Click the **Use this template** button at the top of this page to create a new repository.
+Docling nativo y HybridChunker funcionan sin descargar modelos ni tokenizers.
+La extracción avanzada con layout neuronal sigue pendiente de artefactos locales.
+Los resúmenes generales avisan que usan una muestra de páginas; no se declara
+cobertura universal de PDFs de 500 páginas ni visión local verificada.
 
-## Backend Development
-
-Backend docs: [backend/README.md](./backend/README.md).
-
-## Frontend Development
-
-Frontend docs: [frontend/README.md](./frontend/README.md).
-
-## Deployment
-
-FastAPI Cloud deployment: [deployment.md](./deployment.md).
-
-Self-hosted deployment with Docker Compose: [deployment-docker-compose.md](./deployment-docker-compose.md).
-
-## Development
-
-General development docs: [development.md](./development.md).
-
-This includes the local FastAPI and Vite workflow, Docker Compose services, `.env` configuration, and more.
-
-## Release Notes
-
-Check the file [release-notes.md](./release-notes.md).
-
-## License
-
-The Full Stack FastAPI Template is licensed under the terms of the MIT license.
+[Template oficial](https://github.com/fastapi/full-stack-fastapi-template), base
+372dbcb; adaptación inicial 1c32e668065d7e5490263d90e75eb4b7cdb9fcba. Licencia [MIT](LICENSE).

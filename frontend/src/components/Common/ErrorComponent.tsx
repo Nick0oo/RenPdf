@@ -1,27 +1,40 @@
-import { Link } from "@tanstack/react-router"
+import { BookOpen, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const ErrorComponent = () => {
   return (
     <div
-      className="flex min-h-screen items-center justify-center flex-col p-4"
+      className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6 text-foreground"
       data-testid="error-component"
     >
-      <div className="flex items-center z-10">
-        <div className="flex flex-col ml-4 items-center justify-center p-4">
-          <span className="text-6xl md:text-8xl font-bold leading-none mb-4">
-            Error
-          </span>
-          <span className="text-2xl font-bold mb-2">Oops!</span>
-        </div>
+      <div className="max-w-md space-y-3 text-center">
+        <p className="text-sm font-medium text-primary">RenPdf</p>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          No pudimos abrir esta pantalla
+        </h1>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Recarga la aplicación para volver a intentarlo. También puedes abrir
+          la biblioteca y elegir otra colección.
+        </p>
       </div>
-
-      <p className="text-lg text-muted-foreground mb-4 text-center z-10">
-        Something went wrong. Please try again.
-      </p>
-      <Link to="/">
-        <Button>Go Home</Button>
-      </Link>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button onClick={() => window.location.reload()}>
+          <RefreshCw size={16} /> Recargar aplicación
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            try {
+              localStorage.removeItem("renpdf_workspace")
+            } catch {
+              // Navigation still works when the browser disables local storage.
+            }
+            window.location.assign("/")
+          }}
+        >
+          <BookOpen size={16} /> Abrir biblioteca
+        </Button>
+      </div>
     </div>
   )
 }

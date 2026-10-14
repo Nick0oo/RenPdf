@@ -1,4 +1,30 @@
+import os
+
+# ruff: noqa: E402 -- set the isolated test environment before importing app settings.
 from collections.abc import Generator
+from pathlib import Path
+
+from dotenv import dotenv_values
+from sqlalchemy.engine import make_url
+
+# Never run the template's cleanup fixture against a personal database.
+local = dotenv_values(Path(__file__).resolve().parents[2] / ".env")
+test_url = os.environ.get("TEST_DATABASE_URL") or str(
+    make_url(local["DATABASE_URL"]).set(database="renpdf_chat_test")
+)
+if not make_url(test_url).database.endswith("_test"):
+    raise RuntimeError("Tests require a dedicated database ending in _test")
+# render_as_string is required: str(URL) masks the password.
+if not os.environ.get("TEST_DATABASE_URL"):
+    test_url = (
+        make_url(local["DATABASE_URL"])
+        .set(database="renpdf_chat_test")
+        .render_as_string(hide_password=False)
+    )
+os.environ["DATABASE_URL"] = test_url
+os.environ["STORAGE_ROOT"] = str(
+    Path(__file__).resolve().parents[2] / "tmp" / "test-storage"
+)
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +40,10 @@ from tests.utils.utils import get_superuser_token_headers
 
 @pytest.fixture(scope="session", autouse=True)
 def db() -> Generator[Session]:
+    from alembic import command
+    from alembic.config import Config
+
+    command.upgrade(Config("alembic.ini"), "head")
     with Session(engine) as session:
         init_db(session)
         yield session
