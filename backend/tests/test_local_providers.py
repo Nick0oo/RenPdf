@@ -1,14 +1,46 @@
 import json
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import httpx
 
 from app.core.config import settings
 from app.services.models.contracts import InferenceRequest
 from app.services.models.providers import (
+    GeminiProvider,
     OllamaProvider,
     OpenAICompatibleProvider,
     safe_error,
 )
+
+
+def test_gemini_audio_families_are_not_advertised_for_document_chat(monkeypatch):
+    remote = MagicMock()
+    remote.__enter__.return_value = remote
+    remote.models.list.return_value = [
+        SimpleNamespace(
+            name=f"models/{name}",
+            supported_actions=["generateContent"],
+            version="v1",
+            input_token_limit=1000,
+        )
+        for name in (
+            "gemini-3.8-flash",
+            "gemini-3.8-flash-tts",
+            "gemini-3.1-flash-tts-preview",
+            "lyria-3.5",
+        )
+    ]
+    provider = GeminiProvider()
+    monkeypatch.setattr(provider, "client", lambda: remote)
+    models = provider.discover()
+    assert len(models) == 4  # Catalog retained; task filtering uses capabilities.
+    assert models[0].capabilities.text == "declared"
+    assert all(
+        model.capabilities.text == "unsupported"
+        and model.capabilities.streaming == "unsupported"
+        for model in models[1:]
+    )
 
 
 def client(handler):
@@ -65,6 +97,7 @@ def test_ollama_cpu_limits_disable_thinking_and_pass_structured_output(monkeypat
     assert "".join(provider.stream(request)) == "ok"
     assert seen[0]["think"] is False
     assert seen[0]["keep_alive"] == "0s"
+    assert seen[0]["options"]["temperature"] == 0
     assert seen[0]["options"]["num_ctx"] == settings.OLLAMA_NUM_CTX
     assert seen[0]["format"] == request.json_schema
 

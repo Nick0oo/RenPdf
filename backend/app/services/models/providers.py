@@ -172,25 +172,34 @@ class GeminiProvider(BaseProvider):
             models = []
             for model in client.models.list():
                 actions = model.supported_actions or []
+                identifier = (model.name or "").removeprefix("models/")
+                # The shared action does not imply textual chat support. Google's
+                # documented TTS/music families require an audio workload, which
+                # this textual generateContent adapter does not implement.
+                audio_workload = (
+                    "-tts" in identifier.lower()
+                    or identifier.lower().startswith("lyria")
+                )
                 if not any(
                     action in actions for action in ("generateContent", "embedContent")
                 ):
                     continue
                 models.append(
                     ModelDescriptor(
-                        id=(model.name or "").removeprefix("models/"),
+                        id=identifier,
                         provider=self.name,
                         version=model.version or model.name or "unknown",
                         capabilities=ModelCapabilities(
                             text="declared"
-                            if "generateContent" in actions
+                            if "generateContent" in actions and not audio_workload
                             else "unsupported",
                             embeddings="declared"
                             if "embedContent" in actions
                             else "unsupported",
                             streaming="declared"
-                            if "generateContent" in actions
+                            if "generateContent" in actions and not audio_workload
                             else "unsupported",
+                            vision="unsupported" if audio_workload else "unknown",
                             context_window=model.input_token_limit,
                         ),
                     )
@@ -443,6 +452,7 @@ class OllamaProvider(HttpProvider):
                         ),
                         "options": {
                             "num_predict": request.max_tokens,
+                            "temperature": 0,
                             "num_ctx": settings.OLLAMA_NUM_CTX,
                             "num_thread": settings.OLLAMA_NUM_THREADS,
                             "num_gpu": settings.OLLAMA_NUM_GPU,

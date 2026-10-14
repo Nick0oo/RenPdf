@@ -89,11 +89,11 @@ def overview_evidence(
 ) -> list[EvidencePublic]:
     """Sample real, text-bearing chunks across pages with bounded document balance.
 
-    Each sampled page contributes its longest persisted chunk rather than a
-    repeated short page header. Source spans and coordinates remain unchanged.
+    Sample a six-chunk reading window, not a single disconnected line. Source
+    spans and coordinates remain unchanged; each source retains its own label.
     This is a partial overview, not a claim that every page was read by a model.
     """
-    candidates: dict[uuid.UUID, list[uuid.UUID]] = {}
+    candidates: dict[uuid.UUID, list[list[uuid.UUID]]] = {}
     for document in documents:
         if not document.current_version_id:
             continue
@@ -101,52 +101,91 @@ def overview_evidence(
             session.connection()
             .execute(
                 text("""
-                SELECT DISTINCT ON (p.page_number) p.page_number, c.id
+                SELECT p.page_number, c.id, length(c.text) AS characters,
+                  min(coalesce((e.bbox->>'y')::double precision, 1)) AS y,
+                  min(coalesce((e.bbox->>'x')::double precision, 0)) AS x
                 FROM chunk c JOIN chunkprovenance cp ON cp.chunk_id = c.id
                 JOIN documentelement e ON e.id = cp.element_id
                 JOIN documentpage p ON p.id = e.page_id
                 WHERE c.version_id = :version AND length(trim(e.text)) > 0
-                ORDER BY p.page_number, length(c.text) DESC, c.id
+                GROUP BY p.page_number, c.id, c.text
+                ORDER BY p.page_number, y, x, c.id
             """),
                 {"version": document.current_version_id},
             )
             .all()
         )
         if rows:
+            pages: dict[int, list[Any]] = defaultdict(list)
+            for row in rows:
+                pages[row.page_number].append(row)
+            ordered_pages = list(pages.values())
             # Request a fair share from each document, distributed from start to end.
             quota = max(1, top_k // max(1, len(documents)))
-            count = min(quota, len(rows))
+            count = min(quota, len(ordered_pages))
             positions = [
-                round(index * (len(rows) - 1) / (count - 1)) if count > 1 else 0
+                round(index * (len(ordered_pages) - 1) / (count - 1))
+                if count > 1
+                else 0
                 for index in range(count)
             ]
-            candidates[document.id] = [rows[position][1] for position in positions]
-    selected: list[uuid.UUID] = []
+            windows = []
+            for position in positions:
+                page_chunks = ordered_pages[position]
+                body = [index for index, row in enumerate(page_chunks) if row.y < 0.85]
+                anchor = max(
+                    body or range(len(page_chunks)),
+                    key=lambda index: page_chunks[index].characters,
+                )
+                start = max(0, min(anchor - 2, len(page_chunks) - 6))
+                windows.append([row.id for row in page_chunks[start : start + 6]])
+            candidates[document.id] = windows
+    selected: list[list[uuid.UUID]] = []
     for round_number in range(top_k):
         for document in documents:
             choices = candidates.get(document.id, [])
-            if round_number < len(choices) and choices[round_number] not in selected:
+            if round_number < len(choices):
                 selected.append(choices[round_number])
             if len(selected) >= top_k:
                 break
         if len(selected) >= top_k:
             break
-    result = []
-    seen = set()
-    for identifier in selected:
-        for item in evidence_for_chunk(session, identifier):
-            identity = (item.chunk_id, item.element_id)
-            origin = session.get(DocumentElement, item.element_id)
-            if (
-                identity in seen
-                or not origin
-                or not origin.text.strip()
-                or not item.text.strip()
-            ):
+    # Round-robin keeps page coverage under the global bound, then restore reading
+    # order so adjoining lines arrive together. Never concatenate unrelated quotes.
+    result: list[EvidencePublic] = []
+    seen: set[tuple[uuid.UUID, uuid.UUID]] = set()
+    characters = 0
+    for offset in range(6):
+        for window in selected:
+            if offset >= len(window):
                 continue
-            seen.add(identity)
-            item.label = len(result) + 1
-            result.append(item)
+            for item in evidence_for_chunk(session, window[offset]):
+                identity = (item.chunk_id, item.element_id)
+                origin = session.get(DocumentElement, item.element_id)
+                if (
+                    identity in seen
+                    or not origin
+                    or not origin.text.strip()
+                    or not item.text.strip()
+                    or len(result) >= 48
+                    or characters + len(item.text) > 6000
+                ):
+                    continue
+                seen.add(identity)
+                result.append(item)
+                characters += len(item.text)
+    document_order = {document.id: index for index, document in enumerate(documents)}
+    result.sort(
+        key=lambda item: (
+            document_order[item.document_id],
+            item.page_number,
+            item.bbox.y if item.bbox else 1,
+            item.bbox.x if item.bbox else 0,
+            str(item.chunk_id),
+        )
+    )
+    for label, item in enumerate(result, 1):
+        item.label = label
     return result
 
 

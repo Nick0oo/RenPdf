@@ -59,8 +59,8 @@ conserva tiempos medidos; restart-results.json conserva verificación del reinic
 
 Verificación final: 115 tests de backend y 18 tests Chromium aprobados; Ruff,
 ty, Biome y build de producción Docker aprobados. La auditoría npm de dependencias
-de producción informó cero vulnerabilidades. El reinicio conservó ocho PDFs,
-sus hashes e índices activos y trece conversaciones con sus citas. La evaluación
+de producción informó cero vulnerabilidades. El reinicio conservó once PDFs,
+sus hashes e índices activos y quince conversaciones con sus citas. La evaluación
 real de Gemini volvió a comprobar OCR, visión de la figura y embeddings multimodales.
 
 La evaluación HTTP totalmente local extrajo el fixture en 11,52 s, indexó 16
@@ -69,3 +69,11 @@ Ollama. local-evaluation-results.json conserva parser, perfiles y tiempos.
 La pregunta general de la captura se corrigió con muestreo de páginas y aviso
 persistido de cobertura parcial; no se declara un resumen exhaustivo del documento.
 El audit frontend está en DESIGN_AUDIT.md; skill frontend-design instalada localmente.
+
+La verificación HTTP del PDF personal completó el índice local en 525,99 s:
+1.733 chunks y 1.733 vectores de 768 dimensiones, versión preservada y activación
+atómica. El resumen con ventanas vecinas de lectura terminó en 166,18 s con
+nueve citas persistidas y aviso de cobertura parcial. private-local-check.json
+incluye sólo metadatos agregados, conserva intentos anteriores y no publica IDs
+ni contenido privado. Tras la suite completa anterior se aprobaron diez regresiones
+RAG y cinco contratos de proveedores sobre las correcciones posteriores.

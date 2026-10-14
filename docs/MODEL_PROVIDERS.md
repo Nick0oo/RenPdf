@@ -7,7 +7,8 @@ El modelo generativo no está fijado como única opción. El entorno actual conf
 catálogo, generación y embeddings de 768 dimensiones con entradas sintéticas.
 
 Ollama usa `/api/tags`, `/api/show`, `/api/chat`, `/api/embed`. Se consulta el catálogo
-real y capacidades declaradas. `keep_alive=0s`, dos hilos y contexto acotado evitan
+real y capacidades declaradas. Temperatura 0 reduce variación en respuestas
+documentales. `keep_alive=0s`, dos hilos y contexto acotado evitan
 dejar modelos grandes residentes tras una solicitud del usuario. No hay endpoint
 de descarga ni pull automático. El modelo de chat preexistente `gemma4:e2b` pesa
 7.16 GB: generación y respuestas con citas sobre PDFs se verificaron en CPU.
@@ -24,6 +25,13 @@ dimensión de salida: la proyección medida produce 768. Los prefijos de consult
 y documento siguen la guía de Google; no se mezclan con perfiles Gemini. El flujo
 HTTP completo verificó 16 chunks Docling, 16 vectores en pgvector, índice READY,
 recuperación híbrida y respuesta Ollama citada; véase local-evaluation-results.json.
+
+`generateContent` compartido en el catálogo Gemini no demuestra chat textual:
+las familias TTS y Lyria documentadas se conservan en el catálogo y se marcan
+como no compatibles con este adaptador de conversación textual. El selector
+por tarea no las ofrece para preguntas sobre PDFs. Referencias de Google:
+[TTS](https://ai.google.dev/gemini-api/docs/speech-generation) y
+[Lyria](https://ai.google.dev/gemini-api/docs/music-generation).
 
 llama.cpp y OpenAI compatible usan `/v1/models`, `/v1/chat/completions` SSE y
 `/v1/embeddings`. No se atribuye visión o embeddings sólo por HTTP 200. Catálogos

@@ -12,6 +12,11 @@
   EmbeddingGemma 2 Q8_0 de texto en llama.cpp; no se cargaron sus torres multimodales.
   Ollama 0.34.4 rechazó la variante oficial EmbeddingGemma 2 por exigir actualización;
   el runtime existente no se actualizó. OpenAI compatible externo sigue sin servidor.
+- La extracción histórica por líneas necesita ventanas de contexto para los
+  resúmenes. Se verificó el resumen por HTTP con nueve citas; son fragmentos de
+  ocho páginas, no una revisión exhaustiva de las 72 páginas. Tardó 166,18 s
+  en CPU; el índice de 1.733 fragmentos tardó 525,99 s. El equipo puede ejecutarlo,
+  pero esas latencias no ofrecen interacción instantánea ni garantizan rendimiento general.
 - Reranking tiene contrato y estado NOT_CONFIGURED. No existe reranker ficticio.
   Se usa RRF sin puntuaciones inventadas de un modelo.
 - Embeddings multimodales directos implementados para Gemini Embedding 2 con

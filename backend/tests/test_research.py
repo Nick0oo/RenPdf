@@ -414,6 +414,68 @@ def test_generic_summary_uses_real_pages_without_cloud_or_embeddings(
     )
 
 
+def test_overview_recovers_adjacent_short_lines_with_exact_sources(
+    client, superuser_token_headers
+):
+    import pymupdf
+
+    pdf = pymupdf.open()
+    page = pdf.new_page()
+    lines = [
+        "Resumen del experimento contextual",
+        "El prototipo usa reglas explicitas.",
+        "Se registraron 42 observaciones.",
+        "La entrada aporta 120 unidades.",
+        "El segundo flujo aporta 80 unidades.",
+        "El acumulador obtiene 200 unidades verificadas.",
+        "Cada decision guarda su regla de origen.",
+        "Los resultados se pueden revisar por pagina.",
+        "Ejecucion en CPU del equipo.",
+    ]
+    for index, line in enumerate(lines):
+        page.insert_text((40, 60 + index * 45), line, fontsize=11)
+    page.insert_text(
+        (40, 790),
+        "Informacion editorial complementaria: referencia institucional y derechos de publicacion.",
+        fontsize=9,
+    )
+    source = pdf.tobytes()
+    pdf.close()
+    uploaded = client.post(
+        "/api/v1/documents/",
+        headers=superuser_token_headers,
+        files={"file": ("short-line-window.pdf", source, "application/pdf")},
+    ).json()
+    identifier = uuid.UUID(uploaded["id"])
+    try:
+        with Session(engine) as session:
+            job = session.exec(select(Job).where(Job.document_id == identifier)).first()
+            process_job(str(job.id))
+            session.expire_all()
+            assert session.get(Job, job.id).state == "SUCCEEDED"
+            evidence, mode = retrieve(
+                session, [identifier], "Resume los puntos principales con sus fuentes."
+            )
+            assert mode == "document_overview" and 3 <= len(evidence) <= 48
+            assert sum(len(item.text) for item in evidence) <= 6000
+            assert len({item.label for item in evidence}) == len(evidence)
+            assert [item.bbox.y for item in evidence] == sorted(
+                item.bbox.y for item in evidence
+            )
+            for amount in ("120", "80", "200"):
+                assert any(amount in item.text for item in evidence)
+            assert not any("Informacion editorial" in item.text for item in evidence)
+            for item in evidence:
+                origin = session.get(DocumentElement, item.element_id)
+                assert item.text in origin.text
+                assert item.bbox.model_dump() == origin.bbox
+                assert item.document_id == identifier
+    finally:
+        client.delete(
+            f"/api/v1/documents/{identifier}", headers=superuser_token_headers
+        )
+
+
 def test_empty_or_unprocessed_chat_reports_actionable_error(
     client, superuser_token_headers
 ):

@@ -42,9 +42,12 @@ citas usan el span de su elemento, evitando citar sólo un encabezado. El proces
 se reutiliza hasta ocho páginas y se recicla, con timeout y memoria acotados.
 
 Las preguntas generales sobre el documento usan `document_overview`: una muestra
-distribuida de fragmentos reales por página/documento, sin exigir que el PDF contenga
+distribuida de ventanas de líneas vecinas en orden de lectura por página/documento,
+sin exigir que el PDF contenga
 palabras como «resume». El chat muestra y persiste el aviso de cobertura parcial;
-no promete un resumen exhaustivo de las 72 páginas. Preguntas factuales sin evidencia
+no promete un resumen exhaustivo de las 72 páginas. El muestreo está acotado a
+48 fuentes y 6.000 caracteres, con cada span/elemento/cita original intacto;
+el catálogo compacto evita repetir el título por cada línea. Preguntas factuales sin evidencia
 mantienen la abstención. Los PDFs sin selección, pendientes o sin texto tienen errores
 distintos y visibles.
 

@@ -240,8 +240,14 @@ def chat_events(
                     "análisis exhaustivo de todo su contenido.\n\n"
                 )
             system = SYSTEM
+            document_labels = {
+                identifier: f"PDF {index + 1}"
+                for index, identifier in enumerate(
+                    dict.fromkeys(item.document_id for item in selected)
+                )
+            }
             if overview:
-                system += "\nLa evidencia es una muestra de fragmentos repartidos por páginas. Resume brevemente sus puntos respaldados, cita cada punto, y no afirmes haber revisado todo el PDF ni identificar todos sus puntos principales."
+                system += "\nLa evidencia contiene ventanas de líneas contiguas de una muestra de páginas. Escribe de 2 a 4 puntos breves respaldados por esas líneas. Comienza CADA punto con su cita real [Fuente N] y después su afirmación. No afirmes haber revisado todo el PDF ni identificar todos sus puntos principales."
             prompt = json.dumps(
                 {
                     "question": request.question,
@@ -249,10 +255,25 @@ def chat_events(
                     "coverage": "sampled_pages_partial"
                     if overview
                     else "retrieved_evidence",
+                    "documents": [
+                        {
+                            "reference": document_labels[identifier],
+                            "title": next(
+                                item.document_title
+                                for item in selected
+                                if item.document_id == identifier
+                            ),
+                        }
+                        for identifier in document_labels
+                    ]
+                    if overview
+                    else [],
                     "evidence": [
                         {
                             "source_id": item.label,
-                            "document": item.document_title,
+                            "document": document_labels[item.document_id]
+                            if overview
+                            else item.document_title,
                             "page_number": item.page_number,
                             "text": item.text,
                         }
