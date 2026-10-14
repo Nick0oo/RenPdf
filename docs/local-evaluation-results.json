@@ -1,0 +1,60 @@
+{
+  "checked_at": "2026-10-14T22:36:47.374644+00:00",
+  "synthetic_data_only": true,
+  "cloud_calls": 0,
+  "measurements": [
+    {
+      "kind": "extract",
+      "state": "SUCCEEDED",
+      "seconds": 11.518
+    },
+    {
+      "kind": "index",
+      "state": "SUCCEEDED",
+      "seconds": 4.625
+    }
+  ],
+  "status": "PASSED",
+  "diagnostics": {
+    "database": "AVAILABLE",
+    "pgvector": "0.8.7",
+    "redis": "AVAILABLE",
+    "parser": "docling-native",
+    "docling_native": "AVAILABLE",
+    "docling_advanced": "NOT_CONFIGURED",
+    "docling_chunker": "offline_byte_budget",
+    "ollama_context_tokens": 4096,
+    "pymupdf_version": "1.28.2",
+    "ocr_enabled": true,
+    "cloud_default": "DENY",
+    "reranking": "NOT_CONFIGURED",
+    "max_pages": 500,
+    "max_upload_mb": 50
+  },
+  "workspace_id": "9cb675a3-9d28-4f7a-a1dc-29cd37ea3d07",
+  "document_id": "3f794642-e5bb-427c-8b9a-5a3387741d86",
+  "index": {
+    "parser": "docling-native",
+    "parser_version": "2.139.0",
+    "chunk_profiles": [
+      "docling-hybrid-byte-v1"
+    ],
+    "chunks": 16,
+    "vectors": 16,
+    "provider": "llamacpp",
+    "model": "embeddinggemma-2-q8_0",
+    "model_version": "2188ac1deca4b77dffefd603c2776a9d76d9d74ec01841392982ebb840b09135",
+    "dimensions": 768,
+    "state": "READY"
+  },
+  "conversation_id": "3772cce3-a1b1-4a4e-a0a1-42e108f8efd8",
+  "chat": {
+    "provider": "ollama",
+    "model": "gemma4:e2b",
+    "state": "COMPLETE",
+    "retrieval_mode": "hybrid",
+    "seconds": 40.44,
+    "cited_sources": 1,
+    "expected_value_verified": true
+  }
+}

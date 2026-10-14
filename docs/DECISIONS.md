@@ -10,9 +10,11 @@
    como referencia. Biome cumple el lint frontend sin introducir ESLint paralelo.
    ty es el checker activo: los bindings PyMuPDF/Celery carecen de stubs completos
    y Mypy strict detectó anotaciones pendientes; no se oculta ese resultado.
-4. **Docling opcional, preferido con artefactos.** RAM libre inicial <0.5 GiB;
-   no se instalan pesos. Extra versionado 2.139.0 y carga perezosa. Auto utiliza
-   PyMuPDF y avisa; no se declara extracción Docling verificada sin ejecutarla.
+4. **Docling nativo sin pesos.** La base incluye docling-slim 2.139.0 y
+   NativePdfPipeline, comprobado offline. HybridChunker usa presupuesto UTF-8
+   conservador; un tokenizer local es opcional. El pipeline avanzado con modelos
+   de layout sigue opt-in; no se instalaron Torch ni sus pesos. Tablas nativas
+   se complementan con estructura real PyMuPDF, sin atribuirle inferencia neural.
 5. **EXTRACTED separado de READY.** Consentimiento no se infiere al subir. La
    biblioteca funciona sin AI; índice semántico requiere activación explícita y
    verificación de conteo/dimensiones. OCR pendiente produce DEGRADED.
@@ -31,3 +33,12 @@
     continúa para CLI/tests; CORS/Origin y loopback limitan superficie local.
 12. **Sin fallback cloud ni telemetría.** Cuatro alcances expiran/revocan por documento;
     la recuperación léxica es una degradación visible y nunca cambia proveedor.
+13. **EmbeddingGemma 2 de texto en CPU.** Ollama 0.34.4 rechazó la variante
+    solicitada por exigir actualización. Se preservó ese runtime y se instaló
+    llama.cpp CPU b11624 con GGUF oficial Q8_0 (~310 MB). El perfil usa SHA256 y
+    dimensión de salida medida (768), en vez de la dimensión interna anunciada (512).
+    No se descargaron torres multimodales ni otro modelo generativo pesado.
+14. **Acceso directo y controles compartidos.** Chatear con PDF reutiliza workspace
+    e historial, abre chat primero en móvil y agrupa ajustes en panel shadcn.
+    La recuperación de assets permite una recarga por bundle; un fallo persistente
+    conserva una salida a biblioteca y no borra la sesión HttpOnly.

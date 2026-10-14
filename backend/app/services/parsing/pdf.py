@@ -3,7 +3,6 @@
 import hashlib
 import importlib
 import importlib.metadata
-import os
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,91 +51,30 @@ def parser_available() -> bool:
         return False
 
 
-def docling_elements(
-    path: Path, page_number: int
-) -> tuple[list[ParsedElement], list[dict[str, Any]]]:
-    # Lazy imports: lightweight operation does not import Torch.
-    os.environ["HF_HUB_OFFLINE"] = "1"
-    os.environ["TRANSFORMERS_OFFLINE"] = "1"
-    InputFormat = importlib.import_module("docling.datamodel.base_models").InputFormat
-    pipeline = importlib.import_module("docling.datamodel.pipeline_options")
-    AcceleratorOptions, PdfPipelineOptions = (
-        pipeline.AcceleratorOptions,
-        pipeline.PdfPipelineOptions,
-    )
-    converter_module = importlib.import_module("docling.document_converter")
-    DocumentConverter, PdfFormatOption = (
-        converter_module.DocumentConverter,
-        converter_module.PdfFormatOption,
-    )
+def native_parser_available() -> bool:
+    try:
+        importlib.metadata.version("docling-slim")
+        importlib.metadata.version("docling-parse")
+        return True
+    except importlib.metadata.PackageNotFoundError:
+        return False
 
-    options = PdfPipelineOptions(
-        artifacts_path=settings.DOCLING_ARTIFACTS_PATH,
-        do_ocr=False,
-        enable_remote_services=False,
-    )
-    options.accelerator_options = AcceleratorOptions(num_threads=2, device="cpu")
-    converter = DocumentConverter(
-        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)}
-    )
-    document = converter.convert(
-        path,
-        page_range=(page_number, page_number),
-        max_num_pages=settings.MAX_DOCUMENT_PAGES,
-    ).document
-    elements = []
-    for item, _level in document.iterate_items():
-        for provenance in getattr(item, "prov", []):
-            if provenance.page_no != page_number:
-                continue
-            bbox = provenance.bbox
-            page = document.pages[page_number]
-            normalized = bbox.to_top_left_origin(page_height=page.size.height)
-            text = getattr(item, "text", "")
-            structured = {}
-            label = str(getattr(item, "label", "text")).split(".")[-1].lower()
-            if label == "picture":
-                label = "figure"
-            if label == "table":
-                structured = item.data.model_dump(mode="json")
-                text = item.export_to_markdown(doc=document)
-            structured["docling_ref"] = item.self_ref
-            elements.append(
-                ParsedElement(
-                    text,
-                    label,
-                    [normalized.l, normalized.t, normalized.r, normalized.b],
-                    "docling",
-                    structured,
-                )
-            )
-    fragments = []
-    if settings.DOCLING_TOKENIZER_PATH:
-        if not settings.DOCLING_TOKENIZER_PATH.is_dir():
-            raise ValueError("TOKENIZER_NOT_CONFIGURED")
-        transformers = importlib.import_module("transformers")
-        tokenizer_module = importlib.import_module(
-            "docling_core.transforms.chunker.tokenizer.huggingface"
-        )
-        chunker_module = importlib.import_module(
-            "docling_core.transforms.chunker.hybrid_chunker"
-        )
-        tokenizer = tokenizer_module.HuggingFaceTokenizer(
-            tokenizer=transformers.AutoTokenizer.from_pretrained(
-                str(settings.DOCLING_TOKENIZER_PATH), local_files_only=True
-            ),
-            max_tokens=384,
-        )
-        chunker = chunker_module.HybridChunker(tokenizer=tokenizer, merge_peers=True)
-        for chunk in chunker.chunk(dl_doc=document):
-            fragments.append(
-                {
-                    "text": chunk.text,
-                    "context": chunker.contextualize(chunk=chunk),
-                    "refs": [item.self_ref for item in chunk.meta.doc_items],
-                }
-            )
-    return elements, fragments
+
+def selected_parser() -> str:
+    engine = settings.PARSER_ENGINE
+    if engine == "pymupdf":
+        return engine
+    if engine == "docling":
+        if not parser_available():
+            raise ValueError("DOCLING_NOT_CONFIGURED")
+        return engine
+    if engine == "docling-native":
+        if not native_parser_available():
+            raise ValueError("DOCLING_NATIVE_NOT_CONFIGURED")
+        return engine
+    if parser_available():
+        return "docling"
+    return "docling-native" if native_parser_available() else "pymupdf"
 
 
 def page_elements(
@@ -148,13 +86,14 @@ def page_elements(
         page.set_rotation(0)
         width, height = page.rect.width, page.rect.height
         elements = []
-        engine = settings.PARSER_ENGINE
-        use_docling = engine != "pymupdf" and parser_available()
-        if engine == "docling" and not use_docling:
-            raise ValueError("DOCLING_NOT_CONFIGURED")
+        engine = selected_parser()
         hybrid_chunks = []
-        if use_docling:
-            elements, hybrid_chunks = docling_elements(path, page_number)
+        if engine.startswith("docling"):
+            from app.services.parsing.docling import extract
+
+            elements, hybrid_chunks = extract(
+                pdf, page_number, native=engine == "docling-native"
+            )
         else:
             for block in page.get_text("dict")["blocks"]:
                 if block["type"] == 0:
@@ -220,7 +159,7 @@ def page_elements(
             "rotation": rotation,
             "crop_box": list(page.cropbox),
             "extraction_status": status,
-            "parser": "docling" if use_docling else "pymupdf",
+            "parser": engine,
             "hybrid_chunks": hybrid_chunks,
         }, elements
 

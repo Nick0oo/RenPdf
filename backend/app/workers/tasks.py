@@ -24,7 +24,7 @@ from app.domain import (
 )
 from app.services.models.contracts import EmbeddingInput, ProviderError
 from app.services.models.providers import GeminiProvider, get_provider, safe_error
-from app.services.parsing.isolated import isolated_page_elements
+from app.services.parsing.isolated import PageParser
 from app.services.parsing.pdf import element_data, structural_chunks
 from app.services.privacy.consent import require_consent
 from app.services.storage.local import LocalStorage
@@ -81,83 +81,82 @@ def extract_document(session: Session, job: Job, document: Document) -> None:
     if not version:
         raise ProviderError("VERSION_MISSING", "No existe la versión documental.")
     degraded_pages = []
-    for number in range(job.checkpoint + 1, document.page_count + 1):
-        check_cancel(session, job)
-        metadata, elements = isolated_page_elements(
-            storage.path(document.storage_key), number
-        )
-        parser = metadata.pop("parser")
-        hybrid_chunks = metadata.pop("hybrid_chunks", [])
-        version.parser_name = parser
-        if parser == "docling":
-            version.parser_version = importlib.metadata.version("docling")
-        page = DocumentPage(version_id=version.id, page_number=number, **metadata)
-        session.add(page)
-        session.flush()
-        element_refs = {}
-        for parsed in elements:
-            element = DocumentElement(
-                page_id=page.id, **element_data(parsed, page.width, page.height)
-            )
-            session.add(element)
+    with PageParser(storage.path(document.storage_key)) as page_parser:
+        for number in range(job.checkpoint + 1, document.page_count + 1):
+            check_cancel(session, job)
+            metadata, elements = page_parser.elements(number)
+            parser = metadata.pop("parser")
+            hybrid_chunks = metadata.pop("hybrid_chunks", [])
+            version.parser_name = parser
+            if parser.startswith("docling"):
+                version.parser_version = importlib.metadata.version("docling-slim")
+            page = DocumentPage(version_id=version.id, page_number=number, **metadata)
+            session.add(page)
             session.flush()
-            if parsed.structured.get("docling_ref"):
-                element_refs[parsed.structured["docling_ref"]] = element
-            # Figures remain real elements even when there is no visual model.
-            if hybrid_chunks:
-                continue
-            for fragment, start, end in structural_chunks(element.text):
-                contextualized = f"{document.title}\nPágina {number} · {element.element_type}\n{fragment}"
+            element_refs = {}
+            for parsed in elements:
+                element = DocumentElement(
+                    page_id=page.id, **element_data(parsed, page.width, page.height)
+                )
+                session.add(element)
+                session.flush()
+                if parsed.structured.get("docling_ref"):
+                    element_refs[parsed.structured["docling_ref"]] = element
+                # Figures remain real elements even when there is no visual model.
+                if hybrid_chunks:
+                    continue
+                for fragment, start, end in structural_chunks(element.text):
+                    contextualized = f"{document.title}\nPágina {number} · {element.element_type}\n{fragment}"
+                    chunk = Chunk(
+                        version_id=version.id,
+                        text=fragment,
+                        contextualized_text=contextualized,
+                        content_hash=hashlib.sha256(fragment.encode()).hexdigest(),
+                    )
+                    session.add(chunk)
+                    session.flush()
+                    session.add(
+                        ChunkProvenance(
+                            chunk_id=chunk.id,
+                            element_id=element.id,
+                            span_start=start,
+                            span_end=end,
+                        )
+                    )
+            for fragment in hybrid_chunks:
+                origins = [
+                    element_refs[ref] for ref in fragment["refs"] if ref in element_refs
+                ]
+                if not origins:
+                    raise ProviderError(
+                        "MISSING_PROVENANCE",
+                        "Un fragmento Docling carece de elementos de origen.",
+                    )
                 chunk = Chunk(
                     version_id=version.id,
-                    text=fragment,
-                    contextualized_text=contextualized,
-                    content_hash=hashlib.sha256(fragment.encode()).hexdigest(),
+                    text=fragment["text"],
+                    contextualized_text=f"{document.title}\nPágina {number}\n{fragment['context']}",
+                    content_hash=hashlib.sha256(fragment["text"].encode()).hexdigest(),
+                    chunking_profile=fragment.get("profile", "docling-hybrid-v1"),
                 )
                 session.add(chunk)
                 session.flush()
-                session.add(
-                    ChunkProvenance(
-                        chunk_id=chunk.id,
-                        element_id=element.id,
-                        span_start=start,
-                        span_end=end,
+                for element in origins:
+                    session.add(
+                        ChunkProvenance(
+                            chunk_id=chunk.id,
+                            element_id=element.id,
+                            span_end=len(element.text),
+                        )
                     )
-                )
-        for fragment in hybrid_chunks:
-            origins = [
-                element_refs[ref] for ref in fragment["refs"] if ref in element_refs
-            ]
-            if not origins:
-                raise ProviderError(
-                    "MISSING_PROVENANCE",
-                    "Un fragmento Docling carece de elementos de origen.",
-                )
-            chunk = Chunk(
-                version_id=version.id,
-                text=fragment["text"],
-                contextualized_text=fragment["context"],
-                content_hash=hashlib.sha256(fragment["text"].encode()).hexdigest(),
-                chunking_profile="docling-hybrid-v1",
-            )
-            session.add(chunk)
-            session.flush()
-            for element in origins:
-                session.add(
-                    ChunkProvenance(
-                        chunk_id=chunk.id,
-                        element_id=element.id,
-                        span_end=len(element.text),
-                    )
-                )
-        if page.extraction_status in {"OCR_REQUIRED", "OCR_UNAVAILABLE"}:
-            degraded_pages.append(number)
-        job.checkpoint = number
-        job.progress = int(number / document.page_count * 95)
-        job.stage = "extracting"
-        job.updated_at = now()
-        session.add_all([version, job])
-        session.commit()  # Page, elements, provenance, and checkpoint commit together.
+            if page.extraction_status in {"OCR_REQUIRED", "OCR_UNAVAILABLE"}:
+                degraded_pages.append(number)
+            job.checkpoint = number
+            job.progress = int(number / document.page_count * 95)
+            job.stage = "extracting"
+            job.updated_at = now()
+            session.add_all([version, job])
+            session.commit()  # Page, elements, provenance, and checkpoint commit together.
     pages = session.exec(
         select(DocumentPage).where(col(DocumentPage.version_id) == version.id)
     ).all()
@@ -170,7 +169,9 @@ def extract_document(session: Session, job: Job, document: Document) -> None:
     version.artifact_manifest = {
         "pages": len(pages),
         "ocr_pending_pages": degraded_pages,
-        "chunker": "structural-v1",
+        "chunker": "docling-hybrid"
+        if version.parser_name.startswith("docling")
+        else "structural-v1",
     }
     document.current_version_id = version.id
     document.active_index_id = None
@@ -181,7 +182,11 @@ def extract_document(session: Session, job: Job, document: Document) -> None:
         else (
             "Extracción ligera PyMuPDF; Docling no está configurado."
             if version.parser_name == "pymupdf"
-            else None
+            else (
+                "Docling nativo sin modelos de layout; tablas PyMuPDF y OCR Tesseract selectivo."
+                if version.parser_name == "docling-native"
+                else None
+            )
         )
     )
     session.add_all([version, document])

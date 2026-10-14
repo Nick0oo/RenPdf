@@ -69,12 +69,36 @@ def normalized_vectors(
     return result
 
 
+def retrieval_inputs(model: str, texts: list[str], *, query: bool) -> list[str]:
+    if model.lower().startswith("embeddinggemma"):
+        prefix = "task: search result | query: " if query else "title: none | text: "
+        return [prefix + value for value in texts]
+    return texts
+
+
 def safe_error(error: Exception) -> ProviderError:
     if isinstance(error, ProviderError):
         return error
     code = getattr(error, "code", None)
     if isinstance(error, httpx.HTTPStatusError):
         code = error.response.status_code
+        if code == 500:
+            try:
+                detail = str(error.response.json().get("error", "")).lower()
+            except ValueError, AttributeError:
+                detail = ""
+            if any(
+                message in detail
+                for message in (
+                    "requires more system memory",
+                    "not enough memory",
+                    "out of memory",
+                )
+            ):
+                return ProviderError(
+                    "INSUFFICIENT_MEMORY",
+                    "El modelo local necesita más memoria disponible. Elige un modelo instalado más pequeño o libera memoria.",
+                )
     if code == 429:
         return ProviderError(
             "QUOTA_EXCEEDED", "Cuota del proveedor agotada. Reintenta más tarde.", True
@@ -349,6 +373,18 @@ class OllamaProvider(HttpProvider):
                             streaming="declared"
                             if "completion" in capabilities
                             else "unsupported",
+                            context_window=detail.json()
+                            .get("model_info", {})
+                            .get(
+                                f"{model.get('details', {}).get('family', '')}.context_length"
+                            ),
+                            embedding_dimensions=detail.json()
+                            .get("model_info", {})
+                            .get(
+                                f"{model.get('details', {}).get('family', '')}.embedding_length"
+                            )
+                            if "embedding" in capabilities
+                            else None,
                         ),
                     )
                 )
@@ -357,16 +393,19 @@ class OllamaProvider(HttpProvider):
     def embed(
         self, model: str, texts: list[str], dimensions: int, *, query: bool = False
     ) -> list[list[float]]:
-        del query
         try:
             with self.client() as client:
                 response = client.post(
                     "api/embed",
                     json={
                         "model": model,
-                        "input": texts,
+                        "input": retrieval_inputs(model, texts, query=query),
                         "truncate": False,
                         "keep_alive": "0s",
+                        "options": {
+                            "num_thread": settings.OLLAMA_NUM_THREADS,
+                            "num_gpu": settings.OLLAMA_NUM_GPU,
+                        },
                     },
                 )
                 response.raise_for_status()
@@ -396,10 +435,17 @@ class OllamaProvider(HttpProvider):
                         "messages": messages,
                         "stream": True,
                         "keep_alive": "0s",
+                        "think": False,
+                        **(
+                            {"format": request.json_schema}
+                            if request.json_schema
+                            else {}
+                        ),
                         "options": {
                             "num_predict": request.max_tokens,
-                            "num_ctx": 8192,
-                            "num_thread": 2,
+                            "num_ctx": settings.OLLAMA_NUM_CTX,
+                            "num_thread": settings.OLLAMA_NUM_THREADS,
+                            "num_gpu": settings.OLLAMA_NUM_GPU,
                         },
                     },
                 ) as response,
@@ -449,18 +495,38 @@ class OpenAICompatibleProvider(HttpProvider):
             response = client.get("v1/models")
             response.raise_for_status()
             return [
-                ModelDescriptor(id=model["id"], provider=self.name, version=model["id"])
+                ModelDescriptor(
+                    id=model["id"],
+                    provider=self.name,
+                    version=settings.LLAMACPP_MODEL_VERSION or model["id"]
+                    if self.name == "llamacpp"
+                    else model["id"],
+                    capabilities=ModelCapabilities(
+                        text="unsupported",
+                        streaming="unsupported",
+                        vision="unsupported",
+                        embeddings="declared",
+                        embedding_dimensions=settings.LLAMACPP_EMBEDDING_DIMENSIONS,
+                        context_window=model.get("meta", {}).get("n_ctx"),
+                    )
+                    if self.name == "llamacpp"
+                    and settings.LLAMACPP_MODE == "embeddings"
+                    else ModelCapabilities(),
+                )
                 for model in response.json().get("data", [])
             ]
 
     def embed(
         self, model: str, texts: list[str], dimensions: int, *, query: bool = False
     ) -> list[list[float]]:
-        del query
         try:
             with self.client() as client:
                 response = client.post(
-                    "v1/embeddings", json={"model": model, "input": texts}
+                    "v1/embeddings",
+                    json={
+                        "model": model,
+                        "input": retrieval_inputs(model, texts, query=query),
+                    },
                 )
                 response.raise_for_status()
                 values = sorted(

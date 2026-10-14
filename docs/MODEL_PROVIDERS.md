@@ -9,8 +9,21 @@ catálogo, generación y embeddings de 768 dimensiones con entradas sintéticas.
 Ollama usa `/api/tags`, `/api/show`, `/api/chat`, `/api/embed`. Se consulta el catálogo
 real y capacidades declaradas. `keep_alive=0s`, dos hilos y contexto acotado evitan
 dejar modelos grandes residentes tras una solicitud del usuario. No hay endpoint
-de descarga ni pull automático. El modelo disponible pesa 7.16 GB; su inferencia
-no se inició durante la auditoría con RAM libre insuficiente.
+de descarga ni pull automático. El modelo de chat preexistente `gemma4:e2b` pesa
+7.16 GB: generación y respuestas con citas sobre PDFs se verificaron en CPU.
+El fixture local produjo la respuesta correcta en 40,44 segundos con un presupuesto
+de 128 tokens. Ese tiempo puntual no predice latencia de otras preguntas.
+`embeddinggemma:300m` (622 MB) también quedó instalado tras la autorización inicial;
+la ruta de embeddings de la cuenta usa EmbeddingGemma 2 en llama.cpp.
+
+llama.cpp CPU b11624 se instaló y comprobó con EmbeddingGemma 2 Q8_0 de texto:
+dos vectores reales de 768 dimensiones, valores finitos y cardinalidad correcta.
+Su alias es embeddinggemma-2-q8_0; la versión de perfil es el SHA256 verificado
+del GGUF. La dimensión interna que `/v1/models` anuncia (512) no se usa como
+dimensión de salida: la proyección medida produce 768. Los prefijos de consulta
+y documento siguen la guía de Google; no se mezclan con perfiles Gemini. El flujo
+HTTP completo verificó 16 chunks Docling, 16 vectores en pgvector, índice READY,
+recuperación híbrida y respuesta Ollama citada; véase local-evaluation-results.json.
 
 llama.cpp y OpenAI compatible usan `/v1/models`, `/v1/chat/completions` SSE y
 `/v1/embeddings`. No se atribuye visión o embeddings sólo por HTTP 200. Catálogos

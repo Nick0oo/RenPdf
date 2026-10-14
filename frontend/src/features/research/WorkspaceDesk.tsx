@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, FileText, Plus, Shield, StickyNote } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import {
+  ArrowLeft,
+  ChevronDown,
+  FileText,
+  MessageSquare,
+  Plus,
+  Shield,
+} from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type {
   BBox,
@@ -10,15 +17,10 @@ import type {
   ProviderConfig,
   WorkspacePublic,
 } from "@/client"
-import {
-  ChatService,
-  DocumentsService,
-  ProvidersService,
-  WorkspacesService,
-} from "@/client"
+import { ChatService, ProvidersService, WorkspacesService } from "@/client"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ChatPanel } from "@/features/chat/ChatPanel"
+import { ProviderModelSelect } from "@/features/models/ProviderModelSelect"
 import { PdfReader } from "@/features/pdf-viewer/PdfReader"
 import {
   errorMessage,
@@ -26,17 +28,23 @@ import {
   modelValue,
   type ProviderName,
 } from "./api"
-import { PrivacyPanel } from "./PrivacyPanel"
+import { ChoiceSelect } from "./ChoiceSelect"
+import { chatDate, documentStatus } from "./presentation"
+import { type SettingsTab, WorkspaceSettings } from "./WorkspaceSettings"
 
 export function WorkspaceDesk({
   workspace,
   library,
   providers,
+  entryDocumentId,
+  openChatOnLoad = false,
   onBack,
 }: {
   workspace: WorkspacePublic
   library: DocumentPublic[]
   providers: ProviderConfig[]
+  entryDocumentId?: string
+  openChatOnLoad?: boolean
   onBack: () => void
 }) {
   const cache = useQueryClient()
@@ -63,26 +71,23 @@ export function WorkspaceDesk({
     queryKey: ["routing"],
     queryFn: async () => (await ProvidersService.readRouting()).data,
   })
-  const annotations = useQuery({
-    queryKey: ["annotations", workspace.id],
-    queryFn: async () =>
-      (
-        await WorkspacesService.listAnnotations({
-          path: { workspace_id: workspace.id },
-        })
-      ).data,
-  })
   const [documentId, setDocumentId] = useState(
-    localStorage.getItem(`workspace-document:${workspace.id}`) ?? "",
+    entryDocumentId ??
+      localStorage.getItem(`workspace-document:${workspace.id}`) ??
+      "",
   )
   const [conversationId, setConversationId] = useState(
     localStorage.getItem(`workspace-conversation:${workspace.id}`) ?? "",
   )
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectedIds, setSelectedIds] = useState<string[] | null>(
+    entryDocumentId ? [entryDocumentId] : null,
+  )
   const [source, setSource] = useState<EvidencePublic>()
-  const [mobilePanel, setMobilePanel] = useState("pdf")
+  const [mobilePanel, setMobilePanel] = useState("chat")
+  const [allChats, setAllChats] = useState(false)
+  const openedChat = useRef(false)
   const [controls, setControls] = useState(false)
-  const [note, setNote] = useState("")
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("fuentes")
   const [currentPage, setCurrentPage] = useState(1)
   const [draft, setDraft] = useState<{
     text: string
@@ -91,9 +96,7 @@ export function WorkspaceDesk({
     nonce: number
   }>()
   const [privacyProvider, setPrivacyProvider] = useState<ProviderName>("gemini")
-  const [split, setSplit] = useState(55)
-  const [embeddingDimensions, setEmbeddingDimensions] = useState(768)
-  const [multimodalIndex, setMultimodalIndex] = useState(false)
+  const [split, setSplit] = useState(45)
   const activeDocument =
     documents.data?.find((document) => document.id === documentId) ??
     documents.data?.[0]
@@ -102,7 +105,7 @@ export function WorkspaceDesk({
     conversations.data?.[0]
   const activeDocs =
     documents.data?.filter(
-      (document) => !selectedIds.length || selectedIds.includes(document.id),
+      (document) => selectedIds === null || selectedIds.includes(document.id),
     ) ?? []
   const modelOptions = providers.flatMap((provider) =>
     (provider.models ?? [])
@@ -121,7 +124,12 @@ export function WorkspaceDesk({
       WorkspacesService.attachDocument({
         path: { workspace_id: workspace.id, document_id },
       }),
-    onSuccess: invalidateDocuments,
+    onSuccess: (_response, document_id) => {
+      invalidateDocuments()
+      setSelectedIds((ids) =>
+        ids === null ? null : [...new Set([...ids, document_id])],
+      )
+    },
     onError: fail,
   })
   const newConversation = useMutation({
@@ -142,7 +150,11 @@ export function WorkspaceDesk({
       return ChatService.createConversation({
         path: { workspace_id: workspace.id },
         body: {
-          title: "Nueva investigación",
+          title:
+            `Chat ${(conversations.data?.length ?? 0) + 1} · ${activeDocument?.title ?? workspace.name}`.slice(
+              0,
+              120,
+            ),
           provider: (preferred?.provider ??
             defaultModel?.name ??
             "gemini") as ProviderName,
@@ -152,6 +164,7 @@ export function WorkspaceDesk({
     },
     onSuccess: (response) => {
       setConversationId(response.data.id)
+      setMobilePanel("chat")
       void cache.invalidateQueries({
         queryKey: ["conversations", workspace.id],
       })
@@ -191,71 +204,29 @@ export function WorkspaceDesk({
         },
       }),
     onSuccess: () => {
-      setNote("")
       void cache.invalidateQueries({ queryKey: ["annotations", workspace.id] })
       toast.success("Anotación guardada")
     },
     onError: fail,
   })
-  const embedding =
-    routing.data?.find(
-      (row) =>
-        row.task === "embeddings" &&
-        row.scope_key === `workspace:${workspace.id}`,
-    ) ??
-    routing.data?.find(
-      (row) => row.task === "embeddings" && row.scope_key === "personal",
-    )
-  const index = useMutation({
-    mutationFn: () =>
-      DocumentsService.reindex({
-        path: { document_id: activeDocument?.id ?? "" },
-        body: {
-          provider: (embedding?.provider ?? "gemini") as ProviderName,
-          model: embedding?.model ?? "gemini-embedding-2",
-          dimensions: embeddingDimensions,
-          modality: multimodalIndex ? "multimodal" : "text",
-        },
-      }),
-    onSuccess: () => {
-      invalidateDocuments()
-      toast.success("Indexación solicitada; consulta el progreso")
-    },
-    onError: fail,
-  })
-  const enrich = useMutation({
-    mutationFn: (purpose: "questions" | "summary") =>
-      DocumentsService.generateEnrichment({
-        path: { document_id: activeDocument?.id ?? "" },
-        body: { purpose },
-      }),
-    onSuccess: () =>
-      toast.success("Generación solicitada; se guardará al terminar"),
-    onError: fail,
-  })
-  const enrichment = useQuery({
-    queryKey: ["enrichment", activeDocument?.id],
-    queryFn: async () =>
-      (
-        await DocumentsService.readEnrichment({
-          path: { document_id: activeDocument?.id ?? "" },
-        })
-      ).data,
-    enabled: !!activeDocument && controls,
-    refetchInterval: 5000,
-  })
-  const jobs = useQuery({
-    queryKey: ["jobs", activeDocument?.id],
-    queryFn: async () =>
-      (
-        await DocumentsService.documentJobs({
-          path: { document_id: activeDocument?.id ?? "" },
-        })
-      ).data,
-    enabled: !!activeDocument,
-    refetchInterval: 2000,
-  })
   const onPage = useCallback((page: number) => setCurrentPage(page), [])
+  useEffect(() => {
+    if (!openChatOnLoad || conversations.isPending || openedChat.current) return
+    openedChat.current = true
+    if (!conversations.data?.length && !conversations.error)
+      newConversation.mutate()
+  }, [
+    openChatOnLoad,
+    conversations.isPending,
+    conversations.data,
+    conversations.error,
+    newConversation,
+  ])
+  const manageSources = (reason?: string) => {
+    setSettingsTab(reason === "CONSENT_REQUIRED" ? "privacidad" : "fuentes")
+    setControls(true)
+    setPrivacyProvider((conversation?.provider ?? "gemini") as ProviderName)
+  }
   useEffect(() => {
     if (activeDocument)
       localStorage.setItem(
@@ -278,6 +249,7 @@ export function WorkspaceDesk({
   const ask = (text: string, element?: ElementPublic, vision?: boolean) => {
     setDraft({ text, elementId: element?.id, vision, nonce: Date.now() })
     setMobilePanel("chat")
+    if (!conversation && !newConversation.isPending) newConversation.mutate()
   }
   return (
     <div className="space-y-4">
@@ -290,376 +262,162 @@ export function WorkspaceDesk({
         >
           <ArrowLeft size={18} />
         </Button>
-        <div className="mr-auto">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-primary">
-            Workspace
-          </p>
-          <h1 className="text-xl font-semibold">{workspace.name}</h1>
+        <div className="mr-auto min-w-0 flex-1 basis-[calc(100%_-_3.25rem)] md:basis-auto">
+          <h1 className="truncate text-xl font-semibold" title={workspace.name}>
+            {workspace.name}
+          </h1>
         </div>
         <Button
           size="sm"
           variant="outline"
-          onClick={() => setControls(!controls)}
+          onClick={() => {
+            setSettingsTab("fuentes")
+            setControls(true)
+          }}
         >
           <Shield size={14} /> Fuentes y permisos
         </Button>
-        <select
-          aria-label="Conversación"
-          className="h-9 max-w-40 rounded-md border bg-background px-2 text-xs"
-          value={conversation?.id ?? ""}
-          onChange={(e) => setConversationId(e.target.value)}
-        >
-          <option value="">Conversaciones</option>
-          {conversations.data?.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.title}
-            </option>
-          ))}
-        </select>
         <Button
-          size="icon"
+          size="sm"
           variant="outline"
           aria-label="Nueva conversación"
           disabled={newConversation.isPending}
-          onClick={() => newConversation.mutate()}
-        >
-          <Plus size={16} />
-        </Button>
-        {conversation && (
-          <select
-            aria-label="Modelo de conversación"
-            className="h-9 max-w-56 rounded-md border bg-background px-2 text-xs"
-            value={modelValue(conversation.provider, conversation.model)}
-            onChange={(e) => changeModel.mutate(e.target.value)}
-          >
-            {!modelOptions.some(
-              (model) =>
-                modelValue(model.name, model.id) ===
-                modelValue(conversation.provider, conversation.model),
-            ) && (
-              <option
-                value={modelValue(conversation.provider, conversation.model)}
-              >
-                {conversation.model || "Seleccionar modelo"}
-              </option>
-            )}
-            {modelOptions.map((model) => (
-              <option
-                key={modelValue(model.name, model.id)}
-                value={modelValue(model.name, model.id)}
-              >
-                {model.name} · {model.id}
-              </option>
-            ))}
-          </select>
-        )}
-      </header>
-      <div className="flex flex-wrap gap-2">
-        {documents.data?.map((document) => (
-          <button
-            type="button"
-            key={document.id}
-            onClick={() => {
-              setDocumentId(document.id)
-              setSource(undefined)
-            }}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${document.id === activeDocument?.id ? "border-primary bg-primary/5 text-primary" : "bg-background"}`}
-          >
-            <FileText size={14} />
-            {document.title}
-            <span className="opacity-60">{document.status}</span>
-          </button>
-        ))}
-        <select
-          aria-label="Añadir documento al workspace"
-          className="max-w-56 rounded-lg border bg-background px-3 py-2 text-xs"
-          value=""
-          onChange={(e) => {
-            if (e.target.value) attach.mutate(e.target.value)
+          onClick={() => {
+            setDraft(undefined)
+            newConversation.mutate()
           }}
         >
-          <option value="">+ Añadir fuente</option>
-          {library
+          <Plus size={16} /> Nuevo chat
+        </Button>
+        {conversation && (
+          <ProviderModelSelect
+            providers={providers}
+            task="chat"
+            label="Modelo de conversación"
+            value={modelValue(conversation.provider, conversation.model)}
+            onValueChange={(value) => changeModel.mutate(value)}
+            disabled={changeModel.isPending}
+            size="sm"
+            className="max-w-64"
+          />
+        )}
+      </header>
+      {!!conversations.data?.length && (
+        <section
+          aria-label="Historial de chats"
+          className="rounded-xl border bg-muted/20 p-3"
+        >
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-xs font-medium">
+              <MessageSquare size={14} /> Tus conversaciones
+            </h2>
+            {
+              <button
+                type="button"
+                className={`items-center gap-1 text-xs text-muted-foreground hover:text-foreground ${conversations.data.length > 3 || allChats ? "flex" : "flex sm:hidden"}`}
+                onClick={() => setAllChats(!allChats)}
+              >
+                {allChats
+                  ? "Ocultar historial"
+                  : `Cambiar chat (${conversations.data.length})`}{" "}
+                <ChevronDown size={13} />
+              </button>
+            }
+          </div>
+          <div
+            className={`${allChats ? "grid" : "hidden sm:grid"} max-h-48 gap-2 overflow-auto sm:grid-cols-2 lg:grid-cols-3`}
+          >
+            {(allChats
+              ? conversations.data
+              : conversations.data.slice(0, 3)
+            ).map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                aria-pressed={conversation?.id === item.id}
+                onClick={() => {
+                  setConversationId(item.id)
+                  setMobilePanel("chat")
+                  setDraft(undefined)
+                }}
+                className={`min-w-0 rounded-lg border px-3 py-2 text-left transition-colors ${conversation?.id === item.id ? "border-primary/50 bg-primary/5" : "border-transparent bg-background hover:border-primary/30"}`}
+              >
+                <span className="block truncate text-sm font-medium">
+                  {item.title}
+                </span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  {chatDate(item.created_at)} ·{" "}
+                  {conversation?.id === item.id
+                    ? "Chat abierto"
+                    : "Continuar chat"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
+          {documents.data?.map((document) => (
+            <button
+              type="button"
+              key={document.id}
+              onClick={() => {
+                setDocumentId(document.id)
+                setSource(undefined)
+              }}
+              className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs ${document.id === activeDocument?.id ? "border-primary bg-primary/5 text-primary" : "bg-background"}`}
+            >
+              <FileText size={14} />
+              <span className="max-w-48 truncate" title={document.title}>
+                {document.title}
+              </span>
+              <span className="opacity-60">
+                {documentStatus(document.status)}
+              </span>
+            </button>
+          ))}
+        </div>
+        <ChoiceSelect
+          label="Añadir documento al workspace"
+          placeholder="+ Añadir fuente"
+          value=""
+          onValueChange={(id) => attach.mutate(id)}
+          disabled={attach.isPending}
+          options={library
             .filter(
               (document) =>
                 !documents.data?.some((item) => item.id === document.id),
             )
-            .map((document) => (
-              <option key={document.id} value={document.id}>
-                {document.title}
-              </option>
-            ))}
-        </select>
+            .map((document) => ({ value: document.id, label: document.title }))}
+          size="sm"
+          className="w-36 shrink-0 md:w-48"
+        />
       </div>
-      {controls && (
-        <section className="grid gap-4 rounded-xl border bg-muted/20 p-4 md:grid-cols-2">
-          <div className="space-y-3">
-            <h2 className="text-sm font-medium">Documentos consultados</h2>
-            <p className="text-xs text-muted-foreground">
-              Sin selección se consultan todas las fuentes del workspace.
-            </p>
-            {documents.data?.map((document) => (
-              <div
-                key={document.id}
-                className="flex items-center gap-2 text-xs"
-              >
-                <input
-                  type="checkbox"
-                  aria-label={`Consultar ${document.title}`}
-                  checked={selectedIds.includes(document.id)}
-                  onChange={(e) =>
-                    setSelectedIds((ids) =>
-                      e.target.checked
-                        ? [...ids, document.id]
-                        : ids.filter((id) => id !== document.id),
-                    )
-                  }
-                />
-                {document.title}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    await WorkspacesService.detachDocument({
-                      path: {
-                        workspace_id: workspace.id,
-                        document_id: document.id,
-                      },
-                    })
-                    invalidateDocuments()
-                  }}
-                >
-                  Quitar
-                </Button>
-              </div>
-            ))}
-            {activeDocument && (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  {activeDocument.warning}
-                </p>
-                <label
-                  htmlFor="embedding-dimensions"
-                  className="flex items-center gap-2 text-xs"
-                >
-                  Dimensiones del embedding
-                  <Input
-                    aria-label="Dimensiones del embedding"
-                    id="embedding-dimensions"
-                    type="number"
-                    min={1}
-                    max={2000}
-                    className="h-8 w-24"
-                    value={embeddingDimensions}
-                    onChange={(event) =>
-                      setEmbeddingDimensions(Number(event.target.value) || 768)
-                    }
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={multimodalIndex}
-                    onChange={(event) =>
-                      setMultimodalIndex(event.target.checked)
-                    }
-                  />{" "}
-                  Indexar también imágenes con Gemini Embedding 2
-                </label>
-                <Button
-                  size="sm"
-                  disabled={
-                    index.isPending || !activeDocument.current_version_id
-                  }
-                  onClick={() => index.mutate()}
-                >
-                  Crear / renovar índice · {embedding?.provider ?? "gemini"}
-                </Button>
-                {jobs.data?.slice(0, 3).map((job) => (
-                  <div key={job.id} className="rounded-lg border p-2 text-xs">
-                    <div className="flex justify-between">
-                      <span>
-                        {job.kind} · {job.state}
-                      </span>
-                      <span>{job.progress}%</span>
-                    </div>
-                    <progress
-                      className="mt-1 h-1 w-full"
-                      value={job.progress}
-                      max={100}
-                    />
-                    <p className="mt-1 text-destructive">{job.error_message}</p>
-                    {["FAILED", "CANCELLED"].includes(job.state) ? (
-                      <button
-                        type="button"
-                        className="underline"
-                        onClick={async () => {
-                          try {
-                            await DocumentsService.retryJob({
-                              path: {
-                                document_id: activeDocument?.id ?? "",
-                                job_id: job.id,
-                              },
-                            })
-                            await jobs.refetch()
-                          } catch (e) {
-                            fail(e)
-                          }
-                        }}
-                      >
-                        Reintentar desde checkpoint
-                      </button>
-                    ) : (
-                      !["SUCCEEDED"].includes(job.state) && (
-                        <button
-                          type="button"
-                          className="underline"
-                          onClick={async () => {
-                            await DocumentsService.cancelJob({
-                              path: {
-                                document_id: activeDocument.id,
-                                job_id: job.id,
-                              },
-                            })
-                            await jobs.refetch()
-                          }}
-                        >
-                          Cancelar trabajo
-                        </button>
-                      )
-                    )}
-                  </div>
-                ))}
-              </>
-            )}
-            <h3 className="pt-2 text-sm font-medium">Notas y marcadores</h3>
-            <Input
-              aria-label="Nota personal"
-              placeholder="Una idea para recordar…"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!note || !activeDocument}
-              onClick={() =>
-                addNote.mutate({ page: currentPage, kind: "note", text: note })
-              }
-            >
-              <StickyNote size={14} /> Guardar nota · p. {currentPage}
-            </Button>
-            {annotations.data?.map((annotation) => (
-              <div
-                key={annotation.id}
-                className="flex items-center gap-2 rounded-lg border p-2 text-xs"
-              >
-                <button
-                  type="button"
-                  className="mr-auto text-left"
-                  onClick={() => {
-                    setDocumentId(annotation.document_id)
-                    setSource({
-                      document_id: annotation.document_id,
-                      page_number: annotation.page_number,
-                      version_id: annotation.version_id,
-                      bbox: annotation.bbox,
-                      document_title: "Marcador",
-                      chunk_id: "",
-                      element_id: "",
-                      text: annotation.text,
-                      rotation: 0,
-                    })
-                  }}
-                >
-                  p. {annotation.page_number} · {annotation.text || "Marcador"}
-                </button>
-                <button
-                  type="button"
-                  aria-label="Eliminar anotación"
-                  onClick={async () => {
-                    await WorkspacesService.deleteAnnotation({
-                      path: {
-                        workspace_id: workspace.id,
-                        annotation_id: annotation.id,
-                      },
-                    })
-                    await annotations.refetch()
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-3">
-            <select
-              aria-label="Proveedor para autorizaciones"
-              className="h-9 rounded-md border bg-background px-3 text-sm"
-              value={privacyProvider}
-              onChange={(e) =>
-                setPrivacyProvider(e.target.value as ProviderName)
-              }
-            >
-              {providers.map((provider) => (
-                <option key={provider.name} value={provider.name}>
-                  {provider.name}
-                </option>
-              ))}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={enrich.isPending}
-                  onClick={() => enrich.mutate("questions")}
-                >
-                  Generar 5 preguntas
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={enrich.isPending}
-                  onClick={() => enrich.mutate("summary")}
-                >
-                  Resumir evidencia
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => {
-                    try {
-                      await DocumentsService.reprocess({
-                        path: { document_id: activeDocument?.id ?? "" },
-                      })
-                      await jobs.refetch()
-                    } catch (error) {
-                      fail(error)
-                    }
-                  }}
-                >
-                  Reprocesar PDF
-                </Button>
-              </div>
-              {enrichment.data?.summary && (
-                <details className="rounded-lg border p-3 text-xs">
-                  <summary>
-                    Resumen de evidencias · {enrichment.data.model}
-                  </summary>
-                  <p className="mt-2 whitespace-pre-wrap">
-                    {enrichment.data.summary}
-                  </p>
-                </details>
-              )}
-            </select>
-            {activeDocument && (
-              <PrivacyPanel
-                document={activeDocument}
-                provider={privacyProvider}
-              />
-            )}
-          </div>
-        </section>
-      )}
+      <WorkspaceSettings
+        open={controls}
+        onOpenChange={setControls}
+        tab={settingsTab}
+        onTabChange={setSettingsTab}
+        workspaceId={workspace.id}
+        documents={documents.data ?? []}
+        activeDocument={activeDocument}
+        onDocumentChange={(id) => {
+          setDocumentId(id)
+          setSource(undefined)
+        }}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        onDocumentsChange={invalidateDocuments}
+        providers={providers}
+        privacyProvider={privacyProvider}
+        onPrivacyProviderChange={setPrivacyProvider}
+        currentPage={currentPage}
+        onSaveNote={(text) =>
+          addNote.mutateAsync({ page: currentPage, kind: "note", text })
+        }
+        onCitation={citation}
+      />
       <div className="flex gap-2 md:hidden">
         <Button
           variant={mobilePanel === "pdf" ? "default" : "outline"}
@@ -713,7 +471,7 @@ export function WorkspaceDesk({
             />
           </div>
           <div
-            className={`h-[72vh] min-h-[500px] min-w-0 ${mobilePanel !== "chat" ? "hidden md:block" : ""}`}
+            className={`h-[72vh] min-h-[520px] min-w-0 ${mobilePanel !== "chat" ? "hidden md:block" : ""}`}
           >
             {conversation ? (
               <ChatPanel
@@ -722,6 +480,7 @@ export function WorkspaceDesk({
                 documents={activeDocs}
                 draft={draft}
                 onCitation={citation}
+                onManageSources={manageSources}
               />
             ) : (
               <div className="grid h-full place-content-center rounded-xl border bg-muted/10 text-center">

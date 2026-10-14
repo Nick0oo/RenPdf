@@ -42,7 +42,13 @@ class Settings(BaseSettings):
     )
     GOOGLE_API_KEY: str | None = Field(default=None, repr=False)
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
+    OLLAMA_NUM_CTX: int = Field(default=4096, ge=512, le=32768)
+    OLLAMA_NUM_THREADS: int = Field(default=2, ge=1, le=16)
+    OLLAMA_NUM_GPU: int = Field(default=0, ge=-1)
     LLAMACPP_BASE_URL: str | None = None
+    LLAMACPP_MODE: Literal["unknown", "chat", "embeddings"] = "unknown"
+    LLAMACPP_MODEL_VERSION: str | None = None
+    LLAMACPP_EMBEDDING_DIMENSIONS: int = Field(default=768, ge=1, le=2000)
     OPENAI_COMPATIBLE_BASE_URL: str | None = None
     OPENAI_COMPATIBLE_API_KEY: str | None = Field(default=None, repr=False)
     PROVIDER_ALLOWED_HOSTS: list[str] = [
@@ -63,11 +69,12 @@ class Settings(BaseSettings):
     ENABLE_VISION: bool = False
     DOCLING_ARTIFACTS_PATH: Path | None = None
     DOCLING_TOKENIZER_PATH: Path | None = None
-    PARSER_ENGINE: Literal["auto", "pymupdf", "docling"] = "auto"
+    PARSER_ENGINE: Literal["auto", "pymupdf", "docling", "docling-native"] = "auto"
     OCR_LANGUAGE: str = "eng+spa"
     RENDER_DPI: int = 110
     PARSER_PAGE_TIMEOUT_SECONDS: int = 90
     PARSER_MEMORY_LIMIT_MB: int = 1536
+    PARSER_RECYCLE_PAGES: int = Field(default=8, ge=1, le=32)
     PROVIDER_TIMEOUT_SECONDS: int = 90
     MAX_CONTEXT_CHARS: int = 24000
     MAX_ANSWER_TOKENS: int = 2048

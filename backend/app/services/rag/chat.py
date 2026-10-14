@@ -6,7 +6,7 @@ from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.core.db import engine
-from app.domain import ChatMessage, Citation, Conversation, Document, Workspace
+from app.domain import ChatMessage, Chunk, Citation, Conversation, Document, Workspace
 from app.schemas.research import EvidencePublic, QuestionInput
 from app.services.citations.validation import canonicalize_citations, validate_citations
 from app.services.models.contracts import InferenceRequest, ProviderError
@@ -102,6 +102,19 @@ def chat_events(
         session.commit()
         yield event("start", {"message_id": str(assistant.id)})
         try:
+            if not document_ids:
+                raise ProviderError(
+                    "NO_DOCUMENTS_SELECTED",
+                    "Añade un PDF al chat desde Fuentes para poder responder con evidencia.",
+                )
+            documents = session.exec(
+                select(Document).where(col(Document.id).in_(document_ids))
+            ).all()
+            if any(not document.current_version_id for document in documents):
+                raise ProviderError(
+                    "DOCUMENT_NOT_READY",
+                    "Hay PDFs seleccionados que aún no tienen texto extraído. Revisa su procesamiento en Fuentes antes de preguntar.",
+                )
             if not policy.model:
                 raise ProviderError(
                     "MODEL_NOT_SELECTED",
@@ -153,6 +166,15 @@ def chat_events(
 
                 evidence = [visual_evidence(session, document, page, element)]
             if not evidence:
+                versions = [document.current_version_id for document in documents]
+                text_chunk = session.exec(
+                    select(Chunk).where(col(Chunk.version_id).in_(versions)).limit(1)
+                ).first()
+                if not text_chunk:
+                    raise ProviderError(
+                        "DOCUMENT_HAS_NO_TEXT",
+                        "No se extrajo texto consultable de los PDFs seleccionados. Revisa si necesitan OCR en Fuentes.",
+                    )
                 assistant.content = "No encontré evidencia suficiente en los documentos seleccionados. Prueba términos más específicos o verifica la extracción e indexación."
                 assistant.state = "COMPLETE"
                 assistant.provider, assistant.model = None, None
@@ -207,22 +229,45 @@ def chat_events(
                 .limit(4)
             ).all()
             history_text = "\n".join(item.content for item in reversed(history))[-4000:]
+            overview = mode == "document_overview" and not images
+            scope_notice = ""
+            if overview:
+                pages = {(item.document_id, item.page_number) for item in selected}
+                scope_notice = (
+                    f"Resumen basado en una muestra de fragmentos de {len(pages)} "
+                    f"de {sum(document.page_count for document in documents)} páginas "
+                    "de los PDFs seleccionados. La cobertura es parcial; no es un "
+                    "análisis exhaustivo de todo su contenido.\n\n"
+                )
+            system = SYSTEM
+            if overview:
+                system += "\nLa evidencia es una muestra de fragmentos repartidos por páginas. Resume brevemente sus puntos respaldados, cita cada punto, y no afirmes haber revisado todo el PDF ni identificar todos sus puntos principales."
             prompt = json.dumps(
                 {
                     "question": request.question,
                     "previous_questions": history_text,
+                    "coverage": "sampled_pages_partial"
+                    if overview
+                    else "retrieved_evidence",
                     "evidence": [
-                        {"source_id": item.label, "text": item.text}
+                        {
+                            "source_id": item.label,
+                            "document": item.document_title,
+                            "page_number": item.page_number,
+                            "text": item.text,
+                        }
                         for item in selected
                     ],
                 },
                 ensure_ascii=False,
             )
             output = ""
+            if scope_notice:
+                yield event("token", {"text": scope_notice})
             for token in provider.stream(
                 InferenceRequest(
                     model=policy.model,
-                    system=SYSTEM,
+                    system=system,
                     prompt=prompt,
                     max_tokens=policy.max_tokens,
                     images=images,
@@ -238,7 +283,7 @@ def chat_events(
                     )
                 yield event("token", {"text": token})
             cited = validate_citations(output, {item.label for item in selected})
-            output = canonicalize_citations(output)
+            output = scope_notice + canonicalize_citations(output)
             for item in selected:
                 if item.label in cited:
                     session.add(

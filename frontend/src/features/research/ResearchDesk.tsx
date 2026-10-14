@@ -4,24 +4,32 @@ import {
   BookOpen,
   FilePlus2,
   FolderPlus,
+  MessageSquare,
+  MoreHorizontal,
+  Pencil,
   Search,
   Settings2,
   Trash2,
 } from "lucide-react"
 import { lazy, Suspense, useRef, useState } from "react"
 import { toast } from "sonner"
+import type { DocumentPublic } from "@/client"
 import { DocumentsService, ProvidersService, WorkspacesService } from "@/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { ModelSettings } from "@/features/models/ModelSettings"
 import { apiRoot, errorMessage } from "./api"
+import { ChoiceSelect } from "./ChoiceSelect"
+import { ConfirmationDialog } from "./ConfirmationDialog"
+import { NameDialog } from "./NameDialog"
+import { documentStatus } from "./presentation"
 
 const WorkspaceDesk = lazy(() =>
   import("./WorkspaceDesk").then((module) => ({
@@ -37,9 +45,13 @@ export function ResearchDesk() {
   )
   const [newWorkspace, setNewWorkspace] = useState(false)
   const [name, setName] = useState("")
+  const [renaming, setRenaming] = useState<DocumentPublic>()
+  const [deleting, setDeleting] = useState<DocumentPublic>()
   const [modelsOpen, setModelsOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState("")
+  const [entryDocumentId, setEntryDocumentId] = useState<string>()
+  const [openChatOnLoad, setOpenChatOnLoad] = useState(false)
   const uploadInput = useRef<HTMLInputElement>(null)
   const documents = useQuery({
     queryKey: ["documents", search],
@@ -65,7 +77,9 @@ export function ResearchDesk() {
     onSuccess: () => {
       void cache.invalidateQueries({ queryKey: ["documents"] })
       setError("")
-      toast.success("PDF guardado. La extracción continúa en el worker.")
+      toast.success(
+        "PDF importado. Se está preparando el texto para tus preguntas.",
+      )
     },
     onError: (e) => setError(errorMessage(e)),
   })
@@ -82,11 +96,73 @@ export function ResearchDesk() {
   const remove = useMutation({
     mutationFn: (document_id: string) =>
       DocumentsService.deleteDocument({ path: { document_id } }),
-    onSuccess: () => cache.invalidateQueries({ queryKey: ["documents"] }),
+    onSuccess: () => {
+      setDeleting(undefined)
+      return cache.invalidateQueries({ queryKey: ["documents"] })
+    },
     onError: (e) => setError(errorMessage(e)),
   })
-  function openWorkspace(id: string) {
+  const rename = useMutation({
+    mutationFn: () =>
+      DocumentsService.renameDocument({
+        path: { document_id: renaming?.id ?? "" },
+        body: { title: name },
+      }),
+    onSuccess: () => {
+      setRenaming(undefined)
+      setName("")
+      return cache.invalidateQueries({ queryKey: ["documents"] })
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  })
+  const openDocumentChat = useMutation({
+    mutationFn: async (document: DocumentPublic) => {
+      const remembered = localStorage.getItem(`document-chat:${document.id}`)
+      const dedicatedName = `Chat · ${document.title}`.slice(0, 120)
+      let existing = workspaces.data?.find(
+        (workspace) => workspace.id === remembered,
+      )
+      if (!existing) {
+        const named = workspaces.data?.find(
+          (workspace) => workspace.name === dedicatedName,
+        )
+        if (named) {
+          const members = (
+            await WorkspacesService.listWorkspaceDocuments({
+              path: { workspace_id: named.id },
+            })
+          ).data
+          if (members.some((item) => item.id === document.id)) existing = named
+        }
+      }
+      const workspace =
+        existing ??
+        (
+          await WorkspacesService.createWorkspace({
+            body: { name: dedicatedName },
+          })
+        ).data
+      await WorkspacesService.attachDocument({
+        path: { workspace_id: workspace.id, document_id: document.id },
+      })
+      localStorage.setItem(`document-chat:${document.id}`, workspace.id)
+      return { workspace, document }
+    },
+    onSuccess: ({ workspace, document }) => {
+      cache.setQueryData(["workspaces"], (rows: typeof workspaces.data) =>
+        rows?.some((row) => row.id === workspace.id)
+          ? rows
+          : [workspace, ...(rows ?? [])],
+      )
+      void cache.invalidateQueries({ queryKey: ["workspaces"] })
+      openWorkspace(workspace.id, document.id, true)
+    },
+    onError: (e) => setError(errorMessage(e)),
+  })
+  function openWorkspace(id: string, documentId?: string, startChat = false) {
     setWorkspaceId(id)
+    setEntryDocumentId(documentId)
+    setOpenChatOnLoad(startChat)
     localStorage.setItem("renpdf_workspace", id)
   }
   const active = workspaces.data?.find(
@@ -102,10 +178,12 @@ export function ResearchDesk() {
         }
       >
         <WorkspaceDesk
-          key={active.id}
+          key={`${active.id}:${entryDocumentId ?? ""}`}
           workspace={active}
           library={documents.data ?? []}
           providers={providers.data ?? []}
+          entryDocumentId={entryDocumentId}
+          openChatOnLoad={openChatOnLoad}
           onBack={() => openWorkspace("")}
         />
       </Suspense>
@@ -114,21 +192,28 @@ export function ResearchDesk() {
     <div className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.22em] text-primary">
-            Tu biblioteca de investigación
-          </p>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            Tus fuentes. Tus respuestas.
+            Tu biblioteca
           </h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
-            Lee, conecta ideas y vuelve a la evidencia. Tus documentos
-            permanecen aquí; tú decides cuándo compartir contenido con un
-            modelo.
+            Abre un chat con tus PDFs o reúne varias fuentes en un proyecto. Tú
+            decides cuándo compartir contenido con un modelo.
           </p>
         </div>
-        <Button variant="outline" onClick={() => setModelsOpen(true)}>
-          <Settings2 size={16} /> Modelos
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {!!workspaces.data?.length && (
+            <Button
+              onClick={() =>
+                openWorkspace(workspaces.data[0].id, undefined, true)
+              }
+            >
+              <MessageSquare size={16} /> Continuar chat
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => setModelsOpen(true)}>
+            <Settings2 size={16} /> Modelos
+          </Button>
+        </div>
       </header>
       <div className="grid gap-4 md:grid-cols-[1.5fr_1fr]">
         <section
@@ -147,7 +232,7 @@ export function ResearchDesk() {
           }}
         >
           <FilePlus2 className="mb-4 text-primary" size={27} />
-          <h2 className="font-semibold">Una nueva fuente, una nueva idea</h2>
+          <h2 className="font-semibold">Importa un PDF</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Arrastra tus PDFs aquí. Hasta 50 MB y 500 páginas por archivo, con
             procesamiento progresivo.
@@ -176,7 +261,7 @@ export function ResearchDesk() {
         </section>
         <section className="rounded-2xl border p-7">
           <BookOpen size={27} className="mb-4 text-primary" />
-          <h2 className="font-semibold">Investiga con varias fuentes</h2>
+          <h2 className="font-semibold">Agrupa tus fuentes</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Agrupa documentos, compara resultados y guarda tus conversaciones y
             notas.
@@ -184,7 +269,10 @@ export function ResearchDesk() {
           <Button
             variant="outline"
             className="mt-5"
-            onClick={() => setNewWorkspace(true)}
+            onClick={() => {
+              setName("")
+              setNewWorkspace(true)
+            }}
           >
             <FolderPlus size={16} /> Crear workspace
           </Button>
@@ -200,7 +288,7 @@ export function ResearchDesk() {
       )}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Workspaces</h2>
+          <h2 className="text-lg font-semibold">Tus chats y proyectos</h2>
           <span className="text-xs text-muted-foreground">
             {workspaces.data?.length ?? 0} colecciones
           </span>
@@ -210,7 +298,7 @@ export function ResearchDesk() {
             <button
               type="button"
               key={workspace.id}
-              onClick={() => openWorkspace(workspace.id)}
+              onClick={() => openWorkspace(workspace.id, undefined, true)}
               className="group flex items-center gap-4 rounded-xl border p-4 text-left transition-colors hover:border-primary/50 hover:bg-muted/30"
             >
               <div className="grid size-10 place-content-center rounded-lg bg-primary/10 text-primary">
@@ -221,7 +309,7 @@ export function ResearchDesk() {
                   {workspace.name}
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Abrir investigación
+                  Abrir chats y fuentes
                 </p>
               </div>
               <ArrowUpRight
@@ -297,71 +385,71 @@ export function ResearchDesk() {
                     }
                     className="text-[9px]"
                   >
-                    {document.status}
+                    {documentStatus(document.status)}
                   </Badge>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <select
-                    aria-label={`Agregar ${document.title} a workspace`}
+                <Button
+                  className="mt-4 w-full"
+                  aria-label={`Chatear con ${document.title}`}
+                  disabled={openDocumentChat.isPending || workspaces.isPending}
+                  onClick={() => openDocumentChat.mutate(document)}
+                >
+                  <MessageSquare size={15} />
+                  {openDocumentChat.isPending &&
+                  openDocumentChat.variables?.id === document.id
+                    ? "Abriendo chat…"
+                    : "Chatear con PDF"}
+                </Button>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <ChoiceSelect
+                    label={`Agregar ${document.title} a workspace`}
+                    placeholder="Añadir a proyecto…"
                     value=""
-                    className="mr-auto h-8 max-w-40 rounded border bg-background px-2 text-xs"
-                    onChange={async (e) => {
-                      if (!e.target.value) return
+                    onValueChange={async (id) => {
                       try {
                         await WorkspacesService.attachDocument({
-                          path: {
-                            workspace_id: e.target.value,
-                            document_id: document.id,
-                          },
+                          path: { workspace_id: id, document_id: document.id },
                         })
-                        openWorkspace(e.target.value)
+                        openWorkspace(id, document.id, true)
                       } catch (error) {
                         setError(errorMessage(error))
                       }
                     }}
-                  >
-                    <option value="">Abrir en workspace…</option>
-                    {workspaces.data?.map((workspace) => (
-                      <option key={workspace.id} value={workspace.id}>
-                        {workspace.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Renombrar ${document.title}`}
-                    onClick={async () => {
-                      const title = window.prompt(
-                        "Nuevo título",
-                        document.title,
-                      )
-                      if (title?.trim()) {
-                        await DocumentsService.renameDocument({
-                          path: { document_id: document.id },
-                          body: { title },
-                        })
-                        await documents.refetch()
-                      }
-                    }}
-                  >
-                    ✎
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Eliminar ${document.title}`}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "¿Eliminar este documento y sus evidencias? Esta acción no se puede deshacer.",
-                        )
-                      )
-                        remove.mutate(document.id)
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
+                    options={(workspaces.data ?? []).map((workspace) => ({
+                      value: workspace.id,
+                      label: workspace.name,
+                    }))}
+                    disabled={!workspaces.data?.length}
+                    size="sm"
+                    className="flex-1 text-xs"
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={`Opciones de ${document.title}`}
+                      >
+                        <MoreHorizontal size={16} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setName(document.title)
+                          setRenaming(document)
+                        }}
+                      >
+                        <Pencil size={14} /> Renombrar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onSelect={() => setDeleting(document)}
+                      >
+                        <Trash2 size={14} /> Eliminar documento
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </article>
@@ -386,35 +474,44 @@ export function ResearchDesk() {
           proveedores disponibles
         </span>
       </footer>
-      <Dialog open={newWorkspace} onOpenChange={setNewWorkspace}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nueva investigación</DialogTitle>
-          </DialogHeader>
-          <form
-            className="space-y-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              createWorkspace.mutate()
-            }}
-          >
-            <Input
-              autoFocus
-              aria-label="Nombre del workspace"
-              placeholder="Ej. Energía y sostenibilidad"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={120}
-            />
-            <Button
-              type="submit"
-              disabled={!name.trim() || createWorkspace.isPending}
-            >
-              Crear workspace
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <NameDialog
+        open={newWorkspace}
+        onOpenChange={setNewWorkspace}
+        title="Nueva investigación"
+        label="Nombre del workspace"
+        placeholder="Ej. Energía y sostenibilidad"
+        value={name}
+        onValueChange={setName}
+        onSubmit={() => createWorkspace.mutate()}
+        submitLabel="Crear workspace"
+        pending={createWorkspace.isPending}
+      />
+      <NameDialog
+        open={!!renaming}
+        onOpenChange={(open) => {
+          if (!open) setRenaming(undefined)
+        }}
+        title="Renombrar documento"
+        label="Título del documento"
+        value={name}
+        onValueChange={setName}
+        onSubmit={() => rename.mutate()}
+        submitLabel="Guardar título"
+        pending={rename.isPending}
+      />
+      <ConfirmationDialog
+        open={!!deleting}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(undefined)
+        }}
+        title="Eliminar documento"
+        description={`Se eliminará ${deleting?.title ?? "este PDF"}, sus índices y sus evidencias. Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar documento"
+        pending={remove.isPending}
+        onConfirm={() => {
+          if (deleting) remove.mutate(deleting.id)
+        }}
+      />
       <ModelSettings
         open={modelsOpen}
         onOpenChange={setModelsOpen}

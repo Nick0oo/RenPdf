@@ -1,4 +1,5 @@
 import io
+import json
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -11,8 +12,10 @@ from app.core.db import engine
 from app.domain import (
     Chunk,
     ChunkEmbedding,
+    ChunkProvenance,
     CloudConsent,
     Document,
+    DocumentElement,
     DocumentIndex,
     DocumentPage,
     Job,
@@ -27,7 +30,7 @@ from app.services.models.providers import normalized_vectors
 from app.services.parsing.geometry import normalize_bbox, rotate_bbox
 from app.services.parsing.pdf import inspect_pdf, page_elements, structural_chunks
 from app.services.privacy.consent import require_consent
-from app.services.rag.retrieval import retrieve
+from app.services.rag.retrieval import is_document_overview, retrieve
 from app.services.storage.local import LocalStorage
 from app.workers.tasks import process_job
 
@@ -170,14 +173,16 @@ def test_failed_page_checkpoint_resumes_without_duplicate_pages(
         files={"file": ("checkpoint.pdf", source)},
     )
     identifier = uuid.UUID(response.json()["id"])
-    from app.services.parsing.isolated import isolated_page_elements
+    from app.services.parsing.isolated import PageParser
 
-    def fail_second_page(path, number):
+    original_elements = PageParser.elements
+
+    def fail_second_page(parser, number):
         if number == 2:
             raise ProviderError("PARSER_TIMEOUT", "Contract interrupted page")
-        return isolated_page_elements(path, number)
+        return original_elements(parser, number)
 
-    monkeypatch.setattr("app.workers.tasks.isolated_page_elements", fail_second_page)
+    monkeypatch.setattr("app.workers.tasks.PageParser.elements", fail_second_page)
     with Session(engine) as session:
         job = session.exec(select(Job).where(Job.document_id == identifier)).first()
         process_job(str(job.id))
@@ -185,9 +190,7 @@ def test_failed_page_checkpoint_resumes_without_duplicate_pages(
         job = session.get(Job, job.id)
         assert job.state == "FAILED" and job.checkpoint == 1
         assert session.get(Document, identifier).status != "READY"
-        monkeypatch.setattr(
-            "app.workers.tasks.isolated_page_elements", isolated_page_elements
-        )
+        monkeypatch.setattr("app.workers.tasks.PageParser.elements", original_elements)
         job.state = "QUEUED"
         session.add(job)
         session.commit()
@@ -249,6 +252,350 @@ def test_filtered_spanish_lexical_retrieval(document):
         assert {source.document_id for source in sources} == {document}
         absent, _mode = retrieve(session, [document], "quasar plutonio")
         assert absent == []
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "¿Puedes explicarme cuál es la capacidad solar instalada según este documento?",
+        "Could you please tell me what installed solar capacity this PDF reports?",
+    ],
+)
+def test_natural_language_queries_recover_topic_without_embeddings(document, question):
+    with Session(engine) as session:
+        assert session.get(Document, document).active_index_id is None
+        sources, mode = retrieve(session, [document], question)
+        assert mode == "lexical_relaxed"
+        assert any(
+            "120" in source.text and source.page_number == 1 for source in sources
+        )
+        assert {source.document_id for source in sources} == {document}
+        absent, _mode = retrieve(
+            session,
+            [document],
+            "¿Puedes explicarme qué dice este documento sobre quasar plutonio?",
+        )
+        assert absent == []
+
+
+def test_natural_question_requires_cloud_consent_instead_of_false_abstention(
+    document, client, superuser_token_headers, monkeypatch
+):
+    workspace = client.post(
+        "/api/v1/workspaces/",
+        headers=superuser_token_headers,
+        json={"name": "Natural query consent regression"},
+    ).json()
+    client.put(
+        f"/api/v1/workspaces/{workspace['id']}/documents/{document}",
+        headers=superuser_token_headers,
+    )
+    conversation = client.post(
+        f"/api/v1/workspaces/{workspace['id']}/conversations",
+        headers=superuser_token_headers,
+        json={"provider": "gemini", "model": "contract-chat"},
+    ).json()
+
+    def unexpected_model_call(*_args):
+        raise AssertionError("Private evidence must not reach a model without consent")
+
+    monkeypatch.setattr("app.services.rag.chat.get_provider", unexpected_model_call)
+    response = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+        json={"question": "¿Puedes decirme cuál es la capacidad solar del documento?"},
+    )
+    assert '"code": "CONSENT_REQUIRED"' in response.text, response.text
+    rows = client.get(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+    ).json()
+    assert rows[-1]["state"] == "FAILED" and not rows[-1]["citations"]
+    client.delete(
+        f"/api/v1/workspaces/{workspace['id']}", headers=superuser_token_headers
+    )
+
+
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    [
+        ("Resume los puntos principales con sus fuentes.", True),
+        ("¿De qué trata este PDF?", True),
+        ("What are the main points of this document?", True),
+        ("Resume lo que dice el documento sobre quasar plutonio.", False),
+        ("¿Cuál es la capacidad solar instalada?", False),
+    ],
+)
+def test_general_summary_intent_preserves_topic_question_boundaries(question, expected):
+    assert is_document_overview(question) is expected
+
+
+def test_generic_summary_uses_real_pages_without_cloud_or_embeddings(
+    document, client, superuser_token_headers, monkeypatch
+):
+    with Session(engine) as session:
+        sources, mode = retrieve(
+            session, [document], "Resume los puntos principales con sus fuentes."
+        )
+        assert mode == "document_overview" and sources
+        assert {source.page_number for source in sources} == {1, 2}
+        assert {source.document_id for source in sources} == {document}
+        assert len({source.label for source in sources}) == len(sources)
+        for source in sources:
+            origin = session.get(DocumentElement, source.element_id)
+            assert source.text in origin.text
+            assert (source.bbox.model_dump() if source.bbox else None) == origin.bbox
+        absent, mode = retrieve(
+            session,
+            [document],
+            "Resume lo que dice el documento sobre quasar plutonio.",
+        )
+        assert not absent and mode != "document_overview"
+    workspace = client.post(
+        "/api/v1/workspaces/",
+        headers=superuser_token_headers,
+        json={"name": "General overview regression"},
+    ).json()
+    client.put(
+        f"/api/v1/workspaces/{workspace['id']}/documents/{document}",
+        headers=superuser_token_headers,
+    )
+    conversation = client.post(
+        f"/api/v1/workspaces/{workspace['id']}/conversations",
+        headers=superuser_token_headers,
+        json={"provider": "ollama", "model": "local-contract"},
+    ).json()
+
+    class LocalOverviewProvider:
+        def discover(self):
+            return [
+                ModelDescriptor(id="local-contract", provider="ollama", version="test")
+            ]
+
+        def stream(self, request):
+            context = json.loads(request.prompt)
+            assert context["coverage"] == "sampled_pages_partial"
+            assert "muestra" in request.system and "todo el PDF" in request.system
+            assert all(
+                item["document"] and item["page_number"] for item in context["evidence"]
+            )
+            supporting = next(
+                item for item in context["evidence"] if "120" in item["text"]
+            )
+            yield f"La evidencia informa 120 MWh de capacidad solar. [Fuente {supporting['source_id']}]"
+
+    monkeypatch.setattr(
+        "app.services.rag.chat.get_provider", lambda *_args: LocalOverviewProvider()
+    )
+    response = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+        json={"question": "Resume los puntos principales con sus fuentes."},
+    )
+    assert "event: done" in response.text, response.text
+    rows = client.get(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+    ).json()
+    answer = rows[-1]
+    assert (
+        answer["state"] == "COMPLETE"
+        and answer["retrieval_mode"] == "document_overview"
+    )
+    assert "cobertura es parcial" in answer["content"]
+    assert "2 de 2 páginas" in answer["content"]
+    assert answer["citations"] and "120" in answer["citations"][0]["text"]
+    with Session(engine) as session:
+        assert not session.exec(
+            select(CloudConsent).where(CloudConsent.document_id == document)
+        ).first()
+    client.delete(
+        f"/api/v1/workspaces/{workspace['id']}", headers=superuser_token_headers
+    )
+
+
+def test_empty_or_unprocessed_chat_reports_actionable_error(
+    client, superuser_token_headers
+):
+    workspace = client.post(
+        "/api/v1/workspaces/",
+        headers=superuser_token_headers,
+        json={"name": "Readiness regression"},
+    ).json()
+    conversation = client.post(
+        f"/api/v1/workspaces/{workspace['id']}/conversations",
+        headers=superuser_token_headers,
+        json={"provider": "ollama", "model": "unused-model"},
+    ).json()
+    response = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+        json={"question": "capacidad solar"},
+    )
+    assert '"code": "NO_DOCUMENTS_SELECTED"' in response.text
+    pending = client.post(
+        "/api/v1/documents/",
+        headers=superuser_token_headers,
+        files={
+            "file": (
+                "pending.pdf",
+                (FIXTURES / "digital_es.pdf").read_bytes() + b"\n% readiness",
+            )
+        },
+    ).json()
+    client.put(
+        f"/api/v1/workspaces/{workspace['id']}/documents/{pending['id']}",
+        headers=superuser_token_headers,
+    )
+    response = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+        json={"question": "capacidad solar"},
+    )
+    assert '"code": "DOCUMENT_NOT_READY"' in response.text
+    client.delete(
+        f"/api/v1/workspaces/{workspace['id']}", headers=superuser_token_headers
+    )
+    client.delete(f"/api/v1/documents/{pending['id']}", headers=superuser_token_headers)
+
+
+def test_processed_pdf_without_chunks_reports_ocr_action(
+    document, client, superuser_token_headers
+):
+    from sqlmodel import delete
+
+    with Session(engine) as session:
+        doc = session.get(Document, document)
+        identifiers = list(
+            session.exec(
+                select(Chunk.id).where(Chunk.version_id == doc.current_version_id)
+            ).all()
+        )
+        session.exec(
+            delete(ChunkProvenance).where(ChunkProvenance.chunk_id.in_(identifiers))
+        )
+        session.exec(delete(Chunk).where(Chunk.version_id == doc.current_version_id))
+        session.commit()
+    workspace = client.post(
+        "/api/v1/workspaces/",
+        headers=superuser_token_headers,
+        json={"name": "OCR readiness"},
+    ).json()
+    client.put(
+        f"/api/v1/workspaces/{workspace['id']}/documents/{document}",
+        headers=superuser_token_headers,
+    )
+    conversation = client.post(
+        f"/api/v1/workspaces/{workspace['id']}/conversations",
+        headers=superuser_token_headers,
+        json={"provider": "ollama", "model": "unused-model"},
+    ).json()
+    response = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+        json={"question": "capacidad solar"},
+    )
+    assert '"code": "DOCUMENT_HAS_NO_TEXT"' in response.text
+    client.delete(
+        f"/api/v1/workspaces/{workspace['id']}", headers=superuser_token_headers
+    )
+
+
+def test_merged_chunk_cites_supporting_element_not_its_heading(
+    document, client, superuser_token_headers, monkeypatch
+):
+    with Session(engine) as session:
+        doc = session.get(Document, document)
+        page = session.exec(
+            select(DocumentPage).where(
+                DocumentPage.version_id == doc.current_version_id
+            )
+        ).first()
+        heading = DocumentElement(
+            page_id=page.id,
+            text="Resultados del experimento",
+            content_hash="test-heading",
+            bbox={"x": 0.1, "y": 0.1, "width": 0.8, "height": 0.05},
+        )
+        body = DocumentElement(
+            page_id=page.id,
+            text="El prototipo zafiro produjo 731 unidades.",
+            content_hash="test-body",
+            bbox={"x": 0.1, "y": 0.2, "width": 0.8, "height": 0.1},
+        )
+        session.add_all([heading, body])
+        session.flush()
+        chunk = Chunk(
+            version_id=doc.current_version_id,
+            text=heading.text + "\n" + body.text,
+            contextualized_text=heading.text + "\n" + body.text,
+            content_hash="test-merged",
+            chunking_profile="docling-hybrid-v1",
+        )
+        session.add(chunk)
+        session.flush()
+        session.add_all(
+            [
+                ChunkProvenance(
+                    chunk_id=chunk.id, element_id=element.id, span_end=len(element.text)
+                )
+                for element in (heading, body)
+            ]
+        )
+        session.commit()
+        body_id, body_bbox = body.id, body.bbox
+        sources, _mode = retrieve(session, [document], "prototipo zafiro")
+        assert len({source.label for source in sources}) == len(sources)
+        assert {source.element_id for source in sources} == {heading.id, body.id}
+        grant(session, document, "chat")
+    workspace = client.post(
+        "/api/v1/workspaces/",
+        headers=superuser_token_headers,
+        json={"name": "Merged provenance"},
+    ).json()
+    client.put(
+        f"/api/v1/workspaces/{workspace['id']}/documents/{document}",
+        headers=superuser_token_headers,
+    )
+    conversation = client.post(
+        f"/api/v1/workspaces/{workspace['id']}/conversations",
+        headers=superuser_token_headers,
+        json={"provider": "gemini", "model": "contract-chat"},
+    ).json()
+
+    class SupportingElementProvider:
+        def discover(self):
+            return [
+                ModelDescriptor(id="contract-chat", provider="gemini", version="test")
+            ]
+
+        def stream(self, request):
+            sources = json.loads(request.prompt)["evidence"]
+            supporting = next(source for source in sources if "731" in source["text"])
+            yield f"El prototipo produjo 731 unidades. [Fuente {supporting['source_id']}]"
+
+    monkeypatch.setattr(
+        "app.services.rag.chat.get_provider", lambda *_args: SupportingElementProvider()
+    )
+    response = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+        json={"question": "prototipo zafiro"},
+    )
+    assert "event: done" in response.text, response.text
+    rows = client.get(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=superuser_token_headers,
+    ).json()
+    source = rows[-1]["citations"][0]
+    assert source["element_id"] == str(body_id)
+    assert source["bbox"] == body_bbox
+    assert (
+        "731" in source["text"] and "Resultados del experimento" not in source["text"]
+    )
+    client.delete(
+        f"/api/v1/workspaces/{workspace['id']}", headers=superuser_token_headers
+    )
 
 
 def test_cloud_consent_revocation_and_scope(document):

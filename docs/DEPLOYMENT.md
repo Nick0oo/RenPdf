@@ -40,10 +40,36 @@ WSL2/Docker deben estar activos; ejecutar `docker compose config --quiet`,
 `docker compose ps`, logs acotados y diagnóstico desde Modelos antes de reindexar.
 No imprimir `docker compose config` sin --quiet: el resultado contiene secretos.
 
-Docling opcional: `uv sync --package app --extra docling`. Instalar artefactos de
+La instalación base incluye `docling-slim` y el pipeline nativo sin modelos.
+`PARSER_ENGINE=auto` lo utiliza cuando no hay un pipeline avanzado configurado;
+`docling-native` lo selecciona explícitamente y `pymupdf` conserva el modo anterior.
+El parser reutiliza su subprocess por hasta PARSER_RECYCLE_PAGES (8 por defecto),
+con timeout por página y límite de memoria en Linux; después lo recicla.
+
+Docling avanzado opcional: `uv sync --package app --extra docling`. Instalar artefactos de
 layout/OCR manualmente, indicar DOCLING_ARTIFACTS_PATH y elegir parser docling.
-HybridChunker requiere DOCLING_TOKENIZER_PATH con un tokenizer local. El límite
+HybridChunker funciona con presupuesto de bytes UTF-8 sin descargas. Para medir
+tokens de un modelo específico, DOCLING_TOKENIZER_PATH acepta un tokenizer local. El límite
 PARSER_MEMORY_LIMIT_MB debe ajustarse si esos artefactos necesitan más espacio virtual.
 No se descarga ningún peso desde la aplicación; HF_HUB_OFFLINE y
 TRANSFORMERS_OFFLINE se activan en la ruta Docling. La imagen ligera incluye
-Tesseract eng/spa, no Torch/Docling ni modelos generativos.
+Tesseract eng/spa y Docling nativo, no Torch ni modelos generativos.
+
+Runtime local Windows x64, instalación manual explícita:
+
+```powershell
+uv run --package app python scripts/install_llamacpp.py
+./scripts/start_llamacpp.ps1
+```
+
+Instala CPU llama.cpp b11624 y EmbeddingGemma 2 Q8_0 de texto (~310 MB), verificando
+SHA-256 de los binarios y pesos. Quedan en `%LOCALAPPDATA%/RenPdf/llama.cpp`, fuera
+del repositorio. No instala CUDA ni las torres de visión/audio. El server escucha
+loopback 8081; no ocupa el 8080 preexistente. Tras reiniciar Windows, arrancarlo
+con el segundo comando antes de indexar. Configuración del entorno actual:
+LLAMACPP_BASE_URL=http://127.0.0.1:8081,
+DOCKER_LLAMACPP_BASE_URL=http://host.docker.internal:8081,
+LLAMACPP_MODE=embeddings y LLAMACPP_MODEL_VERSION=SHA256 del GGUF instalado.
+Seleccionar `llamacpp / embeddinggemma-2-q8_0` para embeddings (768 dimensiones).
+El modo embeddings no se anuncia como chat. Para chat local se usa el modelo
+Ollama ya instalado; OLLAMA_NUM_CTX=4096, OLLAMA_NUM_THREADS=2 y OLLAMA_NUM_GPU=0.

@@ -87,7 +87,11 @@ def diagnostics(session: SessionDep, current_user: CurrentUser):
 
     from redis import Redis
 
-    from app.services.parsing.pdf import parser_available
+    from app.services.parsing.pdf import (
+        native_parser_available,
+        parser_available,
+        selected_parser,
+    )
 
     database = (
         session.connection()
@@ -102,11 +106,23 @@ def diagnostics(session: SessionDep, current_user: CurrentUser):
         )
     except Exception:
         redis_available = False
+    try:
+        parser_name = selected_parser()
+    except ValueError:
+        parser_name = "NOT_CONFIGURED"
     return {
         "database": "AVAILABLE",
         "pgvector": database,
         "redis": "AVAILABLE" if redis_available else "UNAVAILABLE",
-        "parser": "docling" if parser_available() else "pymupdf",
+        "parser": parser_name,
+        "docling_native": "AVAILABLE"
+        if native_parser_available()
+        else "NOT_CONFIGURED",
+        "docling_advanced": "AVAILABLE" if parser_available() else "NOT_CONFIGURED",
+        "docling_chunker": "local_tokenizer"
+        if settings.DOCLING_TOKENIZER_PATH
+        else "offline_byte_budget",
+        "ollama_context_tokens": settings.OLLAMA_NUM_CTX,
         "pymupdf_version": importlib.metadata.version("pymupdf"),
         "ocr_enabled": settings.ENABLE_OCR,
         "cloud_default": "DENY",

@@ -1,13 +1,17 @@
 # Limitaciones conocidas
 
-- Docling/HybridChunker y OCR avanzado no se probaron con pesos locales. La ruta
-  ligera conserva geometría, tablas y figuras; layouts académicos muy complejos
-  pueden requerir Docling y revisión. Tesseract Windows no estaba disponible;
+- Docling NativePdfPipeline y HybridChunker se ejecutaron realmente sin modelos:
+  texto, figuras, tablas complementadas por PyMuPDF y CropBox/rotación verificados.
+  El chunker utiliza un presupuesto UTF-8 conservador sin descargar tokenizer.
+  El pipeline avanzado de layout/lectura/OCR neuronal sigue sin pesos locales.
+  Layouts académicos complejos pueden requerir esos modelos y revisión. Tesseract Windows no estaba disponible;
   Docker incluye idiomas eng/spa. No se afirma cobertura universal de OCR.
-- Ollama: servidor y catálogo verificados; generación/embeddings/visión de gemma4
-  no probados por memoria disponible y prohibición de iniciar modelos grandes.
-  llama.cpp/OpenAI compatible no configurados: adaptadores presentes, integración
-  real pendiente. No hay un modelo local de embeddings verificado.
+- Ollama: generación real de gemma4:e2b y una respuesta sobre el PDF personal
+  con tres citas persistidas verificadas; visión local no probada. CPU con dos
+  hilos, contexto limitado y keep_alive=0. Embeddings locales verificados con
+  EmbeddingGemma 2 Q8_0 de texto en llama.cpp; no se cargaron sus torres multimodales.
+  Ollama 0.34.4 rechazó la variante oficial EmbeddingGemma 2 por exigir actualización;
+  el runtime existente no se actualizó. OpenAI compatible externo sigue sin servidor.
 - Reranking tiene contrato y estado NOT_CONFIGURED. No existe reranker ficticio.
   Se usa RRF sin puntuaciones inventadas de un modelo.
 - Embeddings multimodales directos implementados para Gemini Embedding 2 con

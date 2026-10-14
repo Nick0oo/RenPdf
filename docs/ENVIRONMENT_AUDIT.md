@@ -1,5 +1,25 @@
 # Auditoría del entorno — 2026-10-14
 
+## Verificación posterior con autorización local
+
+El diagnóstico inicial de abajo conserva lo encontrado al comenzar. Después de
+la autorización del usuario se instalaron EmbeddingGemma 300M (622 MB, Ollama)
+y EmbeddingGemma 2 Q8_0 de texto (310 MB, llama.cpp CPU b11624). La cuenta usa
+el segundo para embeddings; no se descargó otro modelo generativo pesado.
+Ollama 0.34.4 requiere actualización para su variante EmbeddingGemma 2; ese
+runtime se conservó. El servidor llama.cpp escucha loopback 8081, sin CUDA.
+
+Docling slim 2.139.0 y HybridChunker se comprobaron realmente sin Torch ni pesos
+neuronales. El pipeline nativo, tablas, figuras y geometría CropBox/rotación
+pasaron pruebas offline. El flujo HTTP sintético verificó extracción en 11,52 s,
+indexación de 16 vectores de 768 dimensiones en 4,63 s y chat híbrido Ollama
+con respuesta correcta/cita en 40,44 s. Son mediciones puntuales de este equipo,
+sin garantía de latencia ni medición del pico de RAM. El modelo gemma4:e2b
+preexistente también respondió sobre el PDF personal usando CPU y citas persistidas.
+Visión local y pipeline neuronal avanzado continúan pendientes.
+
+## Diagnóstico inicial
+
 Repositorio limpio al iniciar. Base: `372dbcb` (importación del Full Stack FastAPI
 Template oficial); adaptación preexistente `1c32e668065d7e5490263d90e75eb4b7cdb9fcba`.
 Se conserva el template; no se vuelve a clonar sobre los archivos existentes.

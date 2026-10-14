@@ -191,6 +191,10 @@ def test_ollama_contract_discovers_capabilities_embeds_and_streams(monkeypatch):
 
 
 def test_openai_compatible_contract_does_not_assume_vision(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "LLAMACPP_MODE", "unknown")
+
     def handler(request):
         if request.url.path == "/v1/models":
             return httpx.Response(200, json={"data": [{"id": "contract"}]})
