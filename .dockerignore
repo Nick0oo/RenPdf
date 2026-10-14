@@ -1,4 +1,9 @@
 .git
+# Mantener la configuración local fuera de las imágenes.
+.env
+.env.*
+**/.env
+**/.env.*
 **/__pycache__
 **/.venv
 backend/htmlcov

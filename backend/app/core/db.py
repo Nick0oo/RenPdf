@@ -1,3 +1,9 @@
+from typing import Any
+
+from pgvector.psycopg import register_vector  # type: ignore[import-untyped]
+from psycopg import Connection
+from sqlalchemy import event
+from sqlalchemy.pool import ConnectionPoolEntry
 from sqlmodel import Session, create_engine, select
 
 from app import crud
@@ -7,9 +13,15 @@ from app.models import User, UserCreate
 engine = create_engine(str(settings.DATABASE_URL), pool_pre_ping=True)
 
 
+@event.listens_for(engine, "connect")
+def register_pgvector(
+    dbapi_connection: Connection[Any], _connection_record: ConnectionPoolEntry
+) -> None:
+    register_vector(dbapi_connection)
+
+
 # make sure all SQLModel models are imported (app.models) before initializing DB
 # otherwise, SQLModel might fail to initialize relationships properly
-# for more details: https://github.com/fastapi/full-stack-fastapi-template/issues/28
 
 
 def init_db(session: Session) -> None:

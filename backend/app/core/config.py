@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
 
-    PROJECT_NAME: str
+    PROJECT_NAME: str = "RenPdf"
     SENTRY_DSN: HttpUrl | None = None
     DATABASE_URL: PostgresDsn
 

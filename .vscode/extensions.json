@@ -6,7 +6,6 @@
         "bradlc.vscode-tailwindcss",
         "charliermarsh.ruff",
         "docker.docker",
-        "github.vscode-github-actions",
         "ms-playwright.playwright",
         "ms-python.python",
         "tombi-toml.tombi"

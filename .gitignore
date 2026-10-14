@@ -1,6 +1,15 @@
 .vscode/*
 !.vscode/extensions.json
 node_modules/
+# Configuración local: no versionar variables ni secretos.
+.env
+.env.*
+.venv/
+__pycache__/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
 backend/app/frontend/
 /test-results/
 /playwright-report/

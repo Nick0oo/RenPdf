@@ -1,88 +1,60 @@
-# Full Stack FastAPI Template
+# RenPdf
 
-[![Test Docker Compose](../../actions/workflows/test-docker-compose.yml/badge.svg)](../../actions/workflows/test-docker-compose.yml)
-[![Test Backend](../../actions/workflows/test-backend.yml/badge.svg)](../../actions/workflows/test-backend.yml)
+Aplicación con backend en FastAPI, frontend en React y TypeScript, y PostgreSQL
+con pgvector.
 
-## Technology Stack and Features
+## Desarrollo
 
-- ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
-  - 🧰 [SQLModel](https://sqlmodel.tiangolo.com) for the Python SQL database interactions (ORM).
-  - 🔍 [Pydantic](https://docs.pydantic.dev), used by FastAPI, for the data validation and settings management.
-  - 💾 [PostgreSQL](https://www.postgresql.org) as the SQL database.
-- 🚀 [React](https://react.dev) for the frontend.
-  - 🧩 Built into the backend application and served by FastAPI on the same domain as the API.
-  - 💃 Using TypeScript, hooks, [Vite](https://vitejs.dev), and other parts of a modern frontend stack.
-  - 🎨 [Tailwind CSS](https://tailwindcss.com) and [shadcn/ui](https://ui.shadcn.com) for the frontend components.
-  - 🤖 An automatically generated frontend client.
-  - 🧪 [Playwright](https://playwright.dev) for end-to-end testing.
-  - 🦇 Dark mode support.
-- ☁️ [FastAPI Cloud](https://fastapicloud.com) for deployment.
-- 🐋 [Docker Compose](https://www.docker.com) for local services and self-hosted deployment.
-  - 📞 [Traefik](https://traefik.io) as a reverse proxy with automatic HTTPS.
-- 🔒 Secure password hashing by default.
-- 🔑 JWT (JSON Web Token) authentication.
-- 📫 Email-based password recovery.
-- ✉️ [React Email](https://react.email) for email templates.
-- 📬 [Mailpit](https://mailpit.axllent.org) for local email testing during development.
-- ✅ Tests with [Pytest](https://pytest.org).
-- 🏭 CI (continuous integration) and CD (continuous deployment) based on GitHub Actions.
+Requisitos: Python 3.14, uv, Bun y Docker.
 
-### Dashboard Login
+Mantén un `.env` local en la raíz con `SECRET_KEY`, `POSTGRES_PASSWORD`,
+`DATABASE_URL`, `FIRST_SUPERUSER` y `FIRST_SUPERUSER_PASSWORD`. Usa valores propios
+para las claves y contraseñas. `DATABASE_URL` debe apuntar a PostgreSQL, por ejemplo
+`postgresql://postgres:<contraseña>@localhost:5433/app` para Docker o
+`postgresql://postgres:<contraseña>@localhost:5432/renpdf` para PostgreSQL
+instalado en Windows.
+Los archivos `.env` se mantienen fuera de Git y del contexto de Docker.
 
-![Dashboard login screenshot](img/login.png)
+Inicia los servicios locales desde la raíz:
 
-### Dashboard - Admin
+```sh
+docker compose up -d db mailpit
+```
 
-![Admin dashboard screenshot](img/dashboard.png)
+Docker usa PostgreSQL 18 con pgvector 0.8.7 y publica el puerto `5433` para
+coexistir con PostgreSQL local en `5432`. Puedes cambiarlo con `POSTGRES_PORT`.
 
-### Dashboard - Items
+Inicia el backend desde `backend/`:
 
-![Items dashboard screenshot](img/dashboard-items.png)
+```sh
+uv sync
+uv run bash scripts/prestart.sh
+uv run fastapi dev
+```
 
-### Dashboard - Dark Mode
+Inicia el frontend desde la raíz, en otra terminal:
 
-![Dark mode dashboard screenshot](img/dashboard-dark.png)
+```sh
+bun install
+bun run dev
+```
 
-### React Email Templates
+Frontend: `http://localhost:5173`. API: `http://localhost:8000`.
 
-![Email templates screenshot](img/react-email.png)
+Las migraciones de Alembic activan la extensión `vector` en la base de datos.
+Para PostgreSQL local, instala primero la extensión para la misma versión del
+servidor. El backend incluye `pgvector` y registra sus tipos con Psycopg.
 
-### Mailpit - Local Email Testing
+Para conectar el backend local con Mailpit, configura `SMTP_HOST=localhost`,
+`SMTP_PORT=1025`, `SMTP_TLS=false` y `EMAILS_FROM_EMAIL` en tu `.env`.
 
-![Mailpit screenshot](img/mailpit.png)
+## Comandos
 
-### Interactive API Documentation
+- `bun run build`: compilar el frontend para servirlo desde el backend.
+- `bun run test`: ejecutar las pruebas del frontend con el backend disponible.
+- `bash scripts/generate-client.sh`: regenerar el cliente de la API.
+- `bun run email:dev`: abrir el editor de correos.
 
-![API docs](img/docs.png)
+## Licencia
 
-## How to Use It
-
-Click the **Use this template** button at the top of this page to create a new repository.
-
-## Backend Development
-
-Backend docs: [backend/README.md](./backend/README.md).
-
-## Frontend Development
-
-Frontend docs: [frontend/README.md](./frontend/README.md).
-
-## Deployment
-
-FastAPI Cloud deployment: [deployment.md](./deployment.md).
-
-Self-hosted deployment with Docker Compose: [deployment-docker-compose.md](./deployment-docker-compose.md).
-
-## Development
-
-General development docs: [development.md](./development.md).
-
-This includes the local FastAPI and Vite workflow, Docker Compose services, `.env` configuration, and more.
-
-## Release Notes
-
-Check the file [release-notes.md](./release-notes.md).
-
-## License
-
-The Full Stack FastAPI Template is licensed under the terms of the MIT license.
+[MIT](LICENSE).

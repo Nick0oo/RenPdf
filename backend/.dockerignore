@@ -1,4 +1,6 @@
 # Python
+.env
+.env.*
 __pycache__
 app.egg-info
 *.pyc
