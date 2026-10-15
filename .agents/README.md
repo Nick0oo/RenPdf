@@ -1,11 +1,12 @@
 # Skills compartidas de RenPdf
 
-Estas cinco skills se incluyen como carpetas completas en `.agents/skills/` y
+Estas seis skills se incluyen como carpetas completas en `.agents/skills/` y
 se versionan con el proyecto. Al clonar el repositorio también se reciben sus
 instrucciones y archivos de referencia.
 
 | Carpeta | Uso | Fuente |
 | --- | --- | --- |
+| `frontend-design` | Dirección visual, tipografía, color y composición | Copia de la instalación personal existente, con licencia Apache-2.0 |
 | `shadcn` | Componentes, formularios y composición de interfaces | [shadcn-ui/ui](https://github.com/shadcn-ui/ui) |
 | `vercel-react-best-practices` | Buenas prácticas y rendimiento de React | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) |
 | `fastapi` | APIs, Pydantic, dependencias y convenciones de FastAPI | [fastapi/fastapi](https://github.com/fastapi/fastapi) |
@@ -32,7 +33,9 @@ automáticamente al compartir un repositorio.
 
 ## Versiones y atribución
 
-[skills-sources.json](skills-sources.json) registra el repositorio, el commit y
-la ruta original de cada copia. Las licencias originales se conservan en
-`LICENSE.upstream`; la skill de Vercel declara MIT en su propio `SKILL.md`.
+[skills-sources.json](skills-sources.json) registra los repositorios, commits y
+rutas originales de las copias descargadas. Para `frontend-design`, conserva las
+huellas SHA-256 de la instalación personal copiada. Las licencias originales se
+conservan en `LICENSE.upstream` o `LICENSE.txt`; la skill de Vercel declara MIT
+en su propio `SKILL.md`.
 Al actualizar una skill, conserva sus referencias y registra la nueva revisión.

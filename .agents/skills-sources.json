@@ -44,6 +44,17 @@
       "source": "https://github.com/wshobson/agents/tree/044b4b21f083948e69ec878a7b07c8d0951a6ffa/plugins/backend-development/skills/architecture-patterns",
       "license": "MIT",
       "license_source": "LICENSE"
+    },
+    {
+      "name": "frontend-design",
+      "origin": "local-installation",
+      "source": "Existing personal frontend-design installation; preserved without changes",
+      "license": "Apache-2.0",
+      "license_source": "LICENSE.txt",
+      "files_sha256": {
+        "LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3"
+      }
     }
   ]
 }
