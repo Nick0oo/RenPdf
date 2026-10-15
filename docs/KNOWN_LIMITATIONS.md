@@ -7,7 +7,7 @@
   Layouts académicos complejos pueden requerir esos modelos y revisión. Tesseract Windows no estaba disponible;
   Docker incluye idiomas eng/spa. No se afirma cobertura universal de OCR.
 - Ollama: generación real de gemma4:e2b y una respuesta sobre el PDF personal
-  con tres citas persistidas verificadas; visión local no probada. CPU con dos
+  con citas persistidas verificadas; visión local no probada. CPU con dos
   hilos, contexto limitado y keep_alive=0. Embeddings locales verificados con
   EmbeddingGemma 2 Q8_0 de texto en llama.cpp; no se cargaron sus torres multimodales.
   Ollama 0.34.4 rechazó la variante oficial EmbeddingGemma 2 por exigir actualización;
@@ -28,6 +28,13 @@
   se limita a la página actual y texto extraído; no hay thumbnails de todas las páginas.
 - Historia completa se conserva. El contexto enviado al modelo usa preguntas
   previas acotadas, no todas las respuestas históricas ni PDFs completos.
+- RAG indexa el contenido extraído de todas las páginas; cada respuesta usa los
+  fragmentos recuperados y su contexto vecino. Indexar todo no equivale a enviar
+  el PDF completo en cada prompt. El resumen general conserva aviso de muestra parcial.
+- La factura real quedó indexada localmente con 33 vectores. La recuperación de
+  una pregunta doble incluyó fecha e importe; Gemma4 local respondió el mes pero
+  omitió el importe en dos intentos. Un índice correcto no garantiza que ese modelo
+  pequeño responda todas las partes; invoice-local-check.json registra esa limitación.
 - Presupuestos/timeouts son configurables; no hay cuotas mensuales acumuladas,
   fallback automático, reranker, billing, SaaS ni multi-tenant.
 - Límite configurado 500 páginas/50 MB no equivale a benchmark de cualquier PDF.
@@ -40,6 +47,18 @@
 - Mypy strict no pasa todavía; ty/Ruff y TypeScript son las verificaciones mantenidas.
   El template conserva módulos admin/items y sus tests, aunque no aparecen en la
   navegación de investigación. Flujos de email requieren configurar SMTP.
+- Studio organiza páginas y transforma copias; no implementa edición de texto,
+  firmas ni redacción segura. CropBox sólo cambia el área visible. Se limita a
+  30 fuentes, 50 MB totales y 500 páginas de salida; no promete conservar firmas
+  ni todos los metadatos/marcadores del original.
+- Laboratorio conserva respuestas separadas por fuente; no es un detector automático
+  de contradicciones. Estudio registra autoevaluación manual, sin notas inventadas
+  de un modelo ni generación automática de fichas.
+- La telemetría se registra para ejecuciones nuevas. El historial anterior no
+  contiene necesariamente tokens, tiempos o política efectiva. No se reconstruyen
+  esos datos como si se hubieran medido.
+- El chunk de workspace incorpora PDF.js/Markdown/KaTeX y ronda 962 KB sin comprimir.
+  Los módulos adicionales se cargan a demanda; queda pendiente reducir ese chunk.
 
 Estos puntos impiden afirmar que todas las capacidades del superprompt están
 completas. La matriz de aceptación distingue pruebas reales, contractuales y

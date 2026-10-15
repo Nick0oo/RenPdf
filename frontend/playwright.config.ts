@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import 'dotenv/config'
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5174'
 
 /**
  * Read environment variables from file.
@@ -15,7 +15,7 @@ export default defineConfig({
   testDir: './tests',
   // The public-signup/admin/items/mail workflows belong to the original template.
   // Personal-product acceptance is explicit; the source tests remain for reference.
-  testMatch: /(?:login\.spec|research\.spec|personal-security\.spec|app-recovery\.spec)\.ts$/,
+  testMatch: /(?:login\.spec|research\.spec|personal-security\.spec|app-recovery\.spec|modules-studio-trace\.spec|studio-preview\.spec|learning\.spec|chat-continuity\.spec)\.ts$/,
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

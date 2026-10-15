@@ -2,10 +2,13 @@
 
 Desde backend: `uv run pytest -q`, `uv run ruff check app tests`,
 `uv run ruff format app --check`, `uv run ty check app`.
-La última ejecución completa aprobó 115 tests en 241,32 s, con dos warnings de
+La última ejecución completa aprobó 154 tests en 380,88 s, con dos warnings de
 deprecación upstream. Incluye Docling nativo offline, geometría CropBox/rotación,
 reutilización/reciclado/timeout del parser, prefijos EmbeddingGemma y búsqueda de
 preguntas naturales/resúmenes con cobertura parcial.
+Incluye Studio/Trazabilidad, Laboratorio/Estudio, telemetría real sin secretos,
+consulta multimodal con revocación, preparación local automática del corpus completo,
+reintentos/idempotencia y figuras recuperadas automáticamente con PNG reales y permisos.
 El conftest dirige todas las pruebas a `renpdf_chat_test` y storage temporal;
 ejecuta Alembic antes de iniciar. Nunca usa la base personal para teardown.
 
@@ -36,12 +39,34 @@ En PowerShell puede usarse `../node_modules/.bin/playwright.cmd` para preservar
 los argumentos. `RUN_CLOUD_E2E=1` autoriza Gemini sólo sobre el fixture sintético
 creado por esa prueba, durante un día. Sin el flag se verifica el rechazo cloud.
 Playwright guarda screenshots/traces locales; no activa analítica externa.
-La ejecución Chromium completa contra la imagen compilada actual aprobó 18 tests,
+La ejecución Chromium completa de la iteración anterior aprobó 18 tests,
 incluyendo Gemini real, permisos, índices, citas, zoom/rotación y recarga; acceso
 directo desde biblioteca, reapertura del chat, móvil y controles shadcn. Fallos
 de assets controlados comprueban una sola recarga automática, sesión conservada
 y recuperación a biblioteca. La captura original de Error/Oops no se reprodujo
 con una sesión nueva; esas pruebas verifican el mecanismo de recuperación.
+
+La nueva aceptación incorpora chat-continuity, módulos, aprendizaje y studio-preview.
+El router TanStack controla la única recarga de recuperación; se retiró el segundo
+listener de Vite. Una petición pendiente sobrevivió a sondeos, notas y páginas
+1→2→1 sin recargas ni abortos, con borrador conservado, una descarga del PDF y máximo
+dos lienzos. El primer índice conserva el borrador hasta READY y bloquea envíos prematuros.
+
+Validación integrada actual: los 28 flujos Chromium están verificados. Con la
+preferencia local activa, 26 pasaron en la suite completa; dos expectativas del
+test todavía asumían estado EXTRACTED y etiqueta Fuente 1. Se corrigieron para
+aceptar READY y una cita real de la página esperada; ambos casos se repitieron y
+pasaron (3/3 incluyendo setup, 1,1 min). No requirió cambios en la aplicación.
+
+`rag-complete-content-results.json` conserva la verificación HTTP real con un PDF
+inventado de dos páginas: extracción e indexación local automática (18 chunks,
+768 dimensiones), pregunta libre de importe/mes con siete citas y Gemini 3.8 Flash,
+y recuperación visual automática con un PNG real, forma/color correctos y cita
+de su figura. No se seleccionó la región manualmente ni se enviaron documentos privados.
+
+`backfill-local-results.json` verifica 17 documentos existentes que no tenían
+índice: 1.243 chunks y 1.243 vectores locales de 768 dimensiones, con SHA-256 de
+originales y versiones preservados. No publica IDs ni contenido privado.
 
 Una muestra puntual de `docker stats` durante la evaluación sintética registró
 458 MiB para API, 305 MiB para worker, 245 MiB para scheduler, 64 MiB para

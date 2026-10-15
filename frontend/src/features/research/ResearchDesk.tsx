@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import {
   ArrowUpRight,
   BookOpen,
@@ -11,7 +12,7 @@ import {
   Settings2,
   Trash2,
 } from "lucide-react"
-import { lazy, Suspense, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
 import type { DocumentPublic } from "@/client"
 import { DocumentsService, ProvidersService, WorkspacesService } from "@/client"
@@ -31,18 +32,10 @@ import { ConfirmationDialog } from "./ConfirmationDialog"
 import { NameDialog } from "./NameDialog"
 import { documentStatus } from "./presentation"
 
-const WorkspaceDesk = lazy(() =>
-  import("./WorkspaceDesk").then((module) => ({
-    default: module.WorkspaceDesk,
-  })),
-)
-
 export function ResearchDesk() {
   const cache = useQueryClient()
   const [search, setSearch] = useState("")
-  const [workspaceId, setWorkspaceId] = useState(
-    localStorage.getItem("renpdf_workspace") ?? "",
-  )
+  const navigate = useNavigate()
   const [newWorkspace, setNewWorkspace] = useState(false)
   const [name, setName] = useState("")
   const [renaming, setRenaming] = useState<DocumentPublic>()
@@ -50,8 +43,6 @@ export function ResearchDesk() {
   const [modelsOpen, setModelsOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState("")
-  const [entryDocumentId, setEntryDocumentId] = useState<string>()
-  const [openChatOnLoad, setOpenChatOnLoad] = useState(false)
   const uploadInput = useRef<HTMLInputElement>(null)
   const documents = useQuery({
     queryKey: ["documents", search],
@@ -160,36 +151,14 @@ export function ResearchDesk() {
     onError: (e) => setError(errorMessage(e)),
   })
   function openWorkspace(id: string, documentId?: string, startChat = false) {
-    setWorkspaceId(id)
-    setEntryDocumentId(documentId)
-    setOpenChatOnLoad(startChat)
-    localStorage.setItem("renpdf_workspace", id)
+    void navigate({
+      to: "/workspaces/$workspaceId",
+      params: { workspaceId: id },
+      search: { document: documentId, start: startChat || undefined },
+    })
   }
-  const active = workspaces.data?.find(
-    (workspace) => workspace.id === workspaceId,
-  )
-  if (active)
-    return (
-      <Suspense
-        fallback={
-          <div className="animate-pulse rounded-xl border p-16">
-            Abriendo investigación…
-          </div>
-        }
-      >
-        <WorkspaceDesk
-          key={`${active.id}:${entryDocumentId ?? ""}`}
-          workspace={active}
-          library={documents.data ?? []}
-          providers={providers.data ?? []}
-          entryDocumentId={entryDocumentId}
-          openChatOnLoad={openChatOnLoad}
-          onBack={() => openWorkspace("")}
-        />
-      </Suspense>
-    )
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8 px-5 py-7 md:px-9 md:py-9">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
@@ -286,46 +255,6 @@ export function ResearchDesk() {
           {error || errorMessage(documents.error || workspaces.error)}
         </p>
       )}
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Tus chats y proyectos</h2>
-          <span className="text-xs text-muted-foreground">
-            {workspaces.data?.length ?? 0} colecciones
-          </span>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {workspaces.data?.map((workspace) => (
-            <button
-              type="button"
-              key={workspace.id}
-              onClick={() => openWorkspace(workspace.id, undefined, true)}
-              className="group flex items-center gap-4 rounded-xl border p-4 text-left transition-colors hover:border-primary/50 hover:bg-muted/30"
-            >
-              <div className="grid size-10 place-content-center rounded-lg bg-primary/10 text-primary">
-                <BookOpen size={19} />
-              </div>
-              <div className="mr-auto min-w-0">
-                <h3 className="truncate text-sm font-medium">
-                  {workspace.name}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Abrir chats y fuentes
-                </p>
-              </div>
-              <ArrowUpRight
-                size={16}
-                className="text-muted-foreground group-hover:text-primary"
-              />
-            </button>
-          ))}
-        </div>
-        {!workspaces.isPending && !workspaces.data?.length && (
-          <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
-            Crea un workspace para reunir tus fuentes y empezar una
-            conversación.
-          </p>
-        )}
-      </section>
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Documentos</h2>

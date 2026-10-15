@@ -1,0 +1,14 @@
+# Explicit development mode. The normal Compose launch serves a stable build.
+services:
+  backend:
+    command: ["fastapi", "dev", "--host", "0.0.0.0"]
+    environment:
+      FASTAPI_ENV: development
+    develop:
+      watch:
+        - path: ./backend/app
+          action: sync
+          target: /app/backend/app
+          ignore: ["frontend", "__pycache__"]
+        - path: ./backend/pyproject.toml
+          action: rebuild

@@ -1,0 +1,11 @@
+{
+  "cloud_used": false,
+  "original_hashes_preserved": true,
+  "versions_preserved": true,
+  "local_indexes_ready": 17,
+  "persisted_vectors": 1243,
+  "chunks": 1243,
+  "dimensions": 768,
+  "ocr_pending_pages": 0,
+  "outcome": "PASSED"
+}

@@ -1,6 +1,6 @@
-import { Link as RouterLink, useRouterState } from "@tanstack/react-router"
-import type { LucideIcon } from "lucide-react"
-
+import { Link, useRouterState } from "@tanstack/react-router"
+import { ChevronDown } from "lucide-react"
+import { useState } from "react"
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -9,52 +9,96 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { type NavigationGroup, settingsNavigation } from "./navigation"
 
-export type Item = {
-  icon: LucideIcon
-  title: string
-  path: string
-}
-
-interface MainProps {
-  items: Item[]
-}
-
-export function Main({ items }: MainProps) {
+export function Main({ groups }: { groups: NavigationGroup[] }) {
   const { isMobile, setOpenMobile } = useSidebar()
-  const router = useRouterState()
-  const currentPath = router.location.pathname
-
-  const handleMenuClick = () => {
-    if (isMobile) {
-      setOpenMobile(false)
-    }
+  const path = useRouterState({ select: (state) => state.location.pathname })
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    research: true,
+    trace: true,
+    studio: false,
+    lab: false,
+    study: false,
+  })
+  const close = () => {
+    if (isMobile) setOpenMobile(false)
   }
-
   return (
-    <SidebarGroup>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {items.map((item) => {
-            const isActive = currentPath === item.path
-
-            return (
-              <SidebarMenuItem key={item.title}>
+    <div className="space-y-2 py-1">
+      {groups.map((group) => {
+        const active =
+          group.items.some((item) => path === item.href) ||
+          (group.id === "research" && path.startsWith("/workspaces/"))
+        return (
+          <SidebarGroup key={group.id} className="px-3 py-1">
+            <SidebarMenu>
+              <SidebarMenuItem>
                 <SidebarMenuButton
-                  tooltip={item.title}
-                  isActive={isActive}
-                  asChild
+                  tooltip={group.title}
+                  className={`h-10 text-sm font-semibold ${active ? "text-primary" : "text-muted-foreground"}`}
+                  onClick={() =>
+                    setExpanded((state) => ({
+                      ...state,
+                      [group.id]: !state[group.id],
+                    }))
+                  }
+                  aria-expanded={expanded[group.id] ?? active}
                 >
-                  <RouterLink to={item.path} onClick={handleMenuClick}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </RouterLink>
+                  <group.icon className="size-4" />
+                  <span>{group.title}</span>
+                  <ChevronDown
+                    className={`ml-auto size-3.5 transition-transform ${(expanded[group.id] ?? active) ? "" : "-rotate-90"}`}
+                  />
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            )
-          })}
+            </SidebarMenu>
+            {(expanded[group.id] ?? active) && (
+              <SidebarGroupContent className="pl-3 group-data-[collapsible=icon]:pl-0">
+                <SidebarMenu className="border-l border-sidebar-border pl-3 group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:pl-0">
+                  {group.items.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={item.title}
+                        isActive={
+                          path === item.href ||
+                          (item.href === "/" && path.startsWith("/workspaces/"))
+                        }
+                        className="h-9 font-normal"
+                      >
+                        <Link to={item.href} onClick={close}>
+                          <item.icon className="size-3.5" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            )}
+          </SidebarGroup>
+        )
+      })}
+      <SidebarGroup className="mt-3 border-t border-sidebar-border px-3 pt-4">
+        <SidebarMenu>
+          {settingsNavigation.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                asChild
+                tooltip={item.title}
+                isActive={path === item.href}
+                className="h-10"
+              >
+                <Link to={item.href} onClick={close}>
+                  <item.icon className="size-4" />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+      </SidebarGroup>
+    </div>
   )
 }

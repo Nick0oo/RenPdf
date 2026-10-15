@@ -8,6 +8,7 @@ import {
   FileText,
   LoaderCircle,
   MessageSquare,
+  MoreHorizontal,
   Shield,
   Sparkles,
   Square,
@@ -27,6 +28,12 @@ import type {
 } from "@/client"
 import { ChatService, DocumentsService } from "@/client"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { apiRoot, errorMessage } from "@/features/research/api"
 import { chatDate } from "@/features/research/presentation"
 
@@ -35,6 +42,8 @@ type Props = {
   documents: DocumentPublic[]
   draft?: { text: string; elementId?: string; vision?: boolean; nonce: number }
   onCitation: (source: EvidencePublic) => void
+  embedded?: boolean
+  modelPending?: boolean
   onManageSources: (reason?: string) => void
 }
 
@@ -44,6 +53,8 @@ export function ChatPanel({
   draft,
   onCitation,
   onManageSources,
+  embedded = false,
+  modelPending = false,
 }: Props) {
   const cache = useQueryClient()
   const [question, setQuestion] = useState("")
@@ -109,7 +120,7 @@ export function ChatPanel({
   useEffect(() => () => abort.current?.abort(), [])
 
   const send = async () => {
-    if (!question.trim() || generating || !searchable) return
+    if (!question.trim() || generating || !searchable || modelPending) return
     const submitted = question.trim()
     setError("")
     setErrorCode("")
@@ -215,7 +226,14 @@ export function ChatPanel({
     messages.data?.some((message) => message.state === "GENERATING")
   const searchable =
     documents.length > 0 &&
-    documents.every((document) => !!document.current_version_id)
+    documents.every(
+      (document) =>
+        !!document.current_version_id &&
+        !(document.status === "INDEXING" && !document.active_index_id),
+    )
+  const indexing = documents.filter(
+    (document) => document.status === "INDEXING" && !document.active_index_id,
+  )
   const processing = documents.filter(
     (document) => !document.current_version_id,
   )
@@ -238,63 +256,71 @@ export function ChatPanel({
   return (
     <section
       aria-label="Chat con tus documentos"
-      className="relative flex h-full min-h-[360px] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm"
+      className={
+        embedded
+          ? "relative flex h-full min-h-0 flex-col overflow-hidden bg-background"
+          : "relative flex h-full min-h-[360px] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm"
+      }
     >
-      <header className="flex shrink-0 items-center gap-3 border-b px-4 py-4">
-        <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <MessageSquare size={18} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2
-            className="truncate text-sm font-semibold"
-            title={conversation.title}
+      {!embedded && (
+        <header className="flex shrink-0 items-center gap-3 border-b px-4 py-4">
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <MessageSquare size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2
+              className="truncate text-sm font-semibold"
+              title={conversation.title}
+            >
+              {conversation.title}
+            </h2>
+            <p className="mt-1 truncate text-[11px] text-muted-foreground">
+              {documents.length}{" "}
+              {documents.length === 1
+                ? "PDF en esta conversación"
+                : "PDFs en esta conversación"}{" "}
+              · {conversation.provider}
+            </p>
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Exportar Markdown"
+            title="Exportar conversación en Markdown"
+            onClick={() => void exportChat("markdown")}
           >
-            {conversation.title}
-          </h2>
-          <p className="mt-1 truncate text-[11px] text-muted-foreground">
-            {documents.length}{" "}
-            {documents.length === 1
-              ? "PDF en esta conversación"
-              : "PDFs en esta conversación"}{" "}
-            · {conversation.provider}
+            <Download size={16} />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="Exportar JSON"
+            className="px-2 text-xs"
+            onClick={() => void exportChat("json")}
+          >
+            JSON
+          </Button>
+        </header>
+      )}
+      {!embedded && (
+        <div className="flex shrink-0 items-center gap-2 border-b bg-muted/20 px-4 py-2.5">
+          <FileText size={13} className="shrink-0 text-primary" />
+          <p
+            className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
+            title={documents.map((document) => document.title).join(", ")}
+          >
+            {documents.map((document) => document.title).join(" · ") ||
+              "Añade un PDF para preguntar"}
           </p>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-medium text-primary hover:underline"
+            onClick={() => onManageSources()}
+          >
+            Gestionar fuentes
+          </button>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label="Exportar Markdown"
-          title="Exportar conversación en Markdown"
-          onClick={() => void exportChat("markdown")}
-        >
-          <Download size={16} />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label="Exportar JSON"
-          className="px-2 text-xs"
-          onClick={() => void exportChat("json")}
-        >
-          JSON
-        </Button>
-      </header>
-      <div className="flex shrink-0 items-center gap-2 border-b bg-muted/20 px-4 py-2.5">
-        <FileText size={13} className="shrink-0 text-primary" />
-        <p
-          className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
-          title={documents.map((document) => document.title).join(", ")}
-        >
-          {documents.map((document) => document.title).join(" · ") ||
-            "Añade un PDF para preguntar"}
-        </p>
-        <button
-          type="button"
-          className="shrink-0 text-xs font-medium text-primary hover:underline"
-          onClick={() => onManageSources()}
-        >
-          Gestionar fuentes
-        </button>
-      </div>
+      )}
       {processing.length > 0 && (
         <div
           role="status"
@@ -306,9 +332,22 @@ export function ChatPanel({
           </span>
         </div>
       )}
+      {indexing.length > 0 && (
+        <div
+          role="status"
+          className="flex shrink-0 items-start gap-2 bg-primary/5 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground"
+        >
+          <LoaderCircle size={14} className="mt-0.5 shrink-0 animate-spin" />
+          <span>
+            Preparando la búsqueda por significado de todas las páginas de{" "}
+            {indexing.length} PDF. Puedes escribir tu pregunta; podrás enviarla
+            al terminar.
+          </span>
+        </div>
+      )}
       <div
         ref={viewport}
-        className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 py-6 sm:px-5"
+        className="min-h-0 flex-1 space-y-7 overflow-y-auto overscroll-contain px-5 py-7 md:px-10"
         data-testid="chat-messages"
         onScroll={(event) => {
           const area = event.currentTarget
@@ -380,8 +419,8 @@ export function ChatPanel({
             key={message.id}
             className={
               message.role === "user"
-                ? "ml-auto max-w-[94%] rounded-2xl rounded-tr-sm border border-primary/10 bg-primary/[0.07] px-4 py-3"
-                : "min-w-0"
+                ? "ml-auto max-w-[70ch] rounded-2xl rounded-tr-sm border border-primary/10 bg-primary/[0.07] px-4 py-3"
+                : "mx-auto w-full max-w-[70ch] min-w-0"
             }
           >
             <div className="mb-2 flex items-center gap-2">
@@ -620,7 +659,7 @@ export function ChatPanel({
           event.preventDefault()
           void send()
         }}
-        className="shrink-0 border-t bg-muted/10 p-3 sm:p-4"
+        className="mx-auto w-full max-w-[min(100%,54rem)] shrink-0 bg-background px-4 pb-5 pt-3 md:px-8"
       >
         {!!suggestions.data?.questions?.length && !messages.data?.length && (
           <div className="mb-3 max-h-24 space-y-1 overflow-y-auto">
@@ -660,9 +699,11 @@ export function ChatPanel({
             ref={input}
             aria-label="Pregunta sobre tus documentos"
             placeholder={
-              searchable
-                ? "Escribe tu pregunta sobre el PDF…"
-                : "Tu pregunta, cuando el PDF tenga texto disponible…"
+              indexing.length
+                ? "Escribe tu pregunta mientras preparamos la búsqueda…"
+                : searchable
+                  ? "Escribe tu pregunta sobre el PDF…"
+                  : "Tu pregunta, cuando el PDF tenga texto disponible…"
             }
             value={question}
             rows={2}
@@ -698,22 +739,46 @@ export function ChatPanel({
               <Button
                 size="sm"
                 className="rounded-lg"
-                disabled={!question.trim() || !searchable}
+                disabled={!question.trim() || !searchable || modelPending}
               >
                 <ArrowUp size={15} /> Preguntar
               </Button>
             )}
           </div>
         </div>
-        <p className="mt-2 text-center text-[10px] leading-4 text-muted-foreground">
-          {searchable &&
-          documents.some(
-            (document) =>
-              !document.active_index_id && document.current_version_id,
-          )
-            ? "Puedes consultar el texto extraído. Un índice mejora la búsqueda por significado."
-            : "Abre las citas para comprobar cada respuesta en tu PDF."}
-        </p>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="flex-1 text-center text-[10px] leading-4 text-muted-foreground">
+            {searchable &&
+            documents.some(
+              (document) =>
+                !document.active_index_id && document.current_version_id,
+            )
+              ? "Puedes consultar el texto extraído. Un índice mejora la búsqueda por significado."
+              : "Abre las citas para comprobar cada respuesta en tu PDF."}
+          </p>
+          {embedded && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Acciones de la conversación"
+                >
+                  <MoreHorizontal size={15} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => void exportChat("markdown")}>
+                  <Download size={14} /> Exportar Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void exportChat("json")}>
+                  <Download size={14} /> Exportar JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </form>
     </section>
   )

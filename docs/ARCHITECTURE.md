@@ -30,12 +30,19 @@ compatible (HTTPX). Descubrimiento no envía documentos ni carga modelos.
 Una capacidad declarada no se presenta como comprobada mediante inferencia.
 Cloud se autoriza por documento/proveedor/alcance, sin fallback implícito.
 
-Docling es el parser estructural preferido cuando se instala el extra y se
-configuran artefactos locales. El modo `auto` utiliza PyMuPDF si faltan estos
-recursos y lo informa. No hay importación de Torch en la ruta ligera. No se
-instalan ni descargan pesos automáticamente.
+Docling NativePdfPipeline es la ruta base instalada, sin pesos neuronales.
+PyMuPDF complementa tablas y renderiza regiones; Tesseract realiza OCR local.
+El pipeline avanzado requiere artefactos configurados explícitamente. No hay
+importación de Torch en la ruta ligera ni descargas automáticas de modelos.
 
 Frontend: biblioteca, workspaces, visor de una página a la vez, chat SSE,
 fuentes, consentimiento, notas, marcadores, selección de modelos y diagnósticos.
 El módulo de investigación se carga al abrir un workspace. El cliente se genera
 desde OpenAPI, con DTOs públicos separados de secretos y claves de almacenamiento.
+
+La navegación agrupa investigación, trazabilidad, Studio, Laboratorio y Estudio.
+Cada grupo tiene rutas y carga de código independientes. El chat ocupa el área
+principal, con fuentes múltiples y notas a su lado; el lector se abre a demanda.
+Studio transforma copias locales con linaje; learning conserva informes citados,
+fichas y repasos. Trazabilidad consulta la misma persistencia y metadatos medidos
+por ejecución, sin enviar telemetría a un servicio externo.

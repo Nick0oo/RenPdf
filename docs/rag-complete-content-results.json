@@ -1,0 +1,35 @@
+{
+  "synthetic_data_only": true,
+  "private_documents_sent": false,
+  "automatic_local_index": {
+    "state": "READY",
+    "provider": "llamacpp",
+    "model": "embeddinggemma-2-q8_0",
+    "dimensions": 768,
+    "pages": 2,
+    "chunks": 18,
+    "seconds": 15.69
+  },
+  "free_question": {
+    "query": "Cuanto es y que mes fue?",
+    "state": "COMPLETE",
+    "retrieval_mode": "hybrid",
+    "amount_correct": true,
+    "month_correct": true,
+    "citations": 7,
+    "provider": "gemini",
+    "model": "gemini-3.8-flash",
+    "seconds": 7.28
+  },
+  "automatic_visual_rag": {
+    "state": "COMPLETE",
+    "images": 1,
+    "figure_cited": true,
+    "shape_and_color_correct": true,
+    "provider": "gemini",
+    "model": "gemini-3.8-flash",
+    "seconds": 7.46,
+    "manual_region_selection": false
+  },
+  "outcome": "PASSED"
+}

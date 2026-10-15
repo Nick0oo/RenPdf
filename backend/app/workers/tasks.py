@@ -22,6 +22,7 @@ from app.domain import (
     Job,
     now,
 )
+from app.services.documents.automatic_index import plan_local_index, restored_text_state
 from app.services.models.contracts import EmbeddingInput, ProviderError
 from app.services.models.providers import GeminiProvider, get_provider, safe_error
 from app.services.parsing.isolated import PageParser
@@ -55,7 +56,7 @@ def check_cancel(session: Session, job: Job) -> None:
         raise ProviderError("CANCELLED", "Procesamiento cancelado por el usuario.")
 
 
-def extract_document(session: Session, job: Job, document: Document) -> None:
+def extract_document(session: Session, job: Job, document: Document) -> Job | None:
     storage = LocalStorage()
     if job.version_id:
         version = session.get(DocumentVersion, job.version_id)
@@ -190,13 +191,29 @@ def extract_document(session: Session, job: Job, document: Document) -> None:
         )
     )
     session.add_all([version, document])
+    preparation = plan_local_index(session, document, extraction_job=job)
+    version.artifact_manifest = {
+        **version.artifact_manifest,
+        "local_index_preparation": {
+            "state": preparation.state,
+            "reason": preparation.reason,
+            "job_id": str(preparation.job.id) if preparation.job else None,
+        },
+    }
+    session.add(version)
+    # The extraction result and its next outbox job commit atomically.
     update_job(session, job, state="SUCCEEDED", stage="extracted", progress=100)
+    return preparation.job if preparation.created else None
 
 
 def index_document(session: Session, job: Job, document: Document) -> None:
     if not document.current_version_id:
         raise ProviderError(
             "NO_VERSION", "Primero completa la extracción del documento."
+        )
+    if job.version_id and job.version_id != document.current_version_id:
+        raise ProviderError(
+            "VERSION_CHANGED", "La versión cambió; prepara su nuevo índice."
         )
     parameters = job.parameters
     provider_name, model, dimensions = (
@@ -205,7 +222,11 @@ def index_document(session: Session, job: Job, document: Document) -> None:
         parameters["dimensions"],
     )
     require_consent(session, [document.id], provider_name, "embeddings")
-    provider = get_provider(provider_name)
+    provider = (
+        get_provider(provider_name, timeout=int(parameters["timeout_seconds"]))
+        if parameters.get("auto_index_local")
+        else get_provider(provider_name)
+    )
     modality = parameters.get("modality", "text")
     if modality == "multimodal":
         require_consent(session, [document.id], provider_name, "multimodal_embeddings")
@@ -359,6 +380,7 @@ def index_document(session: Session, job: Job, document: Document) -> None:
                     )
                 )
         job.progress = min(95, int(processed / total_chunks * 95))
+        job.checkpoint = processed
         job.stage, job.updated_at = "embedding", now()
         session.add(job)
         session.commit()
@@ -404,12 +426,13 @@ def process_job(job_id: str) -> None:
             ).scalar()
             if not acquired:
                 return
+            next_job = None
             try:
                 update_job(
                     session, job, state="RUNNING", error_code=None, error_message=None
                 )
                 if job.kind == "extract":
-                    extract_document(session, job, document)
+                    next_job = extract_document(session, job, document)
                 elif job.kind == "index":
                     index_document(session, job, document)
                 elif job.kind in {"questions", "summary"}:
@@ -432,6 +455,13 @@ def process_job(job_id: str) -> None:
                         "PARSING_FAILED",
                         "No fue posible procesar el PDF con el motor configurado.",
                     )
+                if (
+                    job.kind == "index"
+                    and job.parameters.get("auto_index_local")
+                    and not document.active_index_id
+                ):
+                    document.status = restored_text_state(session, document)
+                    session.add(document)
                 update_job(
                     session,
                     job,
@@ -441,6 +471,8 @@ def process_job(job_id: str) -> None:
                 )
             finally:
                 lock.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": lock_key})
+            if next_job:
+                enqueue(next_job)
 
 
 @celery_app.task(name="research.process")

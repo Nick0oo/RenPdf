@@ -328,7 +328,7 @@ function DocumentTools({
           provider: (embedding?.provider ?? "gemini") as ProviderName,
           model: embedding?.model ?? "gemini-embedding-2",
           dimensions,
-          modality: multimodal ? "multimodal" : "text",
+          modality: supportsMultimodal && multimodal ? "multimodal" : "text",
         },
       }),
     onSuccess: () => {
@@ -388,7 +388,7 @@ function DocumentTools({
           <div className="col-span-2 flex items-start gap-3">
             <Checkbox
               id="multimodal-index"
-              checked={multimodal}
+              checked={supportsMultimodal && multimodal}
               disabled={!supportsMultimodal}
               onCheckedChange={(checked) => setMultimodal(checked === true)}
             />

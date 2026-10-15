@@ -18,6 +18,7 @@ from app.domain import (
     DocumentElement,
     DocumentIndex,
     DocumentPage,
+    EmbeddingProfile,
     Job,
     now,
 )
@@ -757,6 +758,58 @@ def test_pgvector_hybrid_index_profiles_and_atomic_activation(document, monkeypa
         )
 
 
+def test_multimodal_retrieval_requires_its_own_scope_and_honors_revocation(
+    document, monkeypatch
+):
+    provider = ContractProvider()
+    monkeypatch.setattr(
+        "app.services.rag.retrieval.get_provider", lambda _name: provider
+    )
+    with Session(engine) as session:
+        doc = session.get(Document, document)
+        profile = EmbeddingProfile(
+            provider="gemini",
+            model="contract-embedding",
+            model_version=provider.version,
+            dimensions=3,
+            modality="multimodal",
+            fingerprint=f"scope-contract-{uuid.uuid4()}",
+        )
+        session.add(profile)
+        session.flush()
+        index = DocumentIndex(
+            version_id=doc.current_version_id, profile_id=profile.id, status="READY"
+        )
+        session.add(index)
+        session.flush()
+        chunks = session.exec(
+            select(Chunk).where(Chunk.version_id == doc.current_version_id)
+        ).all()
+        vectors = provider.embed(profile.model, [row.text for row in chunks], 3)
+        for chunk, vector in zip(chunks, vectors, strict=True):
+            session.add(
+                ChunkEmbedding(chunk_id=chunk.id, index_id=index.id, embedding=vector)
+            )
+        doc.active_index_id = index.id
+        session.add(doc)
+        consent = grant(session, document, "multimodal_embeddings")
+        diagnostics = {}
+        evidence, mode = retrieve(session, [document], "solar", diagnostics=diagnostics)
+        assert evidence and mode == "hybrid"
+        assert diagnostics["used_profiles"][0]["modality"] == "multimodal"
+        consent.revoked_at = now()
+        session.add(consent)
+        grant(
+            session, document, "embeddings"
+        )  # Ordinary permission cannot replace revoked multimodal permission.
+        calls = provider.calls
+        diagnostics = {}
+        evidence, mode = retrieve(session, [document], "solar", diagnostics=diagnostics)
+        assert evidence and mode == "lexical"
+        assert provider.calls == calls
+        assert diagnostics["semantic_failures"][0]["error_code"] == "CONSENT_REQUIRED"
+
+
 def test_chat_verified_citations_and_persistence(
     document, client, superuser_token_headers, monkeypatch
 ):
@@ -806,6 +859,15 @@ def test_chat_verified_citations_and_persistence(
     assert rows[-1]["state"] == "COMPLETE"
     assert rows[-1]["citations"][0]["page_number"] == 1
     assert rows[-1]["citations"][0]["element_id"]
+    trace = rows[-1]["usage"]["trace"]
+    assert trace["outcome"] == "complete" and trace["inference_attempted"]
+    assert trace["evidence_count"] == len(trace["sources"]) > 0
+    assert trace["policy"]["model"] == "contract-chat"
+    assert trace["cited_labels"] and trace["document_snapshots"][0][
+        "document_id"
+    ] == str(document)
+    assert trace["retrieval"]["used_profiles"] == []
+    assert all("text" not in source for source in trace["sources"])
     exported = client.get(
         f"/api/v1/conversations/{conversation['id']}/export?format=json",
         headers=superuser_token_headers,

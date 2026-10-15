@@ -24,19 +24,48 @@ Abre [RenPdf](http://localhost:8000). La cuenta y su contraseña están en el `.
 local: FIRST_SUPERUSER y FIRST_SUPERUSER_PASSWORD. No están en documentación ni
 código. En este entorno ya se prepararon las bases dedicadas y los servicios.
 
+Para probar sin recargas automáticas, usa [localhost:8000](http://localhost:8000).
+También puedes ejecutar `npm run build` y `./scripts/serve_preview.ps1`: sirve una
+copia compilada estable en [localhost:5173](http://localhost:5173), con el mismo backend.
+Repetir el script actualiza esa copia sin reiniciar su servidor y conserva los
+assets anteriores para las pestañas abiertas. Recarga manualmente para ver cambios nuevos.
+
 Para desarrollo del frontend: `npm ci --ignore-scripts` y `npm run dev`, en la raíz.
-Hot reload en [localhost:5173](http://localhost:5173). API Swagger en
+Hot reload en [localhost:5174](http://localhost:5174): guardar código puede interrumpir
+un chat activo en esa dirección. API Swagger en
 [localhost:8000/docs](http://localhost:8000/docs).
 
 ## Flujo de investigación
 
-1. Importa un PDF. Su archivo se guarda y el worker extrae contenido sin usar LLM.
+1. Crea un workspace e importa uno o varios PDFs. Sus originales se guardan y el worker extrae contenido sin usar LLM.
 2. Pulsa **Chatear con PDF** para abrir su conversación; puedes añadir más fuentes.
 3. En Modelos selecciona chat, embeddings, visión, preguntas y resumen.
 4. Si usas nube, en Fuentes y permisos autoriza cada propósito para ese proveedor.
-5. Crea el índice para búsqueda semántica y espera su estado persistido. Puedes
-   consultar texto extraído antes con búsqueda léxica; un índice incompleto nunca se activa.
-6. Pregunta, abre las citas, inspecciona regiones, toma notas o exporta la conversación.
+5. Con embeddings locales configurados, el índice de todas las páginas se crea
+   automáticamente tras la extracción. Espera a que termine; puedes escribir el
+   borrador mientras tanto. Indexar en nube sigue siendo una acción explícita con
+   permiso. Un índice incompleto nunca se activa.
+6. Selecciona las fuentes de la pregunta. El chat ocupa el área principal; abre el PDF a demanda para comprobar citas y figuras. Las notas permanecen visibles junto a las fuentes.
+
+## Módulos
+
+La navegación agrupa **Investigación** (workspaces y biblioteca), **Trazabilidad**,
+**Studio**, **Laboratorio**, **Estudio** y **Configuración**. Cada workspace conserva
+su propósito, fuentes, notas, conversaciones y preferencias de modelos.
+
+- Trazabilidad: actividad, respuestas, documentos y permisos. Las nuevas respuestas
+  registran etapas, contexto, perfiles y política aplicada; la historia sin esos
+  datos se muestra como no reportada.
+- Studio: combinar, organizar páginas, rotar y recortar copias, descargar resultados
+  y consultar el linaje. Los originales se conservan. El recorte visual no elimina
+  de forma segura contenido oculto.
+- Laboratorio: comparar respuestas citadas por PDF, guardar preguntas e informes
+  editables y exportarlos como Markdown.
+- Estudio: fichas con fuentes, mazos y repasos con autoevaluación persistente.
+  Las calificaciones las registra la persona.
+
+Las operaciones PDF y las fichas manuales son locales. La comparación con IA usa
+los mismos modelos y permisos por documento que el chat.
 
 Ollama y llama.cpp son opcionales, con endpoints en el entorno. La app no descarga
 modelos automáticamente. En este equipo se instaló llama.cpp CPU con EmbeddingGemma 2
@@ -87,7 +116,13 @@ Evaluación totalmente local: `uv run --package app python scripts/evaluate_loca
 [Seguridad](docs/SECURITY.md) · [Pruebas](docs/TESTING.md) ·
 [Despliegue](docs/DEPLOYMENT.md) · [ADR](docs/DECISIONS.md) ·
 [Limitaciones](docs/KNOWN_LIMITATIONS.md) · [Matriz por fases](docs/IMPLEMENTATION_REPORT.md) ·
-[Auditoría de diseño](docs/DESIGN_AUDIT.md).
+[Auditoría de diseño](docs/DESIGN_AUDIT.md) ·
+[Studio y Trazabilidad](docs/MODULES_STUDIO_TRACE.md) ·
+[Laboratorio y Estudio](docs/LEARNING_MODULES.md).
+
+La preparación del corpus completo se detalla en
+[Índice local automático](docs/AUTOMATIC_LOCAL_INDEX.md); la validación real de
+preguntas libres y figuras está en [Resultados RAG](docs/rag-complete-content-results.json).
 
 Docling nativo y HybridChunker funcionan sin descargar modelos ni tokenizers.
 La extracción avanzada con layout neuronal sigue pendiente de artefactos locales.

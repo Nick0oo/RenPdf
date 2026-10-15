@@ -12,6 +12,13 @@ duplicadas incluso cuando el broker vuelve a entregar una tarea. Un worker solo,
 prefetch 1, dos hilos y rendering selectivo limitan consumo. Los PDFs originales
 no se convierten por completo en imágenes residentes en RAM.
 
+Con AUTO_INDEX_LOCAL habilitado, completar la extracción encola un índice de
+todos los chunks usando la política local configurada del workspace o la cuenta.
+La cola y la versión quedan confirmadas en PostgreSQL; no depende de que el broker
+esté disponible en ese instante. No descarga modelos ni inicia índices cloud.
+Un trabajo incompleto no activa sus vectores. Mientras el primer índice se prepara,
+el chat conserva el borrador y muestra INDEXING, en lugar de una abstención sin fuentes.
+
 Estados: UPLOADED, EXTRACTED, DEGRADED, READY. DEGRADED conserva páginas pendientes
 de OCR. READY requiere índice verificado. Un job fallido sigue FAILED y no activa
 un índice incompleto. La reindexación utiliza artefactos ya extraídos y conserva
@@ -52,4 +59,20 @@ mantienen la abstención. Los PDFs sin selección, pendientes o sin texto tienen
 distintos y visibles.
 
 Los embeddings multimodales usan un perfil separado y permiso adicional.
+La consulta del perfil verifica específicamente `multimodal_embeddings`; revocarlo
+impide llamadas posteriores aunque siga autorizado `embeddings` de texto.
+
+Si ese índice multimodal recupera un elemento de figura, el chat añade su región
+PNG automáticamente junto a los fragmentos de texto y la relaciona con su cita.
+Usa el mismo modelo de chat seleccionado, verifica visión y los permisos de chat
+y visión, sin cambiar proveedor. Máximo dos regiones de 1024 px y 4 MB cada una.
+Un perfil local de texto no contiene embeddings de píxeles: consulta texto/OCR y
+leyendas. Las imágenes detectadas también pueden consultarse desde el lector.
+
+Las nuevas respuestas guardan `usage.trace`: etapas y tiempo transcurrido,
+proveedor/modelo/versión, política efectiva, versiones e índices consultados,
+perfiles realmente usados, modo de recuperación y referencias del contexto.
+No incluye texto de fuentes, prompt, clave o respuesta del proveedor. Los tokens
+se muestran sólo si el proveedor los reporta. Cancelaciones y fallos conservan
+el punto alcanzado; los datos ausentes en respuestas históricas quedan ausentes.
 Consulte KNOWN_LIMITATIONS.md, evaluation-results.json y local-evaluation-results.json.

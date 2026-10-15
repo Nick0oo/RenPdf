@@ -128,3 +128,5 @@ class NewPassword(SQLModel):
 
 # Register domain metadata for Alembic without replacing template auth models.
 from app import domain as domain  # noqa: E402
+from app import learning_domain as learning_domain  # noqa: E402
+from app import module_domain as module_domain  # noqa: E402

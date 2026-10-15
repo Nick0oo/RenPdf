@@ -1,0 +1,100 @@
+{
+  "verification_date": "2026-10-14",
+  "private_content_exported": false,
+  "cloud_processing_used": false,
+  "original_file_hash_preserved": true,
+  "document_version_preserved": true,
+  "cloud_consents_unchanged": true,
+  "existing_user_chats_unchanged": true,
+  "extraction": {
+    "pages": 1,
+    "persisted_chunks": 33,
+    "original_digital_text_characters": 434,
+    "embedded_images": 1,
+    "figure_elements": 1,
+    "largest_image_page_fraction": 0.0034,
+    "ocr_pages": 0,
+    "private_image_inference_tested": false
+  },
+  "local_index": {
+    "transport": "HTTP localhost:8000",
+    "state": "READY",
+    "provider": "llamacpp",
+    "model": "embeddinggemma-2-q8_0",
+    "model_version": "2188ac1deca4b77dffefd603c2776a9d76d9d74ec01841392982ebb840b09135",
+    "dimensions": 768,
+    "modality": "text",
+    "persisted_vectors": 33,
+    "seconds": 11.83,
+    "vector_count_matches_chunk_count": true
+  },
+  "retrieval": {
+    "compound_amount_and_month_question": true,
+    "before_index_mode": "lexical_expanded",
+    "before_index_sources": 6,
+    "before_index_amount_present": false,
+    "after_index_mode": "hybrid",
+    "after_index_with_reading_neighbors_sources": 22,
+    "selected_source_text_characters": 225,
+    "issue_date_and_total_exact_value_present": true,
+    "total_and_amount_due_labels_present": true,
+    "source_and_version_isolation_verified": true
+  },
+  "local_inference": {
+    "transport": "direct provider call with chat system, prompt and retrieved evidence",
+    "provider": "ollama",
+    "model": "gemma4:e2b",
+    "month_only_question": {
+      "stream_state": "COMPLETE",
+      "goal_satisfied": true,
+      "validated_citations": 2,
+      "issue_month_correct": true,
+      "issue_date_cited": true,
+      "sources": 9,
+      "seconds": 48.97
+    },
+    "compound_question": {
+      "stream_state": "COMPLETE",
+      "goal_satisfied": false,
+      "outcome": "TOTAL_NOT_VALIDATED",
+      "validated_citations": 2,
+      "issue_month_correct": true,
+      "total_value_validated": false,
+      "total_value_cited": false,
+      "sources": 22,
+      "seconds": 71.11
+    },
+    "compound_question_with_proposed_parts_instruction": {
+      "production_prompt_changed": false,
+      "stream_state": "COMPLETE",
+      "goal_satisfied": false,
+      "outcome": "PARTIAL_MONTH_ONLY",
+      "validated_citations": 2,
+      "issue_month_correct": true,
+      "total_value_validated": false,
+      "total_value_cited": false,
+      "seconds": 72.03
+    }
+  },
+  "regression_validation": {
+    "invented_pdf_fixtures_only": true,
+    "database": "dedicated_test_database",
+    "tests_passed": 14,
+    "seconds": 151.13,
+    "checks": [
+      "Spanish invoice question against English digital fields without embeddings",
+      "Separate field labels and numeric/date values receive exact source citations",
+      "Hybrid nearest-label results retain adjacent total and date values",
+      "Unselected documents and unrelated pages are excluded",
+      "Bounded reading windows preserve source spans and geometry",
+      "Cloud consent and multimodal permission revocation remain enforced",
+      "Existing lexical and partial overview regressions remain passing"
+    ]
+  },
+  "limitations": [
+    "The small local chat model omitted the amount in the compound question despite both requested fields being present in retrieved context.",
+    "No private invoice was sent to Gemini for validation.",
+    "The private embedded image was not analyzed by a vision model in this check.",
+    "Retrieval changes require the final backend image deployment; a completed stream alone does not establish answer correctness."
+  ]
+}

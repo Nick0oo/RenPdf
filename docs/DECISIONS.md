@@ -42,3 +42,21 @@
     e historial, abre chat primero en móvil y agrupa ajustes en panel shadcn.
     La recuperación de assets permite una recarga por bundle; un fallo persistente
     conserva una salida a biblioteca y no borra la sesión HttpOnly.
+15. **Chat como área principal y navegación por módulos.** PDF amplio a demanda,
+    fuentes múltiples y notas visibles; modelos en combobox shadcn buscable.
+    Investigación agrupa workspaces/biblioteca; configuración y cuenta tienen rutas propias.
+16. **Linaje PDF local.** Studio crea copias con hashes y páginas de origen.
+    Conserva originales y no hereda permisos cloud. Recortar cambia el área visible,
+    sin prometer eliminación segura del contenido.
+17. **Trazabilidad medida.** Metadatos reales por respuesta, sin prompts ni secretos;
+    campos ausentes permanecen no reportados, especialmente en el historial anterior.
+18. **Laboratorio y aprendizaje con evidencia.** Comparaciones conservan respuestas
+    por PDF, informes citados y fichas con fuentes; repasos son autoevaluación manual.
+    Reutilizan los controles de propietario, routing y permisos existentes.
+19. **Ingesta con índice local automático.** La extracción confirma una tarea
+    duradera para vectorizar todos los chunks cuando hay política local configurada.
+    Mantiene búsqueda semántica libre, sin tablas de preguntas/respuestas. Los modelos
+    no se descargan y cloud sigue requiriendo una acción y permisos explícitos.
+20. **Recuperación visual efectiva.** Un índice multimodal autorizado puede recuperar
+    figuras y el chat recibe sus PNG reales, vinculados a citas. No cambia proveedor
+    ni convierte un perfil de texto en embeddings de píxeles.

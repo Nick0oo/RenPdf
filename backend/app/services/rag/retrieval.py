@@ -52,6 +52,35 @@ OVERVIEW_WORDS = set(
     """.split()
 )
 
+# A lexical-only PDF is still usable when common field names differ from the
+# question's language. These are search alternatives, never inferred answers or
+# a translation of the document. Expand only after ordinary topic matches fail.
+FIELD_TERMS = (
+    frozenset(("factura", "facturas", "invoice", "invoices", "bill", "billing")),
+    frozenset(("mes", "month", "fecha", "date", "periodo", "period")),
+    frozenset(("fecha", "date", "emision", "expedicion", "issued", "issue")),
+    frozenset(("vencimiento", "vence", "due")),
+    frozenset(("numero", "number")),
+    frozenset(("importe", "monto", "amount", "total")),
+    frozenset(("impuesto", "impuestos", "iva", "tax", "taxes")),
+    frozenset(("pago", "payment", "paid")),
+    frozenset(("cliente", "customer", "client")),
+)
+
+
+def field_search_terms(terms: Sequence[str]) -> list[str]:
+    expanded = []
+    for term in terms:
+        normalized = "".join(
+            letter
+            for letter in unicodedata.normalize("NFD", term)
+            if unicodedata.category(letter) != "Mn"
+        )
+        for group in FIELD_TERMS:
+            if normalized in group:
+                expanded.extend(sorted(group - {normalized}))
+    return list(dict.fromkeys(expanded))[:64]
+
 
 def is_document_overview(question: str) -> bool:
     """Recognize an untargeted overview without treating factual questions as one."""
@@ -207,7 +236,7 @@ def lexical_keywords(question: str) -> list[str]:
 
 def lexical_candidates(
     session: Session, versions: list[uuid.UUID], question: str
-) -> tuple[list[uuid.UUID], bool]:
+) -> tuple[list[uuid.UUID], str]:
     """Prefer the exact query and backfill with ranked, disjunctive topic matches.
 
     A natural-language question often contains a verb absent from the PDF. The
@@ -232,7 +261,7 @@ def lexical_candidates(
     )
     terms = lexical_keywords(question)
     if len(strict) >= 30 or not terms:
-        return strict, False
+        return strict, "lexical"
     relaxed = list(
         session.connection()
         .execute(
@@ -242,7 +271,96 @@ def lexical_candidates(
         .scalars()
         .all()
     )
-    return list(dict.fromkeys(strict + relaxed)), bool(relaxed and not strict)
+    if strict or relaxed:
+        return list(dict.fromkeys(strict + relaxed)), (
+            "lexical_relaxed" if relaxed and not strict else "lexical"
+        )
+    alternatives = field_search_terms(terms)
+    if not alternatives:
+        return [], "lexical"
+    expanded = list(
+        session.connection()
+        .execute(
+            statement,
+            {"versions": versions, "question": " OR ".join(alternatives)},
+        )
+        .scalars()
+        .all()
+    )
+    return expanded, "lexical_expanded" if expanded else "lexical"
+
+
+def adjacent_field_evidence(
+    session: Session,
+    documents: Sequence[Document],
+    ranked: list[tuple[uuid.UUID, float]],
+) -> list[EvidencePublic]:
+    """Keep a field's short neighboring values, each with its exact provenance.
+
+    Native PDFs can store a date label and its value as separate text elements.
+    Only expand real matching chunks on their own pages, by two reading-order
+    neighbors. An unrelated query never receives a generic page sample.
+    """
+    if not ranked:
+        return []
+    neighbors = (
+        session.connection()
+        .execute(
+            text("""
+          WITH positions AS (
+            SELECT c.id, p.id AS page_id,
+              row_number() OVER (PARTITION BY p.id ORDER BY
+                min(coalesce((e.bbox->>'y')::double precision, 1)),
+                min(coalesce((e.bbox->>'x')::double precision, 0)), c.id) AS position
+            FROM chunk c JOIN chunkprovenance cp ON cp.chunk_id=c.id
+            JOIN documentelement e ON e.id=cp.element_id
+            JOIN documentpage p ON p.id=e.page_id
+            WHERE c.version_id=ANY(:versions) AND length(trim(e.text))>0
+            GROUP BY c.id,p.id
+          )
+          SELECT DISTINCT neighbor.id FROM positions seed JOIN positions neighbor
+            ON neighbor.page_id=seed.page_id
+            AND neighbor.position BETWEEN seed.position-2 AND seed.position+2
+          WHERE seed.id=ANY(:seeds)
+          ORDER BY neighbor.id
+        """),
+            {
+                "versions": [doc.current_version_id for doc in documents],
+                "seeds": [identifier for identifier, _score in ranked],
+            },
+        )
+        .scalars()
+    )
+    candidates = ranked + [(identifier, 0.0) for identifier in neighbors]
+    result: list[EvidencePublic] = []
+    seen: set[tuple[uuid.UUID, uuid.UUID]] = set()
+    characters = 0
+    for identifier, score in candidates:
+        for item in evidence_for_chunk(session, identifier, score=score):
+            identity = (item.chunk_id, item.element_id)
+            if (
+                identity in seen
+                or not item.text.strip()
+                or len(result) >= 48
+                or characters + len(item.text) > 6000
+            ):
+                continue
+            seen.add(identity)
+            result.append(item)
+            characters += len(item.text)
+    document_order = {doc.id: index for index, doc in enumerate(documents)}
+    result.sort(
+        key=lambda item: (
+            document_order[item.document_id],
+            item.page_number,
+            item.bbox.y if item.bbox else 1,
+            item.bbox.x if item.bbox else 0,
+            str(item.chunk_id),
+        )
+    )
+    for label, item in enumerate(result, 1):
+        item.label = label
+    return result
 
 
 def reciprocal_rank_fusion(
@@ -311,7 +429,10 @@ def retrieve(
     *,
     top_k: int = 8,
     selected_element_id: uuid.UUID | None = None,
+    diagnostics: dict[str, Any] | None = None,
 ) -> tuple[list[EvidencePublic], str]:
+    if diagnostics is not None:
+        diagnostics.update(used_profiles=[], semantic_failures=[])
     if not document_ids:
         return [], "lexical"
     documents = session.exec(
@@ -326,7 +447,7 @@ def retrieve(
         return [], "lexical"
     if selected_element_id is None and is_document_overview(question):
         return overview_evidence(session, documents, top_k), "document_overview"
-    lexical, relaxed = lexical_candidates(session, versions, question)
+    lexical, lexical_mode = lexical_candidates(session, versions, question)
     rankings: list[list[uuid.UUID]] = [list(lexical)]
     semantic_used = False
     grouped: dict[uuid.UUID, list[tuple[Document, DocumentIndex]]] = defaultdict(list)
@@ -348,13 +469,25 @@ def retrieve(
             continue
         try:
             require_consent(
-                session, [doc.id for doc, _idx in pairs], profile.provider, "embeddings"
+                session,
+                [doc.id for doc, _idx in pairs],
+                profile.provider,
+                "multimodal_embeddings"
+                if profile.modality == "multimodal"
+                else "embeddings",
             )
             provider = get_provider(profile.provider)
             descriptor = next(
                 (item for item in provider.discover() if item.id == profile.model), None
             )
             if not descriptor or descriptor.version != profile.model_version:
+                if diagnostics is not None:
+                    diagnostics["semantic_failures"].append(
+                        {
+                            "profile_id": str(profile.id),
+                            "error_code": "MODEL_PROFILE_MISMATCH",
+                        }
+                    )
                 continue  # A changed model requires a new profile, even at equal dimensions.
             query = provider.embed(
                 profile.model, [question], profile.dimensions, query=True
@@ -373,7 +506,23 @@ def retrieve(
             ).all()
             rankings.append(list(rows))
             semantic_used = True
-        except ProviderError:
+            if diagnostics is not None:
+                diagnostics["used_profiles"].append(
+                    {
+                        "profile_id": str(profile.id),
+                        "provider": profile.provider,
+                        "model": profile.model,
+                        "model_version": profile.model_version,
+                        "dimensions": profile.dimensions,
+                        "modality": profile.modality,
+                        "index_ids": [str(idx.id) for _doc, idx in pairs],
+                    }
+                )
+        except ProviderError as error:
+            if diagnostics is not None:
+                diagnostics["semantic_failures"].append(
+                    {"profile_id": str(profile.id), "error_code": error.code}
+                )
             # No data went to another provider. Lexical degradation is explicit in results.
             continue
     if selected_element_id:
@@ -386,11 +535,16 @@ def retrieve(
             )
         ).all()  # type: ignore[attr-defined]
         rankings.insert(0, list(selected))
+    ranked = reciprocal_rank_fusion(rankings)[:top_k]
+    if (
+        lexical_mode == "lexical_expanded" or semantic_used
+    ) and not selected_element_id:
+        return adjacent_field_evidence(session, documents, ranked), (
+            "hybrid" if semantic_used else lexical_mode
+        )
     result = []
-    for identifier, score in reciprocal_rank_fusion(rankings)[:top_k]:
+    for identifier, score in ranked:
         for item in evidence_for_chunk(session, identifier, score=score):
             item.label = len(result) + 1
             result.append(item)
-    return result, "hybrid" if semantic_used else (
-        "lexical_relaxed" if relaxed else "lexical"
-    )
+    return result, "hybrid" if semantic_used else lexical_mode

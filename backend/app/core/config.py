@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     DEFAULT_EMBEDDING_PROVIDER: str = "gemini"
     DEFAULT_EMBEDDING_MODEL: str = "gemini-embedding-2"
     EMBEDDING_DIMENSIONS: int = 768
+    AUTO_INDEX_LOCAL: bool = True
     MAX_UPLOAD_SIZE_MB: int = 50
     MAX_DOCUMENT_PAGES: int = 500
     MAX_CONCURRENT_DOCUMENT_JOBS: int = 1

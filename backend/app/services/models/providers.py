@@ -124,6 +124,7 @@ class BaseProvider:
     is_cloud = False
     configured = True
     last_usage: TokenUsage | None = None
+    last_finish_reason: str | None = None
 
     def discover(self) -> list[ModelDescriptor]:
         raise NotImplementedError
@@ -465,9 +466,15 @@ class OllamaProvider(HttpProvider):
                     if line:
                         value = json.loads(line)
                         if value.get("done"):
-                            self.last_usage = TokenUsage(
-                                input_tokens=value.get("prompt_eval_count", 0),
-                                output_tokens=value.get("eval_count", 0),
+                            self.last_finish_reason = value.get("done_reason")
+                            self.last_usage = (
+                                TokenUsage(
+                                    input_tokens=value.get("prompt_eval_count", 0),
+                                    output_tokens=value.get("eval_count", 0),
+                                )
+                                if "prompt_eval_count" in value
+                                and "eval_count" in value
+                                else None
                             )
                         if value.get("error"):
                             raise ProviderError(

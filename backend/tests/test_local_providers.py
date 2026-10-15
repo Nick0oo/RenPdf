@@ -100,6 +100,7 @@ def test_ollama_cpu_limits_disable_thinking_and_pass_structured_output(monkeypat
     assert seen[0]["options"]["temperature"] == 0
     assert seen[0]["options"]["num_ctx"] == settings.OLLAMA_NUM_CTX
     assert seen[0]["format"] == request.json_schema
+    assert provider.last_usage is None  # Missing counters are not actual zero usage.
 
 
 def test_embedding_only_llamacpp_is_not_advertised_as_chat(monkeypatch):

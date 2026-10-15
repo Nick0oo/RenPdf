@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
+  BookOpen,
   ChevronDown,
+  FilePlus2,
   FileText,
   MessageSquare,
   Plus,
+  Settings2,
   Shield,
+  StickyNote,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -19,6 +23,18 @@ import type {
 } from "@/client"
 import { ChatService, ProvidersService, WorkspacesService } from "@/client"
 import { Button } from "@/components/ui/button"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { ChatPanel } from "@/features/chat/ChatPanel"
 import { ProviderModelSelect } from "@/features/models/ProviderModelSelect"
 import { PdfReader } from "@/features/pdf-viewer/PdfReader"
@@ -28,8 +44,9 @@ import {
   modelValue,
   type ProviderName,
 } from "./api"
-import { ChoiceSelect } from "./ChoiceSelect"
-import { chatDate, documentStatus } from "./presentation"
+import { chatDate } from "./presentation"
+import { WorkspaceContext } from "./WorkspaceContext"
+import { WorkspaceProperties } from "./WorkspaceProperties"
 import { type SettingsTab, WorkspaceSettings } from "./WorkspaceSettings"
 
 export function WorkspaceDesk({
@@ -83,8 +100,9 @@ export function WorkspaceDesk({
     entryDocumentId ? [entryDocumentId] : null,
   )
   const [source, setSource] = useState<EvidencePublic>()
-  const [mobilePanel, setMobilePanel] = useState("chat")
-  const [allChats, setAllChats] = useState(false)
+  const [readerOpen, setReaderOpen] = useState(false)
+  const [contextOpen, setContextOpen] = useState(false)
+  const [propertiesOpen, setPropertiesOpen] = useState(false)
   const openedChat = useRef(false)
   const [controls, setControls] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("fuentes")
@@ -96,7 +114,6 @@ export function WorkspaceDesk({
     nonce: number
   }>()
   const [privacyProvider, setPrivacyProvider] = useState<ProviderName>("gemini")
-  const [split, setSplit] = useState(45)
   const activeDocument =
     documents.data?.find((document) => document.id === documentId) ??
     documents.data?.[0]
@@ -119,19 +136,6 @@ export function WorkspaceDesk({
     void cache.invalidateQueries({ queryKey: ["documents"] })
   }
   const fail = (error: unknown) => toast.error(errorMessage(error))
-  const attach = useMutation({
-    mutationFn: (document_id: string) =>
-      WorkspacesService.attachDocument({
-        path: { workspace_id: workspace.id, document_id },
-      }),
-    onSuccess: (_response, document_id) => {
-      invalidateDocuments()
-      setSelectedIds((ids) =>
-        ids === null ? null : [...new Set([...ids, document_id])],
-      )
-    },
-    onError: fail,
-  })
   const newConversation = useMutation({
     mutationFn: () => {
       const preferred =
@@ -164,8 +168,8 @@ export function WorkspaceDesk({
     },
     onSuccess: (response) => {
       setConversationId(response.data.id)
-      setMobilePanel("chat")
-      void cache.invalidateQueries({
+      setReaderOpen(false)
+      return cache.invalidateQueries({
         queryKey: ["conversations", workspace.id],
       })
     },
@@ -211,7 +215,13 @@ export function WorkspaceDesk({
   })
   const onPage = useCallback((page: number) => setCurrentPage(page), [])
   useEffect(() => {
-    if (!openChatOnLoad || conversations.isPending || openedChat.current) return
+    if (
+      !openChatOnLoad ||
+      conversations.isPending ||
+      routing.isPending ||
+      openedChat.current
+    )
+      return
     openedChat.current = true
     if (!conversations.data?.length && !conversations.error)
       newConversation.mutate()
@@ -220,6 +230,7 @@ export function WorkspaceDesk({
     conversations.isPending,
     conversations.data,
     conversations.error,
+    routing.isPending,
     newConversation,
   ])
   const manageSources = (reason?: string) => {
@@ -244,155 +255,223 @@ export function WorkspaceDesk({
   const citation = (evidence: EvidencePublic) => {
     setDocumentId(evidence.document_id)
     setSource(evidence)
-    setMobilePanel("pdf")
+    setReaderOpen(true)
   }
   const ask = (text: string, element?: ElementPublic, vision?: boolean) => {
     setDraft({ text, elementId: element?.id, vision, nonce: Date.now() })
-    setMobilePanel("chat")
+    setReaderOpen(false)
     if (!conversation && !newConversation.isPending) newConversation.mutate()
   }
+  const openPdf = (id: string) => {
+    setDocumentId(id)
+    setReaderOpen(true)
+  }
+  const context = (
+    <WorkspaceContext
+      workspaceId={workspace.id}
+      documents={documents.data ?? []}
+      library={library}
+      activeDocument={activeDocument}
+      selectedIds={selectedIds}
+      onSelectionChange={setSelectedIds}
+      onDocumentChange={(id) => {
+        setDocumentId(id)
+        setSource(undefined)
+      }}
+      onDocumentsChange={invalidateDocuments}
+      onOpenPdf={openPdf}
+      currentPage={currentPage}
+      onSaveNote={(text) =>
+        addNote.mutateAsync({ page: currentPage, kind: "note", text })
+      }
+      onCitation={citation}
+    />
+  )
   return (
-    <div className="space-y-4">
-      <header className="flex flex-wrap items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Volver a biblioteca"
-          onClick={onBack}
-        >
-          <ArrowLeft size={18} />
-        </Button>
-        <div className="mr-auto min-w-0 flex-1 basis-[calc(100%_-_3.25rem)] md:basis-auto">
-          <h1 className="truncate text-xl font-semibold" title={workspace.name}>
-            {workspace.name}
-          </h1>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            setSettingsTab("fuentes")
-            setControls(true)
-          }}
-        >
-          <Shield size={14} /> Fuentes y permisos
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          aria-label="Nueva conversación"
-          disabled={newConversation.isPending}
-          onClick={() => {
-            setDraft(undefined)
-            newConversation.mutate()
-          }}
-        >
-          <Plus size={16} /> Nuevo chat
-        </Button>
-        {conversation && (
-          <ProviderModelSelect
-            providers={providers}
-            task="chat"
-            label="Modelo de conversación"
-            value={modelValue(conversation.provider, conversation.model)}
-            onValueChange={(value) => changeModel.mutate(value)}
-            disabled={changeModel.isPending}
-            size="sm"
-            className="max-w-64"
-          />
-        )}
-      </header>
-      {!!conversations.data?.length && (
-        <section
-          aria-label="Historial de chats"
-          className="rounded-xl border bg-muted/20 p-3"
-        >
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 text-xs font-medium">
-              <MessageSquare size={14} /> Tus conversaciones
-            </h2>
-            {
-              <button
-                type="button"
-                className={`items-center gap-1 text-xs text-muted-foreground hover:text-foreground ${conversations.data.length > 3 || allChats ? "flex" : "flex sm:hidden"}`}
-                onClick={() => setAllChats(!allChats)}
-              >
-                {allChats
-                  ? "Ocultar historial"
-                  : `Cambiar chat (${conversations.data.length})`}{" "}
-                <ChevronDown size={13} />
-              </button>
-            }
-          </div>
-          <div
-            className={`${allChats ? "grid" : "hidden sm:grid"} max-h-48 gap-2 overflow-auto sm:grid-cols-2 lg:grid-cols-3`}
-          >
-            {(allChats
-              ? conversations.data
-              : conversations.data.slice(0, 3)
-            ).map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                aria-pressed={conversation?.id === item.id}
-                onClick={() => {
-                  setConversationId(item.id)
-                  setMobilePanel("chat")
-                  setDraft(undefined)
-                }}
-                className={`min-w-0 rounded-lg border px-3 py-2 text-left transition-colors ${conversation?.id === item.id ? "border-primary/50 bg-primary/5" : "border-transparent bg-background hover:border-primary/30"}`}
-              >
-                <span className="block truncate text-sm font-medium">
-                  {item.title}
-                </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {chatDate(item.created_at)} ·{" "}
-                  {conversation?.id === item.id
-                    ? "Chat abierto"
-                    : "Continuar chat"}
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-      <div className="flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
-          {documents.data?.map((document) => (
+    <div className="flex h-full min-h-0 flex-col bg-background">
+      <header className="shrink-0 border-b px-5 py-5 md:px-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
             <button
               type="button"
-              key={document.id}
-              onClick={() => {
-                setDocumentId(document.id)
-                setSource(undefined)
-              }}
-              className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs ${document.id === activeDocument?.id ? "border-primary bg-primary/5 text-primary" : "bg-background"}`}
+              onClick={onBack}
+              className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
-              <FileText size={14} />
-              <span className="max-w-48 truncate" title={document.title}>
-                {document.title}
-              </span>
-              <span className="opacity-60">
-                {documentStatus(document.status)}
-              </span>
+              <ArrowLeft size={13} /> Workspaces
             </button>
-          ))}
+            <h1
+              className="line-clamp-2 text-xl font-semibold tracking-tight sm:truncate sm:text-2xl"
+              title={workspace.name}
+            >
+              {workspace.name}
+            </h1>
+            <p className="mt-2 max-w-2xl truncate text-sm text-muted-foreground">
+              {workspace.description ||
+                "Tu investigación, tus conversaciones y las ideas que estás construyendo."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label="Fuentes y permisos"
+              onClick={() => manageSources()}
+            >
+              <Shield size={14} />{" "}
+              <span className="hidden sm:inline">Fuentes y permisos</span>
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              aria-label="Configuración del workspace"
+              onClick={() => setPropertiesOpen(true)}
+            >
+              <Settings2 size={16} />
+            </Button>
+          </div>
         </div>
-        <ChoiceSelect
-          label="Añadir documento al workspace"
-          placeholder="+ Añadir fuente"
-          value=""
-          onValueChange={(id) => attach.mutate(id)}
-          disabled={attach.isPending}
-          options={library
-            .filter(
-              (document) =>
-                !documents.data?.some((item) => item.id === document.id),
-            )
-            .map((document) => ({ value: document.id, label: document.title }))}
-          size="sm"
-          className="w-36 shrink-0 md:w-48"
-        />
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <FileText size={14} /> {activeDocs.length} de{" "}
+            {documents.data?.length ?? 0} fuentes activas
+          </span>
+          <span className="hidden h-4 border-l sm:block" />
+          {conversation && (
+            <ProviderModelSelect
+              providers={providers}
+              task="chat"
+              label="Modelo de conversación"
+              value={modelValue(conversation.provider, conversation.model)}
+              onValueChange={(value) => changeModel.mutate(value)}
+              disabled={changeModel.isPending}
+              size="sm"
+              className="max-w-xs"
+            />
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!activeDocument}
+            onClick={() => {
+              if (activeDocument) openPdf(activeDocument.id)
+            }}
+          >
+            <BookOpen size={14} /> Abrir PDF
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto xl:hidden"
+            onClick={() => setContextOpen(true)}
+          >
+            <StickyNote size={14} /> Fuentes y notas
+          </Button>
+        </div>
+      </header>
+      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex min-h-0 min-w-0 flex-col">
+          <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b px-5 md:px-8">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="max-w-[min(70%,26rem)] justify-start px-0"
+                  aria-label="Historial de chats"
+                >
+                  <MessageSquare size={15} />
+                  <span className="truncate">
+                    {conversation?.title ?? "Conversaciones"}
+                  </span>
+                  <ChevronDown size={13} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[min(24rem,calc(100vw-2rem))]">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold">Tus conversaciones</h2>
+                  <span className="text-xs text-muted-foreground">
+                    {conversations.data?.length ?? 0}
+                  </span>
+                </div>
+                <div className="max-h-80 space-y-1 overflow-auto">
+                  {conversations.data?.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      aria-pressed={conversation?.id === item.id}
+                      onClick={() => {
+                        setConversationId(item.id)
+                        setDraft(undefined)
+                      }}
+                      className={`block w-full rounded-lg px-3 py-3 text-left hover:bg-muted ${conversation?.id === item.id ? "bg-primary/5 text-primary" : ""}`}
+                    >
+                      <span className="block truncate text-sm font-medium">
+                        {item.title}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {chatDate(item.created_at)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="Nueva conversación"
+              disabled={newConversation.isPending}
+              onClick={() => {
+                setDraft(undefined)
+                newConversation.mutate()
+              }}
+            >
+              <Plus size={14} /> Nuevo chat
+            </Button>
+          </div>
+          {conversation ? (
+            <ChatPanel
+              embedded
+              modelPending={changeModel.isPending || newConversation.isPending}
+              key={conversation.id}
+              conversation={conversation}
+              documents={activeDocs}
+              draft={draft}
+              onCitation={citation}
+              onManageSources={manageSources}
+            />
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
+              <MessageSquare size={32} className="mb-5 text-primary" />
+              <h2 className="text-2xl font-semibold">
+                Abre la conversación de tu investigación
+              </h2>
+              <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+                Añade tus PDFs y pregunta sobre lo que necesitas comprender. Las
+                respuestas citadas volverán a su página original.
+              </p>
+              <Button
+                className="mt-6"
+                disabled={newConversation.isPending || !activeDocument}
+                onClick={() => newConversation.mutate()}
+              >
+                Iniciar conversación
+              </Button>
+              {!activeDocument && (
+                <Button
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => setContextOpen(true)}
+                >
+                  <FilePlus2 size={15} /> Importar PDFs
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+        <aside className="hidden min-h-0 overflow-y-auto border-l bg-muted/15 p-5 xl:block">
+          {context}
+        </aside>
       </div>
       <WorkspaceSettings
         open={controls}
@@ -418,96 +497,63 @@ export function WorkspaceDesk({
         }
         onCitation={citation}
       />
-      <div className="flex gap-2 md:hidden">
-        <Button
-          variant={mobilePanel === "pdf" ? "default" : "outline"}
-          onClick={() => setMobilePanel("pdf")}
-        >
-          Documento
-        </Button>
-        <Button
-          variant={mobilePanel === "chat" ? "default" : "outline"}
-          onClick={() => setMobilePanel("chat")}
-        >
-          Chat
-        </Button>
-      </div>
-      {!activeDocument ? (
-        <div className="rounded-xl border border-dashed p-16 text-center text-sm text-muted-foreground">
-          Añade tu primer documento para comenzar.
-        </div>
-      ) : (
-        <div
-          className="research-split grid gap-3"
-          style={{ "--pdf-width": `${split}%` } as React.CSSProperties}
-        >
-          <div
-            className={`h-[72vh] min-h-[500px] min-w-0 ${mobilePanel !== "pdf" ? "hidden md:block" : ""}`}
-          >
-            <PdfReader
-              document={activeDocument}
-              citation={
-                source?.document_id === activeDocument.id ? source : undefined
-              }
-              onAsk={ask}
-              onPage={onPage}
-              onHighlight={(page, bbox, text) =>
-                addNote.mutate({ page, bbox, text, kind: "highlight" })
-              }
-              onBookmark={(page) =>
-                addNote.mutate({ page, kind: "bookmark", text: "" })
-              }
-            />
-          </div>
-          <div className="hidden w-2 cursor-col-resize items-center justify-center md:flex">
-            <input
-              aria-label="Ajustar ancho del visor"
-              type="range"
-              min={35}
-              max={65}
-              value={split}
-              onChange={(e) => setSplit(Number(e.target.value))}
-              className="h-24 w-2 [writing-mode:vertical-lr]"
-            />
-          </div>
-          <div
-            className={`h-[72vh] min-h-[520px] min-w-0 ${mobilePanel !== "chat" ? "hidden md:block" : ""}`}
-          >
-            {conversation ? (
-              <ChatPanel
-                key={conversation.id}
-                conversation={conversation}
-                documents={activeDocs}
-                draft={draft}
-                onCitation={citation}
-                onManageSources={manageSources}
+      <WorkspaceProperties
+        workspace={workspace}
+        providers={providers}
+        open={propertiesOpen}
+        onOpenChange={setPropertiesOpen}
+      />
+      <Sheet open={contextOpen} onOpenChange={setContextOpen}>
+        <SheetContent className="w-full gap-0 sm:max-w-md">
+          <SheetHeader className="border-b p-6">
+            <SheetTitle>Fuentes y notas</SheetTitle>
+            <SheetDescription>
+              Los documentos y las ideas de este workspace.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto p-6">{context}</div>
+        </SheetContent>
+      </Sheet>
+      <Sheet open={readerOpen} onOpenChange={setReaderOpen}>
+        <SheetContent className="w-full gap-0 sm:max-w-[min(72rem,92vw)]">
+          <SheetHeader className="border-b p-5 pr-12">
+            <SheetTitle className="truncate">
+              {activeDocument?.title ?? "Lector PDF"}
+            </SheetTitle>
+            <SheetDescription>
+              Lee la evidencia y vuelve al chat al terminar.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 p-3 md:p-5">
+            {activeDocument && (
+              <PdfReader
+                document={activeDocument}
+                citation={
+                  source?.document_id === activeDocument.id ? source : undefined
+                }
+                onAsk={ask}
+                onPage={onPage}
+                onHighlight={(page, bbox, text) =>
+                  addNote.mutate({ page, bbox, text, kind: "highlight" })
+                }
+                onBookmark={(page) =>
+                  addNote.mutate({ page, kind: "bookmark", text: "" })
+                }
               />
-            ) : (
-              <div className="grid h-full place-content-center rounded-xl border bg-muted/10 text-center">
-                <p className="mb-3 text-sm text-muted-foreground">
-                  Tu PDF está listo para leer.
-                </p>
-                <Button
-                  disabled={newConversation.isPending}
-                  onClick={() => newConversation.mutate()}
-                >
-                  Iniciar conversación
-                </Button>
-              </div>
             )}
           </div>
-        </div>
-      )}
-      {source?.text && (
-        <aside className="rounded-lg border-l-2 border-primary bg-primary/5 px-4 py-3 text-xs">
-          <strong>
-            {source.document_title} · página {source.page_number}
-          </strong>
-          <p className="mt-1 line-clamp-3 text-muted-foreground">
-            {source.text}
-          </p>
-        </aside>
-      )}
+          {source?.text && (
+            <div className="shrink-0 border-t bg-primary/5 px-5 py-3">
+              <p className="text-xs font-medium">
+                {source.document_title} · página {source.page_number}
+              </p>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                {source.text}
+              </p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

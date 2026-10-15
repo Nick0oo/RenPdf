@@ -9,7 +9,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Page, Document as PDF, pdfjs } from "react-pdf"
 import "react-pdf/dist/Page/TextLayer.css"
 import "react-pdf/dist/Page/AnnotationLayer.css"
@@ -51,6 +51,13 @@ type Props = {
   onPage: (page: number) => void
   onHighlight: (page: number, bbox: BBox, text: string) => void
 }
+type RenderFrame = {
+  key: string
+  documentId: string
+  page: number
+  width: number
+  rotation: number
+}
 
 export function PdfReader({
   document,
@@ -71,6 +78,26 @@ export function PdfReader({
   const [selection, setSelection] = useState("")
   const [selectedElement, setSelectedElement] = useState<ElementPublic>()
   const [error, setError] = useState("")
+  const [renderedFrame, setRenderedFrame] = useState<RenderFrame>()
+  const requestedFrame = useMemo(
+    () => ({
+      key: `${document.id}:${page}:${width}:${zoom}:${nativeRotation}:${rotation}`,
+      documentId: document.id,
+      page,
+      width: width * zoom,
+      rotation: (nativeRotation + rotation) % 360,
+    }),
+    [document.id, page, width, zoom, nativeRotation, rotation],
+  )
+  const currentFrame = useRef(requestedFrame)
+  currentFrame.current = requestedFrame
+  const previousFrame =
+    renderedFrame?.documentId === document.id &&
+    renderedFrame.key !== requestedFrame.key
+      ? renderedFrame
+      : undefined
+  const ready = renderedFrame?.key === requestedFrame.key && !error
+  const pendingPage = !ready && !error
   const container = useRef<HTMLDivElement>(null)
   const highlight = useRef<HTMLDivElement>(null)
   const file = useMemo(
@@ -92,6 +119,12 @@ export function PdfReader({
     enabled: !!document.current_version_id,
     retry: false,
   })
+  const movePage = useCallback((nextPage: number) => {
+    setSelection("")
+    setSelectedElement(undefined)
+    setError("")
+    setPage(nextPage)
+  }, [])
 
   useEffect(() => {
     const target = container.current
@@ -107,18 +140,26 @@ export function PdfReader({
     setSelection("")
     setSelectedElement(undefined)
     setRotation(0)
+    setNativeRotation(0)
+    setRenderedFrame(undefined)
+    setError("")
   }, [document.id])
   useEffect(() => {
-    if (citation?.document_id === document.id) setPage(citation.page_number)
-  }, [citation, document.id])
+    if (citation?.document_id === document.id) movePage(citation.page_number)
+  }, [citation, document.id, movePage])
   useEffect(() => {
-    localStorage.setItem(`pdf-page:${document.id}`, String(page))
-    onPage(page)
-  }, [page, document.id, onPage])
+    if (!renderedFrame || renderedFrame.documentId !== document.id) return
+    localStorage.setItem(`pdf-page:${document.id}`, String(renderedFrame.page))
+    onPage(renderedFrame.page)
+  }, [renderedFrame, document.id, onPage])
   useEffect(() => {
-    if (citation && highlight.current)
+    if (
+      citation &&
+      renderedFrame?.page === citation.page_number &&
+      highlight.current
+    )
       highlight.current.scrollIntoView({ behavior: "smooth", block: "center" })
-  }, [citation])
+  }, [citation, renderedFrame])
   const box =
     citation?.page_number === page ? citation.bbox : selectedElement?.bbox
   const transformed = box ? rotateBox(box, nativeRotation + rotation) : null
@@ -129,6 +170,7 @@ export function PdfReader({
         element.text.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
     ) ?? []
   const captureSelection = () => {
+    if (!ready) return
     const text = window.getSelection()?.toString().trim() ?? ""
     if (text && text.length < 4000) {
       setSelection(text)
@@ -146,7 +188,7 @@ export function PdfReader({
           variant="ghost"
           aria-label="Página anterior"
           disabled={page <= 1}
-          onClick={() => setPage(page - 1)}
+          onClick={() => movePage(page - 1)}
         >
           <ChevronLeft size={17} />
         </Button>
@@ -158,7 +200,7 @@ export function PdfReader({
           min={1}
           max={document.page_count}
           onChange={(e) =>
-            setPage(
+            movePage(
               Math.min(
                 document.page_count,
                 Math.max(1, Number(e.target.value) || 1),
@@ -174,7 +216,7 @@ export function PdfReader({
           variant="ghost"
           aria-label="Página siguiente"
           disabled={page >= document.page_count}
-          onClick={() => setPage(page + 1)}
+          onClick={() => movePage(page + 1)}
         >
           <ChevronRight size={17} />
         </Button>
@@ -209,6 +251,7 @@ export function PdfReader({
           size="icon"
           variant="ghost"
           aria-label="Guardar marcador"
+          disabled={!ready}
           onClick={() => onBookmark(page)}
         >
           <Bookmark size={17} />
@@ -218,6 +261,7 @@ export function PdfReader({
         <Search size={15} className="text-muted-foreground" />
         <Input
           aria-label="Buscar en esta página"
+          disabled={!ready}
           placeholder="Buscar en esta página…"
           className="h-7 border-0 shadow-none"
           value={search}
@@ -250,22 +294,82 @@ export function PdfReader({
         >
           <div
             className="relative mx-auto w-fit shadow-md"
-            data-testid="pdf-page"
+            data-testid="pdf-render-surface"
           >
-            <Page
-              pageNumber={page}
-              width={width * zoom}
-              rotate={(nativeRotation + rotation) % 360}
-              onLoadSuccess={(loaded) => setNativeRotation(loaded.rotate)}
-              onRenderSuccess={() => {
-                if (citation && highlight.current)
-                  highlight.current.scrollIntoView({ block: "center" })
-              }}
-              loading={
-                <div className="h-[650px] w-full animate-pulse bg-white" />
-              }
-            />
-            {transformed && (
+            {(previousFrame
+              ? [previousFrame, requestedFrame]
+              : [requestedFrame]
+            ).map((frame) => {
+              const isPrevious = frame.key !== requestedFrame.key
+              return (
+                <div
+                  key={frame.key}
+                  data-testid={
+                    isPrevious || !previousFrame
+                      ? "pdf-page"
+                      : "pdf-page-buffer"
+                  }
+                  data-page={frame.page}
+                  aria-hidden={isPrevious || (!!previousFrame && pendingPage)}
+                  className={
+                    isPrevious
+                      ? "pointer-events-none"
+                      : previousFrame
+                        ? "absolute left-0 top-0 pointer-events-none opacity-0"
+                        : undefined
+                  }
+                >
+                  <Page
+                    pageNumber={frame.page}
+                    width={frame.width}
+                    rotate={frame.rotation}
+                    suspense={false}
+                    renderTextLayer={!isPrevious}
+                    renderAnnotationLayer={!isPrevious}
+                    onLoadSuccess={(loaded) => {
+                      if (currentFrame.current.key === frame.key)
+                        setNativeRotation(loaded.rotate)
+                    }}
+                    onRenderSuccess={() => {
+                      if (currentFrame.current.key === frame.key)
+                        setRenderedFrame((previous) =>
+                          previous?.key === frame.key ? previous : frame,
+                        )
+                    }}
+                    onRenderError={() => {
+                      if (!isPrevious)
+                        setError(
+                          "No se pudo mostrar esta página. Prueba otra página o vuelve a abrir el PDF.",
+                        )
+                    }}
+                    onLoadError={() => {
+                      if (!isPrevious)
+                        setError("No se pudo cargar esta página del PDF.")
+                    }}
+                    loading={
+                      <div
+                        className="min-h-80 bg-background"
+                        style={{ width: frame.width }}
+                      />
+                    }
+                    error={
+                      <p className="p-6 text-sm text-destructive">
+                        Página no disponible.
+                      </p>
+                    }
+                  />
+                </div>
+              )
+            })}
+            {pendingPage && (
+              <p
+                role="status"
+                className="absolute left-1/2 top-3 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+              >
+                Abriendo página {page}…
+              </p>
+            )}
+            {ready && transformed && (
               <div
                 ref={highlight}
                 data-testid="citation-highlight"
@@ -281,7 +385,7 @@ export function PdfReader({
           </div>
         </PDF>
       </section>
-      {(selection || selectedElement) && (
+      {ready && (selection || selectedElement) && (
         <div className="border-t bg-background p-3 text-xs">
           <p className="mb-2 line-clamp-2">
             {selection || selectedElement?.text || "Región visual seleccionada"}
@@ -332,6 +436,7 @@ export function PdfReader({
             <button
               type="button"
               key={element.id}
+              disabled={!ready}
               className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-muted"
               onClick={() => {
                 setSelectedElement(element)

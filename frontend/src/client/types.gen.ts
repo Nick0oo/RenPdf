@@ -125,6 +125,103 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * CardInput
+ */
+export type CardInput = {
+    /**
+     * Deck Id
+     */
+    deck_id: string;
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Answer
+     */
+    answer: string;
+    /**
+     * Document Id
+     */
+    document_id?: string | null;
+    /**
+     * Page Number
+     */
+    page_number?: number;
+    /**
+     * Source Message Id
+     */
+    source_message_id?: string | null;
+    /**
+     * Citation Label
+     */
+    citation_label?: number | null;
+};
+
+/**
+ * CardPublic
+ */
+export type CardPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Deck Id
+     */
+    deck_id: string;
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Answer
+     */
+    answer: string;
+    /**
+     * Document Id
+     */
+    document_id: string | null;
+    /**
+     * Version Id
+     */
+    version_id: string | null;
+    /**
+     * Page Number
+     */
+    page_number: number;
+    /**
+     * Source Message Id
+     */
+    source_message_id: string | null;
+    /**
+     * Citation Label
+     */
+    citation_label: number | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Due At
+     */
+    due_at: string;
+    /**
+     * Review Count
+     */
+    review_count: number;
+    /**
+     * Source Title
+     */
+    source_title?: string | null;
+    /**
+     * Source Available
+     */
+    source_available?: boolean;
+    evidence?: EvidencePublic | null;
+};
+
+/**
  * ConsentInput
  */
 export type ConsentInput = {
@@ -222,6 +319,62 @@ export type ConversationPublic = {
      * Created At
      */
     created_at: string;
+};
+
+/**
+ * DeckInput
+ */
+export type DeckInput = {
+    /**
+     * Workspace Id
+     */
+    workspace_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string;
+};
+
+/**
+ * DeckPublic
+ */
+export type DeckPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Workspace Id
+     */
+    workspace_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Cards
+     */
+    cards?: number;
+    /**
+     * Due Cards
+     */
+    due_cards?: number;
+    /**
+     * Reviews
+     */
+    reviews?: number;
 };
 
 /**
@@ -541,6 +694,21 @@ export type JobPublic = {
 };
 
 /**
+ * LocalIndexPreparationPublic
+ */
+export type LocalIndexPreparationPublic = {
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Reason
+     */
+    reason: string;
+    job?: JobPublic | null;
+};
+
+/**
  * Message
  */
 export type Message = {
@@ -684,6 +852,38 @@ export type NewPassword = {
 };
 
 /**
+ * ProgressPublic
+ */
+export type ProgressPublic = {
+    /**
+     * Cards
+     */
+    cards: number;
+    /**
+     * Due Cards
+     */
+    due_cards: number;
+    /**
+     * Reviewed Cards
+     */
+    reviewed_cards: number;
+    /**
+     * Reviews
+     */
+    reviews: number;
+    /**
+     * Ratings
+     */
+    ratings: {
+        [key: string]: number;
+    };
+    /**
+     * Assessment
+     */
+    assessment?: 'self_reported';
+};
+
+/**
  * ProviderConfig
  */
 export type ProviderConfig = {
@@ -750,6 +950,126 @@ export type RenameInput = {
 };
 
 /**
+ * ResearchInput
+ */
+export type ResearchInput = {
+    /**
+     * Workspace Id
+     */
+    workspace_id: string;
+    /**
+     * Kind
+     */
+    kind: 'question' | 'summary' | 'comparison';
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Question
+     */
+    question?: string;
+    /**
+     * Notes
+     */
+    notes?: string;
+    /**
+     * Source Message Ids
+     */
+    source_message_ids?: Array<string>;
+    /**
+     * Document Ids
+     */
+    document_ids?: Array<string>;
+};
+
+/**
+ * ResearchPublic
+ */
+export type ResearchPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Workspace Id
+     */
+    workspace_id: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Notes
+     */
+    notes: string;
+    /**
+     * Document Ids
+     */
+    document_ids: Array<string>;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Answers
+     */
+    answers?: Array<SourceAnswer>;
+};
+
+/**
+ * ReviewInput
+ */
+export type ReviewInput = {
+    /**
+     * Rating
+     */
+    rating: 'again' | 'hard' | 'good' | 'easy';
+    /**
+     * Response
+     */
+    response?: string;
+};
+
+/**
+ * ReviewPublic
+ */
+export type ReviewPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Card Id
+     */
+    card_id: string;
+    /**
+     * Rating
+     */
+    rating: string;
+    /**
+     * Response
+     */
+    response: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Next Due At
+     */
+    next_due_at: string;
+};
+
+/**
  * RoutingInput
  */
 export type RoutingInput = {
@@ -807,6 +1127,134 @@ export type RoutingPublic = {
      * Max Tokens
      */
     max_tokens: number;
+};
+
+/**
+ * SourceAnswer
+ */
+export type SourceAnswer = {
+    /**
+     * Message Id
+     */
+    message_id: string;
+    /**
+     * Available
+     */
+    available: boolean;
+    /**
+     * Content
+     */
+    content?: string;
+    /**
+     * Provider
+     */
+    provider?: string | null;
+    /**
+     * Model
+     */
+    model?: string | null;
+    /**
+     * Citations
+     */
+    citations?: Array<EvidencePublic>;
+};
+
+/**
+ * StudioInput
+ */
+export type StudioInput = {
+    /**
+     * Kind
+     */
+    kind: 'merge' | 'pages' | 'transform';
+    /**
+     * Output Name
+     */
+    output_name: string;
+    /**
+     * Workspace Id
+     */
+    workspace_id?: string | null;
+    /**
+     * Sources
+     */
+    sources: Array<StudioSource>;
+};
+
+/**
+ * StudioOperationPublic
+ */
+export type StudioOperationPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Workspace Id
+     */
+    workspace_id: string | null;
+    /**
+     * Output Document Id
+     */
+    output_document_id: string | null;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Output Name
+     */
+    output_name: string;
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Page Count
+     */
+    page_count: number;
+    /**
+     * File Size
+     */
+    file_size: number;
+    /**
+     * Sources
+     */
+    sources: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * StudioResult
+ */
+export type StudioResult = {
+    operation: StudioOperationPublic;
+    document: DocumentPublic;
+    job: JobPublic;
+};
+
+/**
+ * StudioSource
+ */
+export type StudioSource = {
+    /**
+     * Document Id
+     */
+    document_id: string;
+    /**
+     * Pages
+     */
+    pages?: Array<number> | null;
+    /**
+     * Rotation
+     */
+    rotation?: 0 | 90 | 180 | 270;
+    crop?: BBox | null;
 };
 
 /**
@@ -1673,7 +2121,12 @@ export type documentsListDocumentsResponse = documentsListDocumentsResponses[key
 export type documentsUploadDocumentData = {
     body: Body_documents_upload_document;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Workspace Id
+         */
+        workspace_id?: string | null;
+    };
     url: '/api/v1/documents/';
 };
 
@@ -2003,6 +2456,36 @@ export type documentsDocumentJobsResponses = {
 };
 
 export type documentsDocumentJobsResponse = documentsDocumentJobsResponses[keyof documentsDocumentJobsResponses];
+
+export type documentsPrepareLocalIndexData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/index-local';
+};
+
+export type documentsPrepareLocalIndexErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsPrepareLocalIndexError = documentsPrepareLocalIndexErrors[keyof documentsPrepareLocalIndexErrors];
+
+export type documentsPrepareLocalIndexResponses = {
+    /**
+     * Successful Response
+     */
+    200: LocalIndexPreparationPublic;
+};
+
+export type documentsPrepareLocalIndexResponse = documentsPrepareLocalIndexResponses[keyof documentsPrepareLocalIndexResponses];
 
 export type documentsCancelJobData = {
     body?: never;
@@ -2842,3 +3325,691 @@ export type chatExportConversationResponses = {
      */
     200: unknown;
 };
+
+export type studioPreviewPageData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+        /**
+         * Page Number
+         */
+        page_number: number;
+    };
+    query?: never;
+    url: '/api/v1/studio/documents/{document_id}/pages/{page_number}/preview';
+};
+
+export type studioPreviewPageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type studioPreviewPageError = studioPreviewPageErrors[keyof studioPreviewPageErrors];
+
+export type studioPreviewPageResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type studioListOperationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/studio/operations';
+};
+
+export type studioListOperationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type studioListOperationsError = studioListOperationsErrors[keyof studioListOperationsErrors];
+
+export type studioListOperationsResponses = {
+    /**
+     * Response Studio-List Operations
+     *
+     * Successful Response
+     */
+    200: Array<StudioOperationPublic>;
+};
+
+export type studioListOperationsResponse = studioListOperationsResponses[keyof studioListOperationsResponses];
+
+export type studioRunOperationData = {
+    body: StudioInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/studio/operations';
+};
+
+export type studioRunOperationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type studioRunOperationError = studioRunOperationErrors[keyof studioRunOperationErrors];
+
+export type studioRunOperationResponses = {
+    /**
+     * Successful Response
+     */
+    200: StudioResult;
+};
+
+export type studioRunOperationResponse = studioRunOperationResponses[keyof studioRunOperationResponses];
+
+export type traceOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/trace/overview';
+};
+
+export type traceOverviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type traceActivityData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Kind
+         */
+        kind?: 'all' | 'chat' | 'job' | 'studio';
+        /**
+         * Workspace Id
+         */
+        workspace_id?: string | null;
+        /**
+         * State
+         */
+        state?: string;
+        /**
+         * Q
+         */
+        q?: string;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/trace/activity';
+};
+
+export type traceActivityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type traceActivityError = traceActivityErrors[keyof traceActivityErrors];
+
+export type traceActivityResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type traceResponseDetailData = {
+    body?: never;
+    path: {
+        /**
+         * Message Id
+         */
+        message_id: string;
+    };
+    query?: never;
+    url: '/api/v1/trace/responses/{message_id}';
+};
+
+export type traceResponseDetailErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type traceResponseDetailError = traceResponseDetailErrors[keyof traceResponseDetailErrors];
+
+export type traceResponseDetailResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type traceDocumentDetailData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/trace/documents/{document_id}';
+};
+
+export type traceDocumentDetailErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type traceDocumentDetailError = traceDocumentDetailErrors[keyof traceDocumentDetailErrors];
+
+export type traceDocumentDetailResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type tracePermissionsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Document Id
+         */
+        document_id?: string | null;
+        /**
+         * Workspace Id
+         */
+        workspace_id?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/trace/permissions';
+};
+
+export type tracePermissionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type tracePermissionsError = tracePermissionsErrors[keyof tracePermissionsErrors];
+
+export type tracePermissionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type learningListResearchData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Workspace Id
+         */
+        workspace_id?: string | null;
+    };
+    url: '/api/v1/learning/research';
+};
+
+export type learningListResearchErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningListResearchError = learningListResearchErrors[keyof learningListResearchErrors];
+
+export type learningListResearchResponses = {
+    /**
+     * Response Learning-List Research
+     *
+     * Successful Response
+     */
+    200: Array<ResearchPublic>;
+};
+
+export type learningListResearchResponse = learningListResearchResponses[keyof learningListResearchResponses];
+
+export type learningCreateResearchData = {
+    body: ResearchInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/learning/research';
+};
+
+export type learningCreateResearchErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningCreateResearchError = learningCreateResearchErrors[keyof learningCreateResearchErrors];
+
+export type learningCreateResearchResponses = {
+    /**
+     * Successful Response
+     */
+    200: ResearchPublic;
+};
+
+export type learningCreateResearchResponse = learningCreateResearchResponses[keyof learningCreateResearchResponses];
+
+export type learningDeleteResearchData = {
+    body?: never;
+    path: {
+        /**
+         * Entry Id
+         */
+        entry_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/research/{entry_id}';
+};
+
+export type learningDeleteResearchErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningDeleteResearchError = learningDeleteResearchErrors[keyof learningDeleteResearchErrors];
+
+export type learningDeleteResearchResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type learningUpdateResearchData = {
+    body: ResearchInput;
+    path: {
+        /**
+         * Entry Id
+         */
+        entry_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/research/{entry_id}';
+};
+
+export type learningUpdateResearchErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningUpdateResearchError = learningUpdateResearchErrors[keyof learningUpdateResearchErrors];
+
+export type learningUpdateResearchResponses = {
+    /**
+     * Successful Response
+     */
+    200: ResearchPublic;
+};
+
+export type learningUpdateResearchResponse = learningUpdateResearchResponses[keyof learningUpdateResearchResponses];
+
+export type learningListDecksData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Workspace Id
+         */
+        workspace_id?: string | null;
+    };
+    url: '/api/v1/learning/decks';
+};
+
+export type learningListDecksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningListDecksError = learningListDecksErrors[keyof learningListDecksErrors];
+
+export type learningListDecksResponses = {
+    /**
+     * Response Learning-List Decks
+     *
+     * Successful Response
+     */
+    200: Array<DeckPublic>;
+};
+
+export type learningListDecksResponse = learningListDecksResponses[keyof learningListDecksResponses];
+
+export type learningCreateDeckData = {
+    body: DeckInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/learning/decks';
+};
+
+export type learningCreateDeckErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningCreateDeckError = learningCreateDeckErrors[keyof learningCreateDeckErrors];
+
+export type learningCreateDeckResponses = {
+    /**
+     * Successful Response
+     */
+    200: DeckPublic;
+};
+
+export type learningCreateDeckResponse = learningCreateDeckResponses[keyof learningCreateDeckResponses];
+
+export type learningDeleteDeckData = {
+    body?: never;
+    path: {
+        /**
+         * Deck Id
+         */
+        deck_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/decks/{deck_id}';
+};
+
+export type learningDeleteDeckErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningDeleteDeckError = learningDeleteDeckErrors[keyof learningDeleteDeckErrors];
+
+export type learningDeleteDeckResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type learningUpdateDeckData = {
+    body: DeckInput;
+    path: {
+        /**
+         * Deck Id
+         */
+        deck_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/decks/{deck_id}';
+};
+
+export type learningUpdateDeckErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningUpdateDeckError = learningUpdateDeckErrors[keyof learningUpdateDeckErrors];
+
+export type learningUpdateDeckResponses = {
+    /**
+     * Successful Response
+     */
+    200: DeckPublic;
+};
+
+export type learningUpdateDeckResponse = learningUpdateDeckResponses[keyof learningUpdateDeckResponses];
+
+export type learningListCardsData = {
+    body?: never;
+    path: {
+        /**
+         * Deck Id
+         */
+        deck_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/decks/{deck_id}/cards';
+};
+
+export type learningListCardsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningListCardsError = learningListCardsErrors[keyof learningListCardsErrors];
+
+export type learningListCardsResponses = {
+    /**
+     * Response Learning-List Cards
+     *
+     * Successful Response
+     */
+    200: Array<CardPublic>;
+};
+
+export type learningListCardsResponse = learningListCardsResponses[keyof learningListCardsResponses];
+
+export type learningCreateCardData = {
+    body: CardInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/learning/cards';
+};
+
+export type learningCreateCardErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningCreateCardError = learningCreateCardErrors[keyof learningCreateCardErrors];
+
+export type learningCreateCardResponses = {
+    /**
+     * Successful Response
+     */
+    200: CardPublic;
+};
+
+export type learningCreateCardResponse = learningCreateCardResponses[keyof learningCreateCardResponses];
+
+export type learningDeleteCardData = {
+    body?: never;
+    path: {
+        /**
+         * Card Id
+         */
+        card_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/cards/{card_id}';
+};
+
+export type learningDeleteCardErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningDeleteCardError = learningDeleteCardErrors[keyof learningDeleteCardErrors];
+
+export type learningDeleteCardResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type learningUpdateCardData = {
+    body: CardInput;
+    path: {
+        /**
+         * Card Id
+         */
+        card_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/cards/{card_id}';
+};
+
+export type learningUpdateCardErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningUpdateCardError = learningUpdateCardErrors[keyof learningUpdateCardErrors];
+
+export type learningUpdateCardResponses = {
+    /**
+     * Successful Response
+     */
+    200: CardPublic;
+};
+
+export type learningUpdateCardResponse = learningUpdateCardResponses[keyof learningUpdateCardResponses];
+
+export type learningReviewCardData = {
+    body: ReviewInput;
+    path: {
+        /**
+         * Card Id
+         */
+        card_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/cards/{card_id}/reviews';
+};
+
+export type learningReviewCardErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningReviewCardError = learningReviewCardErrors[keyof learningReviewCardErrors];
+
+export type learningReviewCardResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviewPublic;
+};
+
+export type learningReviewCardResponse = learningReviewCardResponses[keyof learningReviewCardResponses];
+
+export type learningListReviewsData = {
+    body?: never;
+    path: {
+        /**
+         * Deck Id
+         */
+        deck_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/decks/{deck_id}/reviews';
+};
+
+export type learningListReviewsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningListReviewsError = learningListReviewsErrors[keyof learningListReviewsErrors];
+
+export type learningListReviewsResponses = {
+    /**
+     * Response Learning-List Reviews
+     *
+     * Successful Response
+     */
+    200: Array<ReviewPublic>;
+};
+
+export type learningListReviewsResponse = learningListReviewsResponses[keyof learningListReviewsResponses];
+
+export type learningProgressData = {
+    body?: never;
+    path: {
+        /**
+         * Deck Id
+         */
+        deck_id: string;
+    };
+    query?: never;
+    url: '/api/v1/learning/decks/{deck_id}/progress';
+};
+
+export type learningProgressErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningProgressError = learningProgressErrors[keyof learningProgressErrors];
+
+export type learningProgressResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProgressPublic;
+};
+
+export type learningProgressResponse = learningProgressResponses[keyof learningProgressResponses];

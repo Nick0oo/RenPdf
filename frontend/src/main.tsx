@@ -11,11 +11,8 @@ import ReactDOM from "react-dom/client"
 import { client } from "./client/client.gen"
 import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/sonner"
-import { installAssetRecovery } from "./lib/assetRecovery"
 import "./index.css"
 import { routeTree } from "./routeTree.gen"
-
-installAssetRecovery()
 
 client.setConfig({
   baseURL: import.meta.env.VITE_API_URL ?? "",
@@ -29,6 +26,20 @@ const handleApiError = (error: Error) => {
   }
 }
 const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) =>
+        error.name !== "ApiContractError" &&
+        !(
+          error instanceof AxiosError &&
+          error.response &&
+          error.response.status >= 400 &&
+          error.response.status < 500 &&
+          ![408, 429].includes(error.response.status)
+        ) &&
+        failureCount < 3,
+    },
+  },
   queryCache: new QueryCache({
     onError: handleApiError,
   }),

@@ -18,6 +18,7 @@ from app.domain import (
     Job,
     now,
 )
+from app.schemas.preparation import LocalIndexPreparationPublic
 from app.schemas.research import (
     ConsentInput,
     ConsentPublic,
@@ -30,12 +31,22 @@ from app.schemas.research import (
     RenameInput,
 )
 from app.services.documents.access import owned_document
+from app.services.documents.automatic_index import plan_local_index, restored_text_state
 from app.services.parsing.pdf import inspect_pdf
 from app.services.storage.local import LocalStorage
 from app.services.vision.regions import region_image
 from app.workers.tasks import TERMINAL_STATES, enqueue
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+
+def prepare_duplicate(session: SessionDep, document: Document) -> Document:
+    preparation = plan_local_index(session, document)
+    session.commit()
+    if preparation.created and preparation.job:
+        enqueue(preparation.job)
+    session.refresh(document)
+    return document
 
 
 def new_job(
@@ -70,7 +81,16 @@ def list_documents(session: SessionDep, current_user: CurrentUser, q: str = ""):
 
 
 @router.post("/", response_model=DocumentPublic)
-def upload_document(session: SessionDep, current_user: CurrentUser, file: UploadFile):
+def upload_document(
+    session: SessionDep,
+    current_user: CurrentUser,
+    file: UploadFile,
+    workspace_id: uuid.UUID | None = None,
+):
+    if workspace_id:
+        from app.services.documents.access import owned_workspace
+
+        owned_workspace(session, current_user.id, workspace_id)
     storage = LocalStorage()
     identifier = uuid.uuid4()
     key = f"originals/{identifier}.pdf"
@@ -86,7 +106,7 @@ def upload_document(session: SessionDep, current_user: CurrentUser, file: Upload
         ).first()
         if duplicate:
             storage.delete(key)
-            return duplicate
+            return prepare_duplicate(session, duplicate)
         filename = (
             (file.filename or "document.pdf").replace("\\", "/").split("/")[-1][:255]
         )
@@ -101,7 +121,10 @@ def upload_document(session: SessionDep, current_user: CurrentUser, file: Upload
             page_count=page_count,
         )
         session.add(document)
-        job = Job(document_id=document.id)
+        job = Job(
+            document_id=document.id,
+            parameters={"workspace_id": str(workspace_id)} if workspace_id else {},
+        )
         session.add(job)
         session.commit()
         session.refresh(document)
@@ -117,7 +140,7 @@ def upload_document(session: SessionDep, current_user: CurrentUser, file: Upload
             )
         ).first()
         if duplicate:
-            return duplicate
+            return prepare_duplicate(session, duplicate)
         raise HTTPException(409, "No se pudo persistir el documento") from None
     except Exception:
         session.rollback()
@@ -307,6 +330,24 @@ def document_jobs(
     ).all()
 
 
+@router.post("/{document_id}/index-local", response_model=LocalIndexPreparationPublic)
+def prepare_local_index(
+    document_id: uuid.UUID, session: SessionDep, current_user: CurrentUser
+):
+    document = owned_document(session, current_user.id, document_id)
+    preparation = plan_local_index(session, document)
+    session.commit()
+    if preparation.job:
+        session.refresh(preparation.job)
+    if preparation.created and preparation.job:
+        enqueue(preparation.job)
+    return LocalIndexPreparationPublic(
+        state=preparation.state,
+        reason=preparation.reason,
+        job=JobPublic.model_validate(preparation.job) if preparation.job else None,
+    )
+
+
 @router.post("/{document_id}/jobs/{job_id}/cancel", response_model=JobPublic)
 def cancel_job(
     document_id: uuid.UUID,
@@ -314,13 +355,16 @@ def cancel_job(
     session: SessionDep,
     current_user: CurrentUser,
 ):
-    owned_document(session, current_user.id, document_id)
+    document = owned_document(session, current_user.id, document_id)
     job = session.get(Job, job_id)
     if not job or job.document_id != document_id:
         raise HTTPException(404, "Trabajo no encontrado")
     job.cancel_requested = True
     if job.state == "QUEUED":
         job.state = "CANCELLED"
+        if job.parameters.get("auto_index_local") and not document.active_index_id:
+            document.status = restored_text_state(session, document)
+            session.add(document)
     job.updated_at = now()
     session.add(job)
     session.commit()
@@ -363,6 +407,9 @@ def retry_job(
         None,
         None,
     )
+    if job.parameters.get("auto_index_local") and not document.active_index_id:
+        document.status = "INDEXING"
+        session.add(document)
     session.add(job)
     session.commit()
     session.refresh(job)
