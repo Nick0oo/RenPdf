@@ -77,6 +77,13 @@ El modelo se elige del catálogo real; la existencia de un catálogo no verifica
 inferencia. Embeddings iniciales: 768 dimensiones, perfiles aislados por versión.
 Para imágenes, Gemini Embedding 2 exige una autorización multimodal adicional.
 
+## Skills compartidas
+
+Las cinco skills de shadcn, React, FastAPI, lógica de negocio y arquitectura se
+incluyen en [`.agents/skills/`](.agents/skills/). Se descargan al clonar el repo.
+Para usarlas o compartirlas en otro proyecto, consulta
+[las instrucciones](.agents/README.md).
+
 ## Verificación
 
 ```powershell

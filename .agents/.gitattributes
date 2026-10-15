@@ -1,0 +1,2 @@
+# Preserve the original Markdown formatting of vendored skills.
+skills/** -whitespace
