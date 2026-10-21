@@ -1,0 +1,121 @@
+{
+  "synthetic_data_only": true,
+  "started_at": "2026-10-21T00:40:52.602686+00:00",
+  "checks": [
+    {
+      "kind": "summary",
+      "passed": true,
+      "seconds": 12.22,
+      "message_id": "52749a23-2ad9-4bd8-a33f-67d113aeddfe",
+      "research_count": 1,
+      "card_count": 0,
+      "coverage": {
+        "selected": 2,
+        "with_evidence": 2,
+        "without_evidence": [],
+        "partial": true,
+        "retrieval_mode": "hybrid"
+      },
+      "content": "A continuación se presenta un resumen estructurado con la información sobre la energía anual reportada en los documentos analizados:\n\n### Informe inicial\n* **Energía anual reportada:** El documento *Informe inicial.pdf* establece que la energía anual reportada corresponde a 120 MWh [Fuente 1].\n\n### Corrección independiente\n* **Energía anual reportada:** Por su parte, el documento *Corrección independiente.pdf* registra que la energía anual reportada es de 90 MWh [Fuente 2].\n\n### Comparativa de fuentes\n* Se observa una discrepancia entre ambas fuentes documentales sobre el valor de la energía anual: el *Informe inicial.pdf* reporta 120 MWh [Fuente 1], mientras que la *Corrección independiente.pdf* reporta 90 MWh [Fuente 2]. \n* Todos los documentos seleccionados aportaron evidencia para responder a la consulta (no hubo fuentes seleccionadas sin evidencia)."
+    },
+    {
+      "kind": "questions",
+      "passed": true,
+      "seconds": 16.49,
+      "message_id": "8aa4c522-c18f-4d66-ba1d-d3a47624c8c2",
+      "research_count": 1,
+      "card_count": 4,
+      "coverage": {
+        "selected": 2,
+        "with_evidence": 2,
+        "without_evidence": [],
+        "partial": true,
+        "retrieval_mode": "hybrid"
+      },
+      "deck_id": "416a66df-1808-4b42-b046-1ffd36cd0194",
+      "questions": [
+        {
+          "question": "¿Cuál es el cálculo de la diferencia de energía anual entre ambas fuentes?",
+          "answer": "Es un cálculo que resulta en una reducción de 30 MWh al restar los 90 MWh de la corrección independiente de los 120 MWh del informe inicial. [Fuente 1] [Fuente 2]",
+          "source_count": 2
+        },
+        {
+          "question": "¿Cómo se comparan los valores de energía anual reportados entre el informe inicial y la corrección independiente?",
+          "answer": "El informe inicial reporta una energía anual mayor de 120 MWh en comparación con los 90 MWh reportados en la corrección independiente. [Fuente 1] [Fuente 2]",
+          "source_count": 2
+        },
+        {
+          "question": "¿Qué valor de energía anual se establece en la corrección independiente?",
+          "answer": "La corrección independiente reporta una energía anual de 90 MWh. [Fuente 2]",
+          "source_count": 1
+        },
+        {
+          "question": "¿Cuál es la energía anual reportada en el informe inicial?",
+          "answer": "El informe inicial reporta una cifra de energía anual de 120 MWh. [Fuente 1]",
+          "source_count": 1
+        }
+      ],
+      "review_persisted": true
+    },
+    {
+      "kind": "deck",
+      "passed": true,
+      "seconds": 23.77,
+      "message_id": "26584393-9d65-4692-a6d5-fbc9d39bae13",
+      "research_count": 0,
+      "card_count": 3,
+      "coverage": {
+        "selected": 2,
+        "with_evidence": 2,
+        "without_evidence": [],
+        "partial": true,
+        "retrieval_mode": "hybrid"
+      },
+      "deck_id": "fc1872bf-008f-40f8-96f9-456cc59023e1",
+      "questions": [
+        {
+          "question": "¿Cuál es la diferencia calculada entre la energía anual del informe inicial y la de la corrección independiente?",
+          "answer": "Es un cálculo resultante de restar los 90 MWh de la corrección independiente a los 120 MWh del informe inicial, lo que da una diferencia de 30 MWh. [Fuente 1] [Fuente 2]",
+          "source_count": 2
+        },
+        {
+          "question": "¿Qué valor de energía anual se establece en la corrección independiente?",
+          "answer": "La corrección independiente establece un valor de energía anual reportada de 90 MWh. [Fuente 2]",
+          "source_count": 1
+        },
+        {
+          "question": "¿Cuál es la cantidad de energía anual reportada en el informe inicial?",
+          "answer": "El informe inicial reporta una cifra de energía anual de 120 MWh. [Fuente 1]",
+          "source_count": 1
+        }
+      ],
+      "review_persisted": true
+    }
+  ],
+  "passed": true,
+  "native_media": {
+    "passed": true,
+    "seconds": 13.1,
+    "deck_id": "f100b744-cd4c-427b-a980-dfb9be56417b",
+    "message_id": "aff9f7f8-9c44-496c-ad24-c884da5cdd6e",
+    "cards": 3,
+    "minute_citation_correct": true,
+    "intervals": [
+      {
+        "source_type": "audio",
+        "start_seconds": 60.0,
+        "end_seconds": 64.097868
+      },
+      {
+        "source_type": "video",
+        "start_seconds": 0.0,
+        "end_seconds": 10.0
+      },
+      {
+        "source_type": "video",
+        "start_seconds": 10.0,
+        "end_seconds": 12.0
+      }
+    ]
+  }
+}

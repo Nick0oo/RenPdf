@@ -255,3 +255,31 @@ envío durante indexación, medios nativos, inspección RAG y apertura automáti
 de Privacidad cuando falta permiso. Esa apertura conserva la pregunta y no
 crea autorizaciones automáticamente. La subida incluye `workspace_id` para
 aplicar el routing del workspace antes de crear sus trabajos.
+
+## Laboratorio y estudio con generación IA
+
+La aceptación del 20 de octubre de 2026 aprobó **51 pruebas de backend** en
+`test_learning.py`, `test_learning_generation.py`, `test_provider_contracts.py`,
+`test_native_media.py` y `test_rag_workspace.py`. Cubren generación y guardado
+de resúmenes, bancos de preguntas y mazos, repaso, referencias PDF/celda/minuto,
+permisos, aislamiento y rechazo de resultados estructurados inválidos sin
+guardar material parcial. Ruff, ty y el build TypeScript/Vite aprobaron.
+
+Chromium sobre la entrega de producción aprobó ocho comprobaciones de
+generación controlada, continuidad y uso manual; dos casos cloud se omitieron
+en esa ejecución. Una ejecución posterior con Gemini real aprobó tres casos
+(autenticación y dos flujos): generar preguntas y mazo, guardar las citas,
+revelar una respuesta y registrar el repaso; comparar dos PDFs con citas de
+ambos y guardar la respuesta existente como resumen.
+
+`learning-ai-results.json` conserva la aceptación API con datos inventados:
+resumen, banco de cuatro preguntas y mazo de tres fichas con Gemini, junto
+con una comprobación audiovisual cuyo presupuesto cita el audio desde 01:00.
+Los clips nativos se acompañan de su identificador y tiempo original para
+que el modelo pueda atribuir cada dato a su intervalo. Son comprobaciones
+puntuales de procedencia y funcionamiento, no una garantía de exactitud
+factual de cualquier material generado. La interfaz indica cobertura parcial
+y permite abrir las fuentes y la ejecución para revisar el resultado.
+
+La entrega comprobada sirve el mismo build en 8000 y 5173; las rutas de
+Laboratorio y Estudio responden correctamente.

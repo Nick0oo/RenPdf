@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import UTC, datetime
 
@@ -92,6 +93,7 @@ def research_public(session: Session, entry: ResearchEntry) -> ResearchPublic:
                 provider=message.provider if available and message else None,
                 model=message.model if available and message else None,
                 citations=message_sources(session, identifier) if available else [],
+                usage=message.usage if available and message else {},
             )
         )
     return result
@@ -106,12 +108,16 @@ def card_public(session: Session, card: StudyCard) -> CardPublic:
     )
     result.source_title = document.title if document else None
     if card.source_message_id:
+        labels = {int(value) for value in re.findall(r"\[Fuente (\d+)\]", card.answer)}
+        if card.citation_label:
+            labels.add(card.citation_label)
+        result.evidences = [
+            item
+            for item in message_sources(session, card.source_message_id)
+            if item.label in labels
+        ]
         result.evidence = next(
-            (
-                item
-                for item in message_sources(session, card.source_message_id)
-                if item.label == card.citation_label
-            ),
+            (item for item in result.evidences if item.label == card.citation_label),
             None,
         )
     return result

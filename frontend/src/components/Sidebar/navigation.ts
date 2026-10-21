@@ -82,9 +82,9 @@ export const navigationGroups: NavigationGroup[] = [
     title: "Estudio",
     icon: GraduationCap,
     items: [
-      { title: "Fichas con evidencia", href: "/study/cards", icon: FileText },
+      { title: "Fichas", href: "/study/cards", icon: FileText },
       { title: "Mazos", href: "/study/decks", icon: Layers },
-      { title: "Autoevaluación", href: "/study/review", icon: ListChecks },
+      { title: "Repasar", href: "/study/review", icon: ListChecks },
     ],
   },
 ]

@@ -64,9 +64,10 @@ su propósito, fuentes, notas, conversaciones y preferencias de modelos.
 - Studio: combinar, organizar páginas, rotar y recortar copias, descargar resultados
   y consultar el linaje. Los originales se conservan. El recorte visual no elimina
   de forma segura contenido oculto.
-- Laboratorio: comparar respuestas citadas por PDF, guardar preguntas e informes
-  editables y exportarlos como Markdown.
-- Estudio: fichas con fuentes, mazos y repasos con autoevaluación persistente.
+- Laboratorio: generar resúmenes y bancos de preguntas con IA, comparar fuentes
+  en una consulta conjunta y guardar informes citados.
+- Estudio: generar o ampliar mazos con IA, consultar las citas y practicar con
+  respuestas ocultas y autoevaluación persistente.
   Las calificaciones las registra la persona.
 
 Las operaciones PDF y las fichas manuales son locales. La comparación con IA usa

@@ -294,7 +294,10 @@ class GeminiProvider(BaseProvider):
     def stream(self, request: InferenceRequest) -> Iterator[str]:
         self.last_usage = None
         self.last_finish_reason = None
-        self.response_mode = "buffered_native" if request.media else "stream"
+        buffered = bool(request.media or request.buffered)
+        self.response_mode = (
+            "buffered_native" if request.media else "buffered" if buffered else "stream"
+        )
         self.transport_attempts = 0
         started = time.monotonic()
         try:
@@ -314,10 +317,22 @@ class GeminiProvider(BaseProvider):
                     types.Part.from_bytes(data=data, mime_type="image/png")
                     for data in request.images
                 )
-                contents.extend(
-                    types.Part.from_bytes(data=item.data, mime_type=item.mime_type)
-                    for item in request.media
-                )
+                for item in request.media:
+                    if item.source_id is not None:
+                        contents.append(
+                            types.Part.from_text(
+                                text=(
+                                    f"El archivo adjunto inmediatamente a continuación corresponde SOLO a "
+                                    f"[Fuente {item.source_id}], intervalo original "
+                                    f"{item.start_seconds}–{item.end_seconds} segundos. "
+                                    "No atribuyas lo escuchado o visto en otro clip a esta fuente. "
+                                    "Cada archivo tiene su propia cita, incluso si pertenece al mismo documento."
+                                )
+                            )
+                        )
+                    contents.append(
+                        types.Part.from_bytes(data=item.data, mime_type=item.mime_type)
+                    )
                 arguments: dict[str, Any] = {
                     "model": request.model,
                     "contents": types.Content(role="user", parts=contents),
@@ -326,7 +341,7 @@ class GeminiProvider(BaseProvider):
                 # Native media responses can lose their HTTP stream while the
                 # provider processes several clips. A regular response retains
                 # the same model, bytes and citations without replaying a request.
-                if request.media:
+                if buffered:
                     # The SDK retries HTTP error statuses but not a socket reset
                     # during response reading. Retry once before any text is sent,
                     # within the selected timeout and with exactly the same input.

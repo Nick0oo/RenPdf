@@ -127,6 +127,67 @@ def test_reused_gemini_adapter_does_not_attribute_previous_clip_usage(monkeypatc
     assert provider.last_usage is None
 
 
+def test_native_clips_are_interleaved_with_their_own_source_labels(monkeypatch):
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.models.generate_content.return_value = MagicMock(
+        text="Cited", usage_metadata=None
+    )
+    provider = GeminiProvider()
+    monkeypatch.setattr(provider, "client", lambda: client)
+    media = [
+        MediaInput(
+            data=b"first",
+            mime_type="audio/mpeg",
+            source_id=1,
+            start_seconds=0,
+            end_seconds=10,
+        ),
+        MediaInput(
+            data=b"second",
+            mime_type="audio/mpeg",
+            source_id=6,
+            start_seconds=60,
+            end_seconds=64,
+        ),
+    ]
+    list(
+        provider.stream(
+            InferenceRequest(
+                model="gemini-test", system="Sources", prompt="Read", media=media
+            )
+        )
+    )
+    parts = client.models.generate_content.call_args.kwargs["contents"].parts
+    assert "[Fuente 1]" in parts[-4].text and parts[-3].inline_data.data == b"first"
+    assert "[Fuente 6]" in parts[-2].text and "60.0" in parts[-2].text
+    assert parts[-1].inline_data.data == b"second"
+
+
+@pytest.mark.parametrize("schema", [None, {"type": "object"}])
+def test_learning_requests_buffer_and_retry_before_returning_material(
+    monkeypatch, schema
+):
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.models.generate_content.side_effect = [
+        httpx.RemoteProtocolError("broken response"),
+        MagicMock(text="{}", usage_metadata=None),
+    ]
+    provider = GeminiProvider()
+    monkeypatch.setattr(provider, "client", lambda: client)
+    request = InferenceRequest(
+        model="gemini-test",
+        system="Study",
+        prompt="Sources",
+        buffered=True,
+        json_schema=schema,
+    )
+    assert list(provider.stream(request)) == ["{}"]
+    assert provider.response_mode == "buffered" and provider.transport_attempts == 2
+    client.models.generate_content_stream.assert_not_called()
+
+
 def test_native_response_retries_one_broken_connection_without_replaying_tokens(
     monkeypatch,
 ):

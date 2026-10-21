@@ -9,6 +9,7 @@ export const Route = createFileRoute("/_layout/workspaces/$workspaceId")({
   ): {
     document?: string
     start?: boolean
+    page?: number
     time?: number
     sheet?: string
     cell?: string
@@ -21,6 +22,10 @@ export const Route = createFileRoute("/_layout/workspaces/$workspaceId")({
       typeof search.cell === "string" &&
       /^\$?[A-Za-z]+\$?[1-9]\d*(?::\$?[A-Za-z]+\$?[1-9]\d*)?$/.test(search.cell)
         ? search.cell
+        : undefined,
+    page:
+      Number.isInteger(Number(search.page)) && Number(search.page) > 0
+        ? Number(search.page)
         : undefined,
     time:
       search.time !== undefined &&
@@ -77,6 +82,7 @@ function WorkspacePage() {
       library={library.data ?? []}
       providers={providers.data ?? []}
       entryDocumentId={search.document}
+      entryPage={search.page}
       entryTime={search.time}
       entrySheet={search.sheet}
       entryCell={search.cell}
