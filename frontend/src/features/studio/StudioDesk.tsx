@@ -174,7 +174,9 @@ export function StudioDesk({ section = "merge" }: { section?: StudioSection }) {
           : "PDF ajustado.pdf",
     )
   }, [section])
-  const available = documents.data ?? []
+  const available = (documents.data ?? []).filter(
+    (document) => (document.source_type ?? "pdf") === "pdf",
+  )
   const current = available.find((document) => document.id === sources[0]?.id)
   const totalPages = sources.reduce((total, source) => {
     const document = available.find((item) => item.id === source.id)

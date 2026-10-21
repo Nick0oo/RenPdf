@@ -16,6 +16,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { sourceType } from "@/features/media/location"
+import { NativeMediaIndex } from "@/features/media/NativeMediaIndex"
 import { errorMessage, type ProviderName } from "./api"
 import { ChoiceSelect } from "./ChoiceSelect"
 import { PrivacyPanel } from "./PrivacyPanel"
@@ -105,8 +107,8 @@ export function WorkspaceSettings({
                   </Button>
                 </div>
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Solo se consultarán los PDFs marcados. Puedes dejar fuera los
-                  que todavía se están procesando.
+                  Solo se consultarán las fuentes marcadas. Puedes dejar fuera
+                  los que todavía se están procesando.
                 </p>
                 {documents.map((document) => (
                   <div
@@ -169,7 +171,7 @@ export function WorkspaceSettings({
                 ))}
                 {!documents.length && (
                   <p className="text-sm text-muted-foreground">
-                    Añade un PDF desde el botón Añadir fuente.
+                    Añade documentos, audios o videos desde Añadir fuentes.
                   </p>
                 )}
               </section>
@@ -179,7 +181,7 @@ export function WorkspaceSettings({
                     <Label>Documento que configuras</Label>
                     <ChoiceSelect
                       label="Documento que configuras"
-                      placeholder="Selecciona un PDF"
+                      placeholder="Selecciona una fuente"
                       value={activeDocument.id}
                       onValueChange={onDocumentChange}
                       options={documents.map((document) => ({
@@ -192,6 +194,7 @@ export function WorkspaceSettings({
                     key={activeDocument.id}
                     document={activeDocument}
                     workspaceId={workspaceId}
+                    providers={providers}
                     onDocumentsChange={onDocumentsChange}
                   />
                 </>
@@ -219,7 +222,7 @@ export function WorkspaceSettings({
                     <Label>Documento al que aplica el permiso</Label>
                     <ChoiceSelect
                       label="Documento para autorizaciones"
-                      placeholder="Selecciona un PDF"
+                      placeholder="Selecciona una fuente"
                       value={activeDocument.id}
                       onValueChange={onDocumentChange}
                       options={documents.map((document) => ({
@@ -249,7 +252,7 @@ export function WorkspaceSettings({
               )}
               {!activeDocument && (
                 <p className="text-sm text-muted-foreground">
-                  Añade un PDF para administrar sus permisos.
+                  Añade una fuente para administrar sus permisos.
                 </p>
               )}
             </TabsContent>
@@ -275,14 +278,16 @@ export function WorkspaceSettings({
 function DocumentTools({
   document,
   workspaceId,
+  providers,
   onDocumentsChange,
 }: {
   document: DocumentPublic
+  providers: ProviderConfig[]
   workspaceId: string
   onDocumentsChange: () => void
 }) {
   const [dimensions, setDimensions] = useState(768)
-  const [multimodal, setMultimodal] = useState(false)
+  const [multimodal, setMultimodal] = useState(true)
   const routing = useQuery({
     queryKey: ["routing"],
     queryFn: async () => (await ProvidersService.readRouting()).data,
@@ -297,8 +302,13 @@ function DocumentTools({
       (row) => row.task === "embeddings" && row.scope_key === "personal",
     )
   const supportsMultimodal =
-    (embedding?.provider ?? "gemini") === "gemini" &&
-    (embedding?.model ?? "gemini-embedding-2").startsWith("gemini-embedding-2")
+    sourceType(document) !== "spreadsheet" &&
+    (((embedding?.provider ?? "gemini") === "gemini" &&
+      (embedding?.model ?? "gemini-embedding-2").startsWith(
+        "gemini-embedding-2",
+      )) ||
+      (embedding?.provider === "embeddinggemma" &&
+        embedding.model === "embeddinggemma-2-native"))
   const jobs = useQuery({
     queryKey: ["jobs", document.id],
     queryFn: async () =>
@@ -351,64 +361,81 @@ function DocumentTools({
     <div className="space-y-6">
       {document.warning && (
         <p className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 text-xs leading-relaxed">
-          {document.warning}
+          {document.warning.replace(
+            "Autoriza el análisis de segmentos para consultar su contenido.",
+            "Prepara la indexación nativa para consultar su contenido.",
+          )}
         </p>
       )}
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Búsqueda en tu PDF</h3>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          El texto extraído ya permite hacer preguntas. Crear un índice mejora
-          la búsqueda por significado y requiere permiso si eliges un proveedor
-          en la nube.
-        </p>
-        <div className="grid grid-cols-2 gap-4 rounded-xl border bg-muted/15 p-4">
-          <div className="space-y-2">
-            <Label htmlFor="embedding-dimensions">Dimensiones</Label>
-            <Input
-              id="embedding-dimensions"
-              aria-label="Dimensiones del embedding"
-              type="number"
-              min={1}
-              max={2000}
-              value={dimensions}
-              onChange={(event) =>
-                setDimensions(Number(event.target.value) || 768)
-              }
-            />
+      {["audio", "video"].includes(sourceType(document)) ? (
+        <NativeMediaIndex
+          document={document}
+          providers={providers}
+          onDocumentsChange={onDocumentsChange}
+        />
+      ) : (
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold">Búsqueda en esta fuente</h3>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Con evidencia extraída ya puedes hacer preguntas. Crear un índice
+            mejora la búsqueda por significado y requiere permiso si eliges un
+            proveedor en la nube.
+          </p>
+          <div className="grid grid-cols-2 gap-4 rounded-xl border bg-muted/15 p-4">
+            <div className="space-y-2">
+              <Label htmlFor="embedding-dimensions">Dimensiones</Label>
+              <Input
+                id="embedding-dimensions"
+                aria-label="Dimensiones del embedding"
+                type="number"
+                min={1}
+                max={2000}
+                value={dimensions}
+                onChange={(event) =>
+                  setDimensions(Number(event.target.value) || 768)
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-medium">Proveedor</p>
+              <p className="break-words text-sm">
+                {embedding?.provider ?? "gemini"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {embedding?.model ?? "gemini-embedding-2"}
+              </p>
+            </div>
+            {sourceType(document) !== "spreadsheet" && (
+              <div className="col-span-2 flex items-start gap-3">
+                <Checkbox
+                  id="multimodal-index"
+                  checked={supportsMultimodal && multimodal}
+                  disabled={!supportsMultimodal}
+                  onCheckedChange={(checked) => setMultimodal(checked === true)}
+                />
+                <Label
+                  htmlFor="multimodal-index"
+                  className="text-xs leading-relaxed"
+                >
+                  {sourceType(document) === "pdf"
+                    ? "Incluir imágenes"
+                    : "Incluir segmentos de audio o video"}{" "}
+                  {supportsMultimodal
+                    ? ""
+                    : "(requiere un modelo con imágenes nativas)"}
+                </Label>
+              </div>
+            )}
           </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium">Proveedor</p>
-            <p className="break-words text-sm">
-              {embedding?.provider ?? "gemini"}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {embedding?.model ?? "gemini-embedding-2"}
-            </p>
-          </div>
-          <div className="col-span-2 flex items-start gap-3">
-            <Checkbox
-              id="multimodal-index"
-              checked={supportsMultimodal && multimodal}
-              disabled={!supportsMultimodal}
-              onCheckedChange={(checked) => setMultimodal(checked === true)}
-            />
-            <Label
-              htmlFor="multimodal-index"
-              className="text-xs leading-relaxed"
-            >
-              Incluir imágenes{" "}
-              {supportsMultimodal ? "" : "(requiere Gemini Embedding 2)"}
-            </Label>
-          </div>
-        </div>
-        <Button
-          className="w-full"
-          disabled={index.isPending || !document.current_version_id}
-          onClick={() => index.mutate()}
-        >
-          {index.isPending ? "Solicitando…" : "Crear / renovar índice"}
-        </Button>
-      </section>
+          <Button
+            className="w-full"
+            disabled={index.isPending || !document.current_version_id}
+            onClick={() => index.mutate()}
+          >
+            {index.isPending ? "Solicitando…" : "Crear / renovar índice"}
+          </Button>
+        </section>
+      )}
       <section className="space-y-3 border-t pt-5">
         <h3 className="text-sm font-semibold">Herramientas del documento</h3>
         <div className="grid grid-cols-2 gap-2">
@@ -439,23 +466,25 @@ function DocumentTools({
             </p>
           </div>
         )}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-muted-foreground"
-          onClick={async () => {
-            try {
-              await DocumentsService.reprocess({
-                path: { document_id: document.id },
-              })
-              await jobs.refetch()
-            } catch (error) {
-              fail(error)
-            }
-          }}
-        >
-          Reprocesar PDF
-        </Button>
+        {sourceType(document) === "pdf" && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground"
+            onClick={async () => {
+              try {
+                await DocumentsService.reprocess({
+                  path: { document_id: document.id },
+                })
+                await jobs.refetch()
+              } catch (error) {
+                fail(error)
+              }
+            }}
+          >
+            Reprocesar PDF
+          </Button>
+        )}
       </section>
       <section className="space-y-3 border-t pt-5">
         <h3 className="text-sm font-semibold">Procesamiento reciente</h3>
@@ -547,9 +576,9 @@ function WorkspaceNotes({
       <div className="space-y-3">
         <h3 className="text-sm font-semibold">Notas y marcadores</h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          {activeDocument
+          {activeDocument && sourceType(activeDocument) === "pdf"
             ? `${activeDocument.title} · página ${currentPage}`
-            : "Abre un PDF para guardar una nota."}
+            : "Las notas se vinculan a una página PDF. Abre un PDF para guardar una."}
         </p>
         <Label htmlFor="workspace-note">Nota personal</Label>
         <Input
@@ -559,7 +588,12 @@ function WorkspaceNotes({
           onChange={(event) => setNote(event.target.value)}
         />
         <Button
-          disabled={!note.trim() || !activeDocument || saving}
+          disabled={
+            !note.trim() ||
+            !activeDocument ||
+            sourceType(activeDocument) !== "pdf" ||
+            saving
+          }
           onClick={async () => {
             setSaving(true)
             try {

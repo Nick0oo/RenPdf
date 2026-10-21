@@ -13,6 +13,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
+import { cn } from "@/lib/utils"
 export const Route = createFileRoute("/_layout")({
   component: Layout,
   beforeLoad: async () => {
@@ -21,11 +22,24 @@ export const Route = createFileRoute("/_layout")({
 })
 function Layout() {
   const path = useRouterState({ select: (state) => state.location.pathname })
+  const isWorkspace = path.startsWith("/workspaces/")
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "13.5rem",
+          "--sidebar-width-icon": "3.5rem",
+        } as React.CSSProperties
+      }
+    >
       <AppSidebar />
       <SidebarInset className="h-svh min-w-0 overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
+        <header
+          className={cn(
+            "flex shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6",
+            isWorkspace ? "h-9" : "h-12",
+          )}
+        >
           <SidebarTrigger className="-ml-1 text-muted-foreground" />
           <span className="h-4 border-l" />
           <span className="text-xs text-muted-foreground">RenPdf</span>

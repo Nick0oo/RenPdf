@@ -3,12 +3,15 @@ import { ShieldCheck } from "lucide-react"
 import type { ConsentInput, DocumentPublic } from "@/client"
 import { DocumentsService } from "@/client"
 import { Button } from "@/components/ui/button"
+import { sourceType } from "@/features/media/location"
 import { errorMessage, type ProviderName } from "./api"
 
 const scopes = {
-  embeddings: "Texto para crear embeddings",
-  multimodal_embeddings: "Texto e imágenes para embeddings multimodales",
-  chat: "Fragmentos recuperados para el chat",
+  embeddings: "Creación de embeddings de la fuente",
+  multimodal_embeddings:
+    "Texto, imágenes, audio o video para embeddings multimodales",
+  media_analysis: "Segmentos de audio o video para transcripción y análisis",
+  chat: "Fragmentos y segmentos recuperados para el chat",
   vision: "Imágenes de regiones para análisis visual",
   original_pdf: "Archivo PDF completo",
 } as const
@@ -54,42 +57,53 @@ export function PrivacyPanel({
         solamente este propósito. Revocar impide envíos futuros; no recupera
         datos ya enviados.
       </p>
-      {Object.entries(scopes).map(([scope, title]) => {
-        const active =
-          consents.data?.filter(
-            (row) =>
-              row.provider === provider &&
-              row.scope === scope &&
-              !row.revoked_at &&
-              new Date(row.expires_at) > new Date(),
-          ) ?? []
-        return (
-          <div key={scope} className="flex items-center justify-between gap-3">
-            <span className="text-xs">{title}</span>
-            {active.length ? (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={revoke.isPending}
-                onClick={() => {
-                  for (const row of active) revoke.mutate(row.id)
-                }}
-              >
-                Revocar
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={grant.isPending}
-                onClick={() => grant.mutate(scope as ConsentInput["scope"])}
-              >
-                Autorizar
-              </Button>
-            )}
-          </div>
+      {Object.entries(scopes)
+        .filter(([scope]) =>
+          sourceType(document) === "spreadsheet"
+            ? ["embeddings", "chat"].includes(scope)
+            : sourceType(document) === "pdf"
+              ? scope !== "media_analysis"
+              : !["vision", "original_pdf"].includes(scope),
         )
-      })}
+        .map(([scope, title]) => {
+          const active =
+            consents.data?.filter(
+              (row) =>
+                row.provider === provider &&
+                row.scope === scope &&
+                !row.revoked_at &&
+                new Date(row.expires_at) > new Date(),
+            ) ?? []
+          return (
+            <div
+              key={scope}
+              className="flex items-center justify-between gap-3"
+            >
+              <span className="text-xs">{title}</span>
+              {active.length ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={revoke.isPending}
+                  onClick={() => {
+                    for (const row of active) revoke.mutate(row.id)
+                  }}
+                >
+                  Revocar
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={grant.isPending}
+                  onClick={() => grant.mutate(scope as ConsentInput["scope"])}
+                >
+                  Autorizar
+                </Button>
+              )}
+            </div>
+          )
+        })}
       {(grant.error || revoke.error) && (
         <p role="alert" className="text-xs text-destructive">
           {errorMessage(grant.error || revoke.error)}

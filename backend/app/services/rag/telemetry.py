@@ -6,7 +6,7 @@ from typing import Any
 
 from app.services.models.contracts import ModelRoutingPolicy
 
-PROMPT_TEMPLATE_VERSION = "rag-multimodal-windows-v3"
+PROMPT_TEMPLATE_VERSION = "rag-native-media-v5"
 
 
 class ChatTrace:
@@ -43,6 +43,8 @@ class ChatTrace:
             elapsed_seconds=round(time.monotonic() - self.started, 3),
             outcome=outcome,
             error_code=error_code,
+            response_mode=getattr(provider, "response_mode", None),
+            transport_attempts=getattr(provider, "transport_attempts", None),
             finish_reason=finish_reason
             if isinstance(finish_reason, str)
             and finish_reason

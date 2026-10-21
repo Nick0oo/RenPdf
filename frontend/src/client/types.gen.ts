@@ -228,11 +228,11 @@ export type ConsentInput = {
     /**
      * Provider
      */
-    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible' | 'embeddinggemma';
     /**
      * Scope
      */
-    scope: 'embeddings' | 'multimodal_embeddings' | 'chat' | 'vision' | 'original_pdf';
+    scope: 'embeddings' | 'multimodal_embeddings' | 'chat' | 'vision' | 'original_pdf' | 'media_analysis';
     /**
      * Expires In Days
      */
@@ -284,7 +284,7 @@ export type ConversationInput = {
     /**
      * Provider
      */
-    provider?: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    provider?: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible' | 'embeddinggemma';
     /**
      * Model
      */
@@ -402,6 +402,22 @@ export type DocumentPublic = {
      */
     page_count: number;
     /**
+     * Source Type
+     */
+    source_type?: 'pdf' | 'audio' | 'video' | 'spreadsheet';
+    /**
+     * Mime Type
+     */
+    mime_type?: string;
+    /**
+     * Duration Seconds
+     */
+    duration_seconds?: number | null;
+    /**
+     * Sheet Count
+     */
+    sheet_count?: number;
+    /**
      * Status
      */
     status: string;
@@ -515,7 +531,27 @@ export type EvidencePublic = {
     /**
      * Page Number
      */
-    page_number: number;
+    page_number: number | null;
+    /**
+     * Source Type
+     */
+    source_type?: 'pdf' | 'audio' | 'video' | 'spreadsheet';
+    /**
+     * Start Seconds
+     */
+    start_seconds?: number | null;
+    /**
+     * End Seconds
+     */
+    end_seconds?: number | null;
+    /**
+     * Sheet Name
+     */
+    sheet_name?: string | null;
+    /**
+     * Cell Range
+     */
+    cell_range?: string | null;
     /**
      * Text
      */
@@ -556,7 +592,7 @@ export type IndexInput = {
     /**
      * Provider
      */
-    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible' | 'embeddinggemma';
     /**
      * Model
      */
@@ -779,6 +815,14 @@ export type ModelCapabilities = {
      */
     vision?: 'declared' | 'verified' | 'unknown' | 'unsupported';
     /**
+     * Audio
+     */
+    audio?: 'declared' | 'verified' | 'unknown' | 'unsupported';
+    /**
+     * Video
+     */
+    video?: 'declared' | 'verified' | 'unknown' | 'unsupported';
+    /**
      * Embeddings
      */
     embeddings?: 'declared' | 'verified' | 'unknown' | 'unsupported';
@@ -830,7 +874,7 @@ export type ModelSelection = {
     /**
      * Provider
      */
-    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible' | 'embeddinggemma';
     /**
      * Model
      */
@@ -1076,7 +1120,7 @@ export type RoutingInput = {
     /**
      * Provider
      */
-    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible';
+    provider: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible' | 'embeddinggemma';
     /**
      * Model
      */
@@ -2264,6 +2308,159 @@ export type documentsDocumentFileResponses = {
     200: unknown;
 };
 
+export type documentsCoverageData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/coverage';
+};
+
+export type documentsCoverageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsCoverageError = documentsCoverageErrors[keyof documentsCoverageErrors];
+
+export type documentsCoverageResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type documentsMediaPlaybackData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/playback';
+};
+
+export type documentsMediaPlaybackErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsMediaPlaybackError = documentsMediaPlaybackErrors[keyof documentsMediaPlaybackErrors];
+
+export type documentsMediaPlaybackResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type documentsMediaSegmentsData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/documents/{document_id}/segments';
+};
+
+export type documentsMediaSegmentsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsMediaSegmentsError = documentsMediaSegmentsErrors[keyof documentsMediaSegmentsErrors];
+
+export type documentsMediaSegmentsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type documentsRequestNativeIndexData = {
+    body: IndexInput;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/prepare-native';
+};
+
+export type documentsRequestNativeIndexErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsRequestNativeIndexError = documentsRequestNativeIndexErrors[keyof documentsRequestNativeIndexErrors];
+
+export type documentsRequestNativeIndexResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPublic;
+};
+
+export type documentsRequestNativeIndexResponse = documentsRequestNativeIndexResponses[keyof documentsRequestNativeIndexResponses];
+
+export type documentsRequestMediaAnalysisData = {
+    body: ModelSelection;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/analyze';
+};
+
+export type documentsRequestMediaAnalysisErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type documentsRequestMediaAnalysisError = documentsRequestMediaAnalysisErrors[keyof documentsRequestMediaAnalysisErrors];
+
+export type documentsRequestMediaAnalysisResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPublic;
+};
+
+export type documentsRequestMediaAnalysisResponse = documentsRequestMediaAnalysisResponses[keyof documentsRequestMediaAnalysisResponses];
+
 export type documentsThumbnailData = {
     body?: never;
     path: {
@@ -2710,6 +2907,83 @@ export type documentsGenerateEnrichmentResponses = {
 };
 
 export type documentsGenerateEnrichmentResponse = documentsGenerateEnrichmentResponses[keyof documentsGenerateEnrichmentResponses];
+
+export type spreadsheetsListSheetsData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/documents/{document_id}/sheets';
+};
+
+export type spreadsheetsListSheetsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type spreadsheetsListSheetsError = spreadsheetsListSheetsErrors[keyof spreadsheetsListSheetsErrors];
+
+export type spreadsheetsListSheetsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type spreadsheetsSheetCellsData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query: {
+        /**
+         * Sheet
+         */
+        sheet: string;
+        /**
+         * Row
+         */
+        row?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Column
+         */
+        column?: number;
+        /**
+         * Columns
+         */
+        columns?: number;
+    };
+    url: '/api/v1/documents/{document_id}/sheets/cells';
+};
+
+export type spreadsheetsSheetCellsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type spreadsheetsSheetCellsError = spreadsheetsSheetCellsErrors[keyof spreadsheetsSheetCellsErrors];
+
+export type spreadsheetsSheetCellsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type workspacesListWorkspacesData = {
     body?: never;
@@ -3419,6 +3693,90 @@ export type studioRunOperationResponses = {
 
 export type studioRunOperationResponse = studioRunOperationResponses[keyof studioRunOperationResponses];
 
+export type traceRagSourcesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Workspace Id
+         */
+        workspace_id?: string | null;
+        /**
+         * Source Type
+         */
+        source_type?: 'all' | 'pdf' | 'audio' | 'video' | 'spreadsheet';
+        /**
+         * Q
+         */
+        q?: string;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/trace/rag/sources';
+};
+
+export type traceRagSourcesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type traceRagSourcesError = traceRagSourcesErrors[keyof traceRagSourcesErrors];
+
+export type traceRagSourcesResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type traceRagQueriesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Workspace Id
+         */
+        workspace_id?: string | null;
+        /**
+         * Q
+         */
+        q?: string;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/trace/rag/queries';
+};
+
+export type traceRagQueriesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type traceRagQueriesError = traceRagQueriesErrors[keyof traceRagQueriesErrors];
+
+export type traceRagQueriesResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type traceOverviewData = {
     body?: never;
     path?: never;
@@ -3503,6 +3861,87 @@ export type traceResponseDetailErrors = {
 export type traceResponseDetailError = traceResponseDetailErrors[keyof traceResponseDetailErrors];
 
 export type traceResponseDetailResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type traceResponseContextData = {
+    body?: never;
+    path: {
+        /**
+         * Message Id
+         */
+        message_id: string;
+    };
+    query?: never;
+    url: '/api/v1/trace/responses/{message_id}/context';
+};
+
+export type traceResponseContextErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type traceResponseContextError = traceResponseContextErrors[keyof traceResponseContextErrors];
+
+export type traceResponseContextResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type traceDocumentChunksData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: {
+        /**
+         * Page
+         */
+        page?: number | null;
+        /**
+         * Second
+         */
+        second?: number | null;
+        /**
+         * Sheet
+         */
+        sheet?: string | null;
+        /**
+         * Cell
+         */
+        cell?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/trace/documents/{document_id}/chunks';
+};
+
+export type traceDocumentChunksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type traceDocumentChunksError = traceDocumentChunksErrors[keyof traceDocumentChunksErrors];
+
+export type traceDocumentChunksResponses = {
     /**
      * Successful Response
      */

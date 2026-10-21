@@ -77,6 +77,7 @@ export type DocumentTrace = {
     state: string
     parser: string
     parser_version: string
+    extraction?: Record<string, unknown>
     current: boolean
     chunks: number
     figures: number

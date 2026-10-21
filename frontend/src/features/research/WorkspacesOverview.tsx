@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { ChatService, WorkspacesService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { errorMessage } from "./api"
 import { NameDialog } from "./NameDialog"
 import { chatDate } from "./presentation"
@@ -14,21 +15,26 @@ export function WorkspacesOverview() {
   const cache = useQueryClient()
   const navigate = useNavigate()
   const [search, setSearch] = useState("")
+  const [page, setPage] = useState(0)
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState("")
   const workspaces = useQuery({
     queryKey: ["workspaces"],
     queryFn: async () => (await WorkspacesService.listWorkspaces()).data,
   })
+  const matched =
+    workspaces.data?.filter((workspace) =>
+      `${workspace.name} ${workspace.description}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    ) ?? []
+  const visible = matched.slice(page * 12, (page + 1) * 12)
   const details = useQuery({
-    queryKey: [
-      "workspace-overview",
-      workspaces.data?.map((row) => row.id).join(","),
-    ],
-    enabled: !!workspaces.data?.length,
+    queryKey: ["workspace-overview", visible.map((row) => row.id).join(",")],
+    enabled: visible.length > 0,
     queryFn: async () =>
       Promise.all(
-        (workspaces.data ?? []).map(async (workspace) => {
+        visible.map(async (workspace) => {
           const [documents, conversations] = await Promise.all([
             WorkspacesService.listWorkspaceDocuments({
               path: { workspace_id: workspace.id },
@@ -57,22 +63,16 @@ export function WorkspacesOverview() {
     },
     onError: (error) => toast.error(errorMessage(error)),
   })
-  const visible =
-    workspaces.data?.filter((workspace) =>
-      `${workspace.name} ${workspace.description}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-    ) ?? []
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-5 py-7 md:px-9 md:py-9">
+    <div className="mx-auto max-w-6xl flex flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
       <header className="flex flex-wrap items-start justify-between gap-5">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight">
             Tus workspaces
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            Un espacio para cada investigación. Reúne tus PDFs, conversa con las
-            fuentes y conserva las ideas que quieres seguir.
+            PDF, Excel, audio y video en un mismo lugar. Pregunta entre fuentes
+            y comprueba cada respuesta en su página, celda o minuto.
           </p>
         </div>
         <Button
@@ -97,7 +97,10 @@ export function WorkspacesOverview() {
             aria-label="Buscar workspaces"
             placeholder="Buscar workspace…"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(0)
+            }}
             className="pl-9"
           />
         </div>
@@ -114,9 +117,17 @@ export function WorkspacesOverview() {
         </p>
       )}
       {workspaces.isPending && (
-        <p className="text-sm text-muted-foreground">Cargando tus espacios…</p>
+        <div
+          className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+          role="status"
+          aria-label="Cargando workspaces"
+        >
+          {[1, 2, 3].map((id) => (
+            <Skeleton key={id} className="h-48 rounded-xl" />
+          ))}
+        </div>
       )}
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {visible.map((workspace) => {
           const info = details.data?.find((row) => row.id === workspace.id)
           return (
@@ -125,13 +136,13 @@ export function WorkspacesOverview() {
               to="/workspaces/$workspaceId"
               params={{ workspaceId: workspace.id }}
               search={{ document: undefined, start: undefined }}
-              className="group flex min-h-56 flex-col rounded-2xl border bg-background p-6 transition-colors hover:border-primary/50"
+              className="group flex min-h-48 flex-col rounded-xl border bg-card p-5 transition-colors hover:border-primary/50"
             >
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between">
                 <FolderOpen size={23} className="text-primary" />
                 <ArrowUpRight size={16} className="text-muted-foreground" />
               </div>
-              <h2 className="text-lg font-semibold leading-snug">
+              <h2 className="line-clamp-2 text-base font-semibold leading-snug">
                 {workspace.name}
               </h2>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
@@ -146,7 +157,7 @@ export function WorkspacesOverview() {
               <div className="mt-auto flex items-center justify-between gap-2 pt-6 text-xs text-muted-foreground">
                 <span>
                   {info
-                    ? `${info.documents.length} PDFs · ${info.conversations.length} chats`
+                    ? `${info.documents.length} fuentes · ${info.conversations.length} chats`
                     : details.error
                       ? "Fuentes no disponibles"
                       : "Cargando fuentes…"}
@@ -161,6 +172,32 @@ export function WorkspacesOverview() {
           )
         })}
       </div>
+      {matched.length > 12 && (
+        <div className="flex items-center justify-between gap-3 border-t pt-4">
+          <span className="text-xs text-muted-foreground">
+            {page * 12 + 1}–{Math.min((page + 1) * 12, matched.length)} de{" "}
+            {matched.length} workspaces
+          </span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 0}
+              onClick={() => setPage((value) => value - 1)}
+            >
+              Anteriores
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={(page + 1) * 12 >= matched.length}
+              onClick={() => setPage((value) => value + 1)}
+            >
+              Siguientes
+            </Button>
+          </div>
+        </div>
+      )}
       {!workspaces.isPending && !visible.length && (
         <div className="py-14 text-center">
           <FolderOpen
@@ -175,7 +212,7 @@ export function WorkspacesOverview() {
           <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
             {search
               ? "Prueba con otro nombre."
-              : "Crea un workspace y añade los PDFs sobre los que quieres conversar."}
+              : "Crea un workspace y añade los documentos y archivos que quieres consultar."}
           </p>
           {!search && (
             <Button className="mt-5" onClick={() => setCreating(true)}>

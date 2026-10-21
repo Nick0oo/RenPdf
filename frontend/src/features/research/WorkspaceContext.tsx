@@ -3,9 +3,11 @@ import {
   BookOpen,
   FilePlus2,
   FileText,
+  Headphones,
   Plus,
-  StickyNote,
+  Table2,
   Trash2,
+  Video,
 } from "lucide-react"
 import { useId, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -19,7 +21,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { formatTime, sourceType } from "@/features/media/location"
+import { cn } from "@/lib/utils"
 import { errorMessage } from "./api"
+import { DocumentCoverage } from "./DocumentCoverage"
 import { documentStatus } from "./presentation"
 
 type Props = {
@@ -32,6 +37,7 @@ type Props = {
   onDocumentChange: (id: string) => void
   onDocumentsChange: () => void
   onOpenPdf: (id: string) => void
+  onPrepareSource?: (id: string) => void
   currentPage: number
   onSaveNote: (text: string) => Promise<unknown>
   onCitation: (source: EvidencePublic) => void
@@ -47,6 +53,7 @@ export function WorkspaceContext({
   onDocumentChange,
   onDocumentsChange,
   onOpenPdf,
+  onPrepareSource,
   currentPage,
   onSaveNote,
   onCitation,
@@ -73,12 +80,14 @@ export function WorkspaceContext({
     onSelectionChange(
       selectedIds === null ? null : [...new Set([...selectedIds, id])],
     )
-    onDocumentChange(id)
     onDocumentsChange()
   }
   return (
-    <div className="space-y-7">
-      <section aria-label="Fuentes del workspace" className="space-y-4">
+    <div className="flex flex-col gap-4">
+      <section
+        aria-label="Fuentes del workspace"
+        className="flex flex-col gap-3"
+      >
         <div className="flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <FileText size={15} /> Fuentes{" "}
@@ -103,8 +112,12 @@ export function WorkspaceContext({
                 disabled={uploading}
                 onClick={() => upload.current?.click()}
               >
-                <FilePlus2 size={15} /> Importar PDFs
+                <FilePlus2 size={15} /> Importar fuentes
               </Button>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                PDF, Excel, CSV, TSV, MP3, WAV, M4A, FLAC, OGG, MP4, WEBM y MOV.
+                Hasta 50 MB por archivo; audio y video hasta 30 minutos.
+              </p>
               <p className="mt-4 text-xs text-muted-foreground">
                 Desde tu biblioteca
               </p>
@@ -136,14 +149,33 @@ export function WorkspaceContext({
           </Popover>
         </div>
         <p className="text-xs leading-5 text-muted-foreground">
-          Marca los PDFs que quieres consultar. Abre una fuente para leerla sin
-          perder el chat.
+          Marca las fuentes del chat. Haz clic para leer o reproducir.
         </p>
+        {documents.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Consultar todas"
+              onClick={() => onSelectionChange(null)}
+            >
+              Todas
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Desmarcar todas"
+              onClick={() => onSelectionChange([])}
+            >
+              Ninguna
+            </Button>
+          </div>
+        )}
         <input
           ref={upload}
           type="file"
           multiple
-          accept="application/pdf,.pdf"
+          accept="application/pdf,audio/*,video/*,.pdf,.xlsx,.xlsm,.xls,.csv,.tsv,.mp3,.wav,.m4a,.flac,.ogg,.mp4,.webm,.mov"
           data-testid="workspace-pdf-upload"
           className="hidden"
           onChange={async (event) => {
@@ -156,6 +188,7 @@ export function WorkspaceContext({
               for (const file of files) {
                 const response = await DocumentsService.uploadDocument({
                   body: { file },
+                  query: { workspace_id: workspaceId },
                 })
                 await WorkspacesService.attachDocument({
                   path: {
@@ -164,9 +197,8 @@ export function WorkspaceContext({
                   },
                 })
                 added.push(response.data.id)
-                onDocumentChange(response.data.id)
               }
-              toast.success(`${files.length} PDFs añadidos al workspace`)
+              toast.success(`${added.length} fuentes añadidas al workspace`)
             } catch (error) {
               toast.error(errorMessage(error))
             } finally {
@@ -184,14 +216,19 @@ export function WorkspaceContext({
         />
         {uploading && (
           <p role="status" className="text-xs text-primary">
-            Guardando tus PDFs…
+            Guardando tus fuentes…
           </p>
         )}
         <div className="space-y-2">
           {documents.map((document) => (
             <div
               key={document.id}
-              className={`flex items-start gap-2.5 rounded-xl border p-3 ${activeDocument?.id === document.id ? "border-primary/30 bg-primary/5" : "bg-background"}`}
+              className={cn(
+                "flex items-start gap-2 rounded-lg border p-2.5",
+                activeDocument?.id === document.id
+                  ? "border-primary/30 bg-primary/5"
+                  : "bg-background",
+              )}
             >
               <Checkbox
                 aria-label={`Consultar ${document.title}`}
@@ -211,23 +248,40 @@ export function WorkspaceContext({
               <div className="min-w-0 flex-1">
                 <button
                   type="button"
-                  className="block w-full text-left text-xs font-medium leading-5"
+                  title={document.title}
+                  className="line-clamp-2 w-full text-left text-xs font-medium leading-5"
                   onClick={() => onDocumentChange(document.id)}
                 >
                   {document.title}
                 </button>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  {document.page_count} páginas ·{" "}
-                  {documentStatus(document.status)}
+                  {sourceType(document) === "pdf"
+                    ? `${document.page_count} páginas`
+                    : sourceType(document) === "spreadsheet"
+                      ? `${document.sheet_count ?? 0} hojas · Excel`
+                      : `${sourceType(document) === "video" ? "Video" : "Audio"} ${formatTime(document.duration_seconds)}`}{" "}
+                  · {documentStatus(document.status)}
                 </p>
+                <DocumentCoverage
+                  document={document}
+                  onPrepare={() => onPrepareSource?.(document.id)}
+                />
               </div>
               <Button
                 size="icon-sm"
                 variant="ghost"
-                aria-label={`Abrir PDF ${document.title}`}
+                aria-label={`Abrir fuente ${document.title}`}
                 onClick={() => onOpenPdf(document.id)}
               >
-                <BookOpen size={14} />
+                {sourceType(document) === "spreadsheet" ? (
+                  <Table2 data-icon="inline-start" />
+                ) : sourceType(document) === "video" ? (
+                  <Video data-icon="inline-start" />
+                ) : sourceType(document) === "audio" ? (
+                  <Headphones data-icon="inline-start" />
+                ) : (
+                  <BookOpen data-icon="inline-start" />
+                )}
               </Button>
             </div>
           ))}
@@ -238,129 +292,131 @@ export function WorkspaceContext({
               Este workspace aún no tiene fuentes
             </p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Importa uno o varios PDFs para empezar.
+              Importa documentos, Excel, audios o videos para empezar.
             </p>
             <Button
               size="sm"
               className="mt-4"
               onClick={() => upload.current?.click()}
             >
-              Importar PDFs
+              Importar fuentes
             </Button>
           </div>
         )}
       </section>
-      <section
-        aria-label="Notas del workspace"
-        className="space-y-4 border-t pt-6"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <StickyNote size={15} /> Notas
-          </h2>
-          <span className="text-xs text-muted-foreground">
-            {annotations.data?.length ?? 0}
-          </span>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={noteId} className="text-xs">
-            Nota personal
-          </Label>
-          <textarea
-            id={noteId}
-            rows={3}
-            maxLength={4000}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="Una idea, una duda o algo que quieres recordar…"
-            className="w-full resize-none rounded-xl border bg-background p-3 text-xs leading-6 outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <p className="text-[11px] text-muted-foreground">
-            {activeDocument
-              ? `En ${activeDocument.title} · p. ${currentPage}`
-              : "Añade un PDF para guardar una nota."}
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            disabled={!note.trim() || !activeDocument || saving}
-            onClick={async () => {
-              setSaving(true)
-              try {
-                await onSaveNote(note)
-                setNote("")
-              } catch (error) {
-                toast.error(errorMessage(error))
-              } finally {
-                setSaving(false)
+      <details className="border-t pt-4">
+        <summary className="cursor-pointer text-sm font-semibold">
+          Notas ({annotations.data?.length ?? 0})
+        </summary>
+        <section
+          aria-label="Notas del workspace"
+          className="mt-4 flex flex-col gap-3"
+        >
+          <div className="space-y-2">
+            <Label htmlFor={noteId} className="text-xs">
+              Nota personal
+            </Label>
+            <textarea
+              id={noteId}
+              rows={3}
+              maxLength={4000}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Una idea, una duda o algo que quieres recordar…"
+              className="w-full resize-none rounded-xl border bg-background p-3 text-xs leading-6 outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {activeDocument && sourceType(activeDocument) === "pdf"
+                ? `En ${activeDocument.title} · p. ${currentPage}`
+                : "Las notas se vinculan a una página PDF. Abre un PDF para guardar una."}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              disabled={
+                !note.trim() ||
+                !activeDocument ||
+                sourceType(activeDocument) !== "pdf" ||
+                saving
               }
-            }}
-          >
-            Guardar nota
-          </Button>
-        </div>
-        <div className="space-y-3">
-          {annotations.data?.map((annotation) => (
-            <article
-              key={annotation.id}
-              className="rounded-xl border bg-background p-3"
-            >
-              <button
-                type="button"
-                className="block w-full text-left text-xs leading-6"
-                onClick={() =>
-                  onCitation({
-                    document_id: annotation.document_id,
-                    page_number: annotation.page_number,
-                    version_id: annotation.version_id,
-                    bbox: annotation.bbox,
-                    document_title: "Nota",
-                    text: annotation.text,
-                    chunk_id: "",
-                    element_id: "",
-                    rotation: 0,
-                  })
+              onClick={async () => {
+                setSaving(true)
+                try {
+                  await onSaveNote(note)
+                  setNote("")
+                } catch (error) {
+                  toast.error(errorMessage(error))
+                } finally {
+                  setSaving(false)
                 }
+              }}
+            >
+              Guardar nota
+            </Button>
+          </div>
+          <div className="space-y-3">
+            {annotations.data?.map((annotation) => (
+              <article
+                key={annotation.id}
+                className="rounded-xl border bg-background p-3"
               >
-                {annotation.text || "Marcador de lectura"}
-              </button>
-              <div className="mt-2 flex items-center justify-between">
-                <span className="text-[11px] text-muted-foreground">
-                  Página {annotation.page_number}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Eliminar anotación"
-                  onClick={async () => {
-                    try {
-                      await WorkspacesService.deleteAnnotation({
-                        path: {
-                          workspace_id: workspaceId,
-                          annotation_id: annotation.id,
-                        },
-                      })
-                      await cache.invalidateQueries({
-                        queryKey: ["annotations", workspaceId],
-                      })
-                    } catch (error) {
-                      toast.error(errorMessage(error))
-                    }
-                  }}
+                <button
+                  type="button"
+                  className="block w-full text-left text-xs leading-6"
+                  onClick={() =>
+                    onCitation({
+                      document_id: annotation.document_id,
+                      page_number: annotation.page_number,
+                      version_id: annotation.version_id,
+                      bbox: annotation.bbox,
+                      document_title: "Nota",
+                      text: annotation.text,
+                      chunk_id: "",
+                      element_id: "",
+                      rotation: 0,
+                    })
+                  }
                 >
-                  <Trash2 size={12} />
-                </Button>
-              </div>
-            </article>
-          ))}
-        </div>
-        {!annotations.isPending && !annotations.data?.length && (
-          <p className="text-xs leading-5 text-muted-foreground">
-            Las notas y marcas que guardes en tus PDFs aparecerán aquí.
-          </p>
-        )}
-      </section>
+                  {annotation.text || "Marcador de lectura"}
+                </button>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground">
+                    Página {annotation.page_number}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Eliminar anotación"
+                    onClick={async () => {
+                      try {
+                        await WorkspacesService.deleteAnnotation({
+                          path: {
+                            workspace_id: workspaceId,
+                            annotation_id: annotation.id,
+                          },
+                        })
+                        await cache.invalidateQueries({
+                          queryKey: ["annotations", workspaceId],
+                        })
+                      } catch (error) {
+                        toast.error(errorMessage(error))
+                      }
+                    }}
+                  >
+                    <Trash2 size={12} />
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+          {!annotations.isPending && !annotations.data?.length && (
+            <p className="text-xs leading-5 text-muted-foreground">
+              Las notas y marcas que guardes en tus PDFs aparecerán aquí.
+            </p>
+          )}
+        </section>
+      </details>
     </div>
   )
 }

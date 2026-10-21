@@ -1,8 +1,8 @@
 # RenPdf
 
 ChatPDF personal y autohospedado sobre el Full Stack FastAPI Template oficial.
-PDFs persistentes, workspaces, extracción por páginas, OCR, pgvector + búsqueda
-bilingüe, chat con Gemini u Ollama, citas verificadas y visor PDF.js con regiones reales.
+PDF, Excel, audio y video persistentes en workspaces, OCR, pgvector y búsqueda
+bilingüe, chat con Gemini u Ollama y citas verificadas en sus visores.
 
 La aplicación funciona sin inferencia cloud: login, biblioteca, lectura y
 extracción local permanecen disponibles. No se envían documentos a un proveedor
@@ -17,7 +17,7 @@ uv sync --package app
 uv run --package app python scripts/init_env.py
 docker compose up -d db redis
 uv run --package app python scripts/configure_local.py
-docker compose up -d --build backend worker scheduler
+docker compose up -d --build backend worker worker-media worker-extract worker-index scheduler
 ```
 
 Abre [RenPdf](http://localhost:8000). La cuenta y su contraseña están en el `.env`
@@ -37,17 +37,22 @@ un chat activo en esa dirección. API Swagger en
 
 ## Flujo de investigación
 
-1. Crea un workspace e importa uno o varios PDFs. Sus originales se guardan y el worker extrae contenido sin usar LLM.
-2. Pulsa **Chatear con PDF** para abrir su conversación; puedes añadir más fuentes.
+1. Crea un workspace e importa varios PDF, Excel, CSV/TSV, audios o videos. PDF y hojas de cálculo se extraen localmente; audio y video requieren autorizar su análisis.
+2. Abre el chat y selecciona las fuentes que quieras consultar juntas.
 3. En Modelos selecciona chat, embeddings, visión, preguntas y resumen.
 4. Si usas nube, en Fuentes y permisos autoriza cada propósito para ese proveedor.
 5. Con embeddings locales configurados, el índice de todas las páginas se crea
    automáticamente tras la extracción. Espera a que termine; puedes escribir el
    borrador mientras tanto. Indexar en nube sigue siendo una acción explícita con
    permiso. Un índice incompleto nunca se activa.
-6. Selecciona las fuentes de la pregunta. El chat ocupa el área principal; abre el PDF a demanda para comprobar citas y figuras. Las notas permanecen visibles junto a las fuentes.
+6. Selecciona las fuentes de la pregunta. Fuentes/notas, chat y visor comparten un escritorio persistente; abrir una cita actualiza el visor y conserva la conversación y el borrador. En móvil, chat y visor se distribuyen verticalmente y las fuentes se abren desde su botón.
 
 ## Módulos
+
+Excel conserva hojas, valores, fórmulas y direcciones reales de celda. Las citas
+abren el visor en la ubicación exacta y aparecen en Trazabilidad → RAG y segmentos.
+El visor y el chat tienen scroll independiente; el visor se abre al seleccionar
+una fuente o cita. Alcance y pruebas: [Excel y RAG](docs/SPREADSHEET_RAG.md).
 
 La navegación agrupa **Investigación** (workspaces y biblioteca), **Trazabilidad**,
 **Studio**, **Laboratorio**, **Estudio** y **Configuración**. Cada workspace conserva
@@ -127,6 +132,17 @@ Evaluación totalmente local: `uv run --package app python scripts/evaluate_loca
 [Auditoría de diseño](docs/DESIGN_AUDIT.md) ·
 [Studio y Trazabilidad](docs/MODULES_STUDIO_TRACE.md) ·
 [Laboratorio y Estudio](docs/LEARNING_MODULES.md).
+
+La aceptación de PDF visual, comparación entre fuentes y trazabilidad se reproduce con
+`uv run --package app python scripts/evaluate_workspace_rag.py --cloud`. Sólo envía
+PDFs inventados y conserva un workspace sintético para inspección. Resultados en
+[workspace-rag-results.json](docs/workspace-rag-results.json).
+
+Los workspaces también admiten varios audios y videos, análisis nativo Gemini,
+citas con intervalos reproducibles y un visor bajo demanda junto al chat.
+El módulo **RAG y segmentos** reúne fuentes, análisis, chunks y consultas de los
+tres formatos. Ver [Audio/video y trazabilidad](docs/MEDIA_RAG.md) y la
+[aceptación real con fuentes inventadas](docs/media-rag-results.json).
 
 La preparación del corpus completo se detalla en
 [Índice local automático](docs/AUTOMATIC_LOCAL_INDEX.md); la validación real de

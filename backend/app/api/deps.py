@@ -31,7 +31,11 @@ def get_current_user(session: SessionDep, token: TokenDep, request: Request) -> 
     if not token:
         token = request.cookies.get("renpdf_session")
         origin = request.headers.get("origin")
-        allowed = {settings.FRONTEND_HOST, str(request.base_url).rstrip("/")}
+        allowed = {
+            settings.FRONTEND_HOST,
+            *settings.FRONTEND_EXTRA_ORIGINS,
+            str(request.base_url).rstrip("/"),
+        }
         if (
             request.method not in {"GET", "HEAD", "OPTIONS"}
             and origin

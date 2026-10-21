@@ -13,6 +13,7 @@ from app.api.deps import CurrentUser, SessionDep
 from app.domain import (
     ChatMessage,
     Chunk,
+    ChunkProvenance,
     Citation,
     CloudConsent,
     Conversation,
@@ -37,6 +38,118 @@ from app.services.documents.access import (
 from app.services.rag.chat import message_sources
 
 router = APIRouter(prefix="/trace", tags=["trace"])
+
+
+@router.get("/rag/sources")
+def rag_sources(
+    session: SessionDep,
+    current_user: CurrentUser,
+    workspace_id: uuid.UUID | None = None,
+    source_type: Literal["all", "pdf", "audio", "video", "spreadsheet"] = "all",
+    q: str = Query(default="", max_length=200),
+    offset: int = Query(default=0, ge=0, le=100000),
+    limit: int = Query(default=30, ge=1, le=100),
+):
+    from app.services.documents.coverage import document_coverage
+
+    statement = select(Document).where(col(Document.owner_id) == current_user.id)
+    if workspace_id:
+        owned_workspace(session, current_user.id, workspace_id)
+        statement = statement.join(WorkspaceDocument).where(
+            col(WorkspaceDocument.workspace_id) == workspace_id
+        )
+    if source_type != "all":
+        statement = statement.where(col(Document.source_type) == source_type)
+    if q:
+        statement = statement.where(col(Document.title).ilike(f"%{q}%"))
+    total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    data = []
+    for document in session.exec(
+        statement.order_by(col(Document.created_at).desc()).offset(offset).limit(limit)
+    ).all():
+        chunks = (
+            session.exec(
+                select(func.count())
+                .select_from(Chunk)
+                .where(col(Chunk.version_id) == document.current_version_id)
+            ).one()
+            if document.current_version_id
+            else 0
+        )
+        workspace_ids = session.exec(
+            select(WorkspaceDocument.workspace_id)
+            .join(Workspace)
+            .where(
+                col(WorkspaceDocument.document_id) == document.id,
+                col(Workspace.owner_id) == current_user.id,
+            )
+        ).all()
+        data.append(
+            {
+                "document": DocumentPublic.model_validate(document),
+                "coverage": document_coverage(session, document),
+                "chunks": chunks,
+                "workspace_ids": workspace_ids,
+            }
+        )
+    return {"data": data, "total": total, "offset": offset, "limit": limit}
+
+
+@router.get("/rag/queries")
+def rag_queries(
+    session: SessionDep,
+    current_user: CurrentUser,
+    workspace_id: uuid.UUID | None = None,
+    q: str = Query(default="", max_length=200),
+    offset: int = Query(default=0, ge=0, le=100000),
+    limit: int = Query(default=30, ge=1, le=100),
+):
+    from sqlalchemy import text
+
+    if workspace_id:
+        owned_workspace(session, current_user.id, workspace_id)
+    conditions = "w.owner_id=:owner AND m.role='assistant'"
+    parameters = {
+        "owner": current_user.id,
+        "workspace": workspace_id,
+        "q": f"%{q}%",
+        "offset": offset,
+        "limit": limit,
+    }
+    if workspace_id:
+        conditions += " AND w.id=:workspace"
+    if q:
+        conditions += " AND (u.content ILIKE :q OR c.title ILIKE :q)"
+    # The only interpolated SQL fragments are fixed server-owned clauses above.
+    relation = f"""FROM chatmessage m JOIN conversation c ON c.id=m.conversation_id
+        JOIN workspace w ON w.id=c.workspace_id
+        LEFT JOIN chatmessage u ON u.id::text=(m.usage::jsonb->'trace'->>'query_message_id')
+          AND u.conversation_id=c.id AND u.role='user'
+        WHERE {conditions}"""
+    total = (
+        session.connection()
+        .execute(text("SELECT count(*) " + relation), parameters)
+        .scalar_one()
+    )
+    rows = (
+        session.connection()
+        .execute(
+            text(
+                "SELECT m.id,c.title,c.workspace_id,c.id AS conversation_id,m.state,m.provider,m.model,m.retrieval_mode,m.usage,m.created_at,u.content AS query "
+                + relation
+                + " ORDER BY m.created_at DESC,m.id LIMIT :limit OFFSET :offset"
+            ),
+            parameters,
+        )
+        .mappings()
+        .all()
+    )
+    return {
+        "data": [{**dict(row), "usage": safe_usage(row["usage"])} for row in rows],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
 
 
 def utc(value: datetime) -> datetime:
@@ -287,6 +400,204 @@ def response_detail(
     }
 
 
+@router.get("/responses/{message_id}/context")
+def response_context(
+    message_id: uuid.UUID, session: SessionDep, current_user: CurrentUser
+):
+    message = session.get(ChatMessage, message_id)
+    if not message or message.role != "assistant":
+        raise HTTPException(404, "Respuesta no encontrada")
+    owned_conversation(session, current_user.id, message.conversation_id)
+    trace = message.usage.get("trace", {})
+    query = None
+    try:
+        question = session.get(
+            ChatMessage, uuid.UUID(trace.get("query_message_id", ""))
+        )
+        if (
+            question
+            and question.conversation_id == message.conversation_id
+            and question.role == "user"
+        ):
+            query = question.content
+    except ValueError:
+        pass
+    sources = []
+    for reference in trace.get("sources", [])[:96]:
+        try:
+            chunk_id, element_id = (
+                uuid.UUID(reference["chunk_id"]),
+                uuid.UUID(reference["element_id"]),
+            )
+        except ValueError, KeyError, TypeError:
+            continue
+        row = session.exec(
+            select(
+                ChunkProvenance,
+                Chunk,
+                DocumentElement,
+                DocumentPage,
+            )
+            .select_from(ChunkProvenance)
+            .join(Chunk, col(Chunk.id) == col(ChunkProvenance.chunk_id))
+            .join(
+                DocumentElement,
+                col(DocumentElement.id) == col(ChunkProvenance.element_id),
+            )
+            .join(DocumentPage, col(DocumentPage.id) == col(DocumentElement.page_id))
+            .join(
+                DocumentVersion, col(DocumentVersion.id) == col(DocumentPage.version_id)
+            )
+            .join(Document, col(Document.id) == col(DocumentVersion.document_id))
+            .where(
+                col(ChunkProvenance.chunk_id) == chunk_id,
+                col(ChunkProvenance.element_id) == element_id,
+                col(Document.owner_id) == current_user.id,
+            )
+        ).first()
+        if not row:
+            continue
+        provenance, chunk, element, page = row
+        version = session.get(DocumentVersion, page.version_id)
+        document = session.get(Document, version.document_id) if version else None
+        if not document or chunk.version_id != page.version_id:
+            continue
+        content = (
+            element.text[provenance.span_start : provenance.span_end] or chunk.text
+        )[: reference.get("chars", 6000)]
+        sources.append(
+            {
+                **reference,
+                "text": content,
+                "kind": element.element_type,
+                "document_title": document.title,
+                "page_number": page.page_number
+                if document.source_type == "pdf"
+                else None,
+                "source_type": document.source_type,
+                "start_seconds": element.start_seconds,
+                "end_seconds": element.end_seconds,
+                "sheet_name": element.sheet_name,
+                "cell_range": element.cell_range,
+            }
+        )
+    return {
+        "query": query,
+        "sources": sources,
+        "coverage": trace.get("document_coverage"),
+        "visual": trace.get("visual_coverage"),
+    }
+
+
+@router.get("/documents/{document_id}/chunks")
+def document_chunks(
+    document_id: uuid.UUID,
+    session: SessionDep,
+    current_user: CurrentUser,
+    page: int | None = Query(default=None, ge=1),
+    second: float | None = Query(default=None, ge=0),
+    sheet: str | None = Query(default=None, max_length=255),
+    cell: str | None = Query(default=None, max_length=64),
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=100000),
+):
+    document = owned_document(session, current_user.id, document_id)
+    statement = (
+        select(Chunk, DocumentElement, DocumentPage)
+        .select_from(Chunk)
+        .join(ChunkProvenance)
+        .join(DocumentElement)
+        .join(DocumentPage)
+        .where(
+            col(Chunk.version_id) == document.current_version_id,
+        )
+    )
+    if page is not None:
+        statement = statement.where(col(DocumentPage.page_number) == page)
+    if second is not None:
+        statement = statement.where(
+            col(DocumentElement.start_seconds) <= second,
+            col(DocumentElement.end_seconds) > second,
+        )
+    if sheet is not None:
+        statement = statement.where(col(DocumentElement.sheet_name) == sheet)
+    if cell is not None:
+        from openpyxl.utils.cell import range_boundaries
+
+        try:
+            bounds = range_boundaries(cell.upper().replace("$", ""))
+            if any(value is None for value in bounds):
+                raise ValueError
+        except ValueError:
+            raise HTTPException(422, "Referencia de celda no válida") from None
+        content = cast(col(DocumentElement.structured_content), JSONB)
+        statement = statement.where(
+            content["column"].as_integer() >= bounds[0],
+            content["row"].as_integer() >= bounds[1],
+            content["column"].as_integer() <= bounds[2],
+            content["row"].as_integer() <= bounds[3],
+        )
+    total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    rows = session.exec(
+        statement.order_by(
+            col(DocumentPage.page_number), col(Chunk.id), col(DocumentElement.id)
+        )
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "data": [
+            {
+                "id": str(chunk.id),
+                "element_id": str(element.id),
+                "page_number": source_page.page_number
+                if document.source_type == "pdf"
+                else None,
+                "source_type": document.source_type,
+                "start_seconds": element.start_seconds,
+                "end_seconds": element.end_seconds,
+                "sheet_name": element.sheet_name,
+                "cell_range": element.cell_range,
+                "analysis": {
+                    key: value
+                    for key, value in element.structured_content.items()
+                    if key
+                    in {
+                        "provider",
+                        "model",
+                        "model_version",
+                        "elapsed_seconds",
+                        "usage",
+                        "temporal_precision",
+                        "clip_sha256",
+                        "native_reference",
+                        "original_sha256",
+                        "coordinate",
+                        "row",
+                        "column",
+                        "value",
+                        "display_value",
+                        "formula",
+                        "cached",
+                        "number_format",
+                        "merged_range",
+                        "context_cells",
+                    }
+                },
+                "kind": element.element_type,
+                "text": chunk.text,
+                "contextualized_text": chunk.contextualized_text,
+                "profile": chunk.chunking_profile,
+                "bbox": element.bbox,
+            }
+            for chunk, element, source_page in rows
+        ],
+    }
+
+
 @router.get("/documents/{document_id}")
 def document_detail(
     document_id: uuid.UUID, session: SessionDep, current_user: CurrentUser
@@ -346,6 +657,35 @@ def document_detail(
                 "state": version.status,
                 "parser": version.parser_name,
                 "parser_version": version.parser_version,
+                "extraction": {
+                    key: value
+                    for key, value in version.artifact_manifest.items()
+                    if key
+                    in {
+                        "source_type",
+                        "duration_seconds",
+                        "segments_total",
+                        "segments_analyzed",
+                        "segment_seconds",
+                        "analysis_provider",
+                        "analysis_model",
+                        "analysis_model_version",
+                        "analysis_mode",
+                        "segments_prepared",
+                        "clips_reused",
+                        "native_enrichment",
+                        "temporal_precision",
+                        "ocr_pending_pages",
+                        "format",
+                        "sheets_total",
+                        "sheets_extracted",
+                        "cells_total",
+                        "formula_cells",
+                        "missing_formula_values",
+                        "warnings",
+                        "sheets",
+                    }
+                },
                 "current": version.id == document.current_version_id,
                 "chunks": chunks,
                 "figures": figures,

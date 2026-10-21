@@ -130,7 +130,10 @@ export function PdfReader({
     const target = container.current
     if (!target) return
     const observer = new ResizeObserver(([entry]) =>
-      setWidth(Math.max(240, entry.contentRect.width - 32)),
+      setWidth((previous) => {
+        const next = Math.max(180, Math.floor(entry.contentRect.width - 32))
+        return Math.abs(next - previous) > 1 ? next : previous
+      }),
     )
     observer.observe(target)
     return () => observer.disconnect()
@@ -145,7 +148,8 @@ export function PdfReader({
     setError("")
   }, [document.id])
   useEffect(() => {
-    if (citation?.document_id === document.id) movePage(citation.page_number)
+    if (citation?.document_id === document.id && citation.page_number != null)
+      movePage(citation.page_number)
   }, [citation, document.id, movePage])
   useEffect(() => {
     if (!renderedFrame || renderedFrame.documentId !== document.id) return
@@ -181,8 +185,8 @@ export function PdfReader({
     }
   }
   return (
-    <div className="flex h-full min-h-[500px] flex-col overflow-hidden rounded-xl border bg-muted/30">
-      <div className="flex flex-wrap items-center gap-1 border-b bg-background p-2">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-muted/30">
+      <div className="flex shrink-0 flex-wrap items-center gap-1 border-b bg-background p-2">
         <Button
           size="icon"
           variant="ghost"
@@ -271,7 +275,7 @@ export function PdfReader({
       <section
         aria-label="Contenido del PDF"
         ref={container}
-        className="min-h-0 flex-1 overflow-auto p-4"
+        className="min-h-0 flex-1 overflow-auto p-4 [scrollbar-gutter:stable]"
         onMouseUp={captureSelection}
       >
         {error && (

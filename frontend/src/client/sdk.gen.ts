@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { chatAskData, chatAskErrors, chatAskResponses, chatCancelGenerationData, chatCancelGenerationErrors, chatCancelGenerationResponses, chatConversationsData, chatConversationsErrors, chatConversationsResponses, chatCreateConversationData, chatCreateConversationErrors, chatCreateConversationResponses, chatExportConversationData, chatExportConversationErrors, chatExportConversationResponses, chatMessagesData, chatMessagesErrors, chatMessagesResponses, chatSelectConversationModelData, chatSelectConversationModelErrors, chatSelectConversationModelResponses, documentsCancelJobData, documentsCancelJobErrors, documentsCancelJobResponses, documentsConsentsData, documentsConsentsErrors, documentsConsentsResponses, documentsDeleteDocumentData, documentsDeleteDocumentErrors, documentsDeleteDocumentResponses, documentsDocumentFileData, documentsDocumentFileErrors, documentsDocumentFileResponses, documentsDocumentJobsData, documentsDocumentJobsErrors, documentsDocumentJobsResponses, documentsElementImageData, documentsElementImageErrors, documentsElementImageResponses, documentsGenerateEnrichmentData, documentsGenerateEnrichmentErrors, documentsGenerateEnrichmentResponses, documentsGetDocumentData, documentsGetDocumentErrors, documentsGetDocumentResponses, documentsGrantConsentData, documentsGrantConsentErrors, documentsGrantConsentResponses, documentsListDocumentsData, documentsListDocumentsErrors, documentsListDocumentsResponses, documentsPageElementsApiData, documentsPageElementsApiErrors, documentsPageElementsApiResponses, documentsPrepareLocalIndexData, documentsPrepareLocalIndexErrors, documentsPrepareLocalIndexResponses, documentsReadEnrichmentData, documentsReadEnrichmentErrors, documentsReadEnrichmentResponses, documentsReindexData, documentsReindexErrors, documentsReindexResponses, documentsRenameDocumentData, documentsRenameDocumentErrors, documentsRenameDocumentResponses, documentsReprocessData, documentsReprocessErrors, documentsReprocessResponses, documentsRetryJobData, documentsRetryJobErrors, documentsRetryJobResponses, documentsRevokeConsentData, documentsRevokeConsentErrors, documentsRevokeConsentResponses, documentsThumbnailData, documentsThumbnailErrors, documentsThumbnailResponses, documentsUploadDocumentData, documentsUploadDocumentErrors, documentsUploadDocumentResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, learningCreateCardData, learningCreateCardErrors, learningCreateCardResponses, learningCreateDeckData, learningCreateDeckErrors, learningCreateDeckResponses, learningCreateResearchData, learningCreateResearchErrors, learningCreateResearchResponses, learningDeleteCardData, learningDeleteCardErrors, learningDeleteCardResponses, learningDeleteDeckData, learningDeleteDeckErrors, learningDeleteDeckResponses, learningDeleteResearchData, learningDeleteResearchErrors, learningDeleteResearchResponses, learningListCardsData, learningListCardsErrors, learningListCardsResponses, learningListDecksData, learningListDecksErrors, learningListDecksResponses, learningListResearchData, learningListResearchErrors, learningListResearchResponses, learningListReviewsData, learningListReviewsErrors, learningListReviewsResponses, learningProgressData, learningProgressErrors, learningProgressResponses, learningReviewCardData, learningReviewCardErrors, learningReviewCardResponses, learningUpdateCardData, learningUpdateCardErrors, learningUpdateCardResponses, learningUpdateDeckData, learningUpdateDeckErrors, learningUpdateDeckResponses, learningUpdateResearchData, learningUpdateResearchErrors, learningUpdateResearchResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginLogoutData, loginLogoutResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, providersDiagnosticsData, providersDiagnosticsResponses, providersProviderCatalogData, providersProviderCatalogResponses, providersReadRoutingData, providersReadRoutingResponses, providersSaveRoutingData, providersSaveRoutingErrors, providersSaveRoutingResponses, studioListOperationsData, studioListOperationsErrors, studioListOperationsResponses, studioPreviewPageData, studioPreviewPageErrors, studioPreviewPageResponses, studioRunOperationData, studioRunOperationErrors, studioRunOperationResponses, traceActivityData, traceActivityErrors, traceActivityResponses, traceDocumentDetailData, traceDocumentDetailErrors, traceDocumentDetailResponses, traceOverviewData, traceOverviewResponses, tracePermissionsData, tracePermissionsErrors, tracePermissionsResponses, traceResponseDetailData, traceResponseDetailErrors, traceResponseDetailResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, workspacesAttachDocumentData, workspacesAttachDocumentErrors, workspacesAttachDocumentResponses, workspacesCreateAnnotationData, workspacesCreateAnnotationErrors, workspacesCreateAnnotationResponses, workspacesCreateWorkspaceData, workspacesCreateWorkspaceErrors, workspacesCreateWorkspaceResponses, workspacesDeleteAnnotationData, workspacesDeleteAnnotationErrors, workspacesDeleteAnnotationResponses, workspacesDeleteWorkspaceData, workspacesDeleteWorkspaceErrors, workspacesDeleteWorkspaceResponses, workspacesDetachDocumentData, workspacesDetachDocumentErrors, workspacesDetachDocumentResponses, workspacesListAnnotationsData, workspacesListAnnotationsErrors, workspacesListAnnotationsResponses, workspacesListWorkspaceDocumentsData, workspacesListWorkspaceDocumentsErrors, workspacesListWorkspaceDocumentsResponses, workspacesListWorkspacesData, workspacesListWorkspacesResponses, workspacesSearchWorkspaceData, workspacesSearchWorkspaceErrors, workspacesSearchWorkspaceResponses, workspacesUpdateWorkspaceData, workspacesUpdateWorkspaceErrors, workspacesUpdateWorkspaceResponses } from './types.gen';
+import type { chatAskData, chatAskErrors, chatAskResponses, chatCancelGenerationData, chatCancelGenerationErrors, chatCancelGenerationResponses, chatConversationsData, chatConversationsErrors, chatConversationsResponses, chatCreateConversationData, chatCreateConversationErrors, chatCreateConversationResponses, chatExportConversationData, chatExportConversationErrors, chatExportConversationResponses, chatMessagesData, chatMessagesErrors, chatMessagesResponses, chatSelectConversationModelData, chatSelectConversationModelErrors, chatSelectConversationModelResponses, documentsCancelJobData, documentsCancelJobErrors, documentsCancelJobResponses, documentsConsentsData, documentsConsentsErrors, documentsConsentsResponses, documentsCoverageData, documentsCoverageErrors, documentsCoverageResponses, documentsDeleteDocumentData, documentsDeleteDocumentErrors, documentsDeleteDocumentResponses, documentsDocumentFileData, documentsDocumentFileErrors, documentsDocumentFileResponses, documentsDocumentJobsData, documentsDocumentJobsErrors, documentsDocumentJobsResponses, documentsElementImageData, documentsElementImageErrors, documentsElementImageResponses, documentsGenerateEnrichmentData, documentsGenerateEnrichmentErrors, documentsGenerateEnrichmentResponses, documentsGetDocumentData, documentsGetDocumentErrors, documentsGetDocumentResponses, documentsGrantConsentData, documentsGrantConsentErrors, documentsGrantConsentResponses, documentsListDocumentsData, documentsListDocumentsErrors, documentsListDocumentsResponses, documentsMediaPlaybackData, documentsMediaPlaybackErrors, documentsMediaPlaybackResponses, documentsMediaSegmentsData, documentsMediaSegmentsErrors, documentsMediaSegmentsResponses, documentsPageElementsApiData, documentsPageElementsApiErrors, documentsPageElementsApiResponses, documentsPrepareLocalIndexData, documentsPrepareLocalIndexErrors, documentsPrepareLocalIndexResponses, documentsReadEnrichmentData, documentsReadEnrichmentErrors, documentsReadEnrichmentResponses, documentsReindexData, documentsReindexErrors, documentsReindexResponses, documentsRenameDocumentData, documentsRenameDocumentErrors, documentsRenameDocumentResponses, documentsReprocessData, documentsReprocessErrors, documentsReprocessResponses, documentsRequestMediaAnalysisData, documentsRequestMediaAnalysisErrors, documentsRequestMediaAnalysisResponses, documentsRequestNativeIndexData, documentsRequestNativeIndexErrors, documentsRequestNativeIndexResponses, documentsRetryJobData, documentsRetryJobErrors, documentsRetryJobResponses, documentsRevokeConsentData, documentsRevokeConsentErrors, documentsRevokeConsentResponses, documentsThumbnailData, documentsThumbnailErrors, documentsThumbnailResponses, documentsUploadDocumentData, documentsUploadDocumentErrors, documentsUploadDocumentResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, learningCreateCardData, learningCreateCardErrors, learningCreateCardResponses, learningCreateDeckData, learningCreateDeckErrors, learningCreateDeckResponses, learningCreateResearchData, learningCreateResearchErrors, learningCreateResearchResponses, learningDeleteCardData, learningDeleteCardErrors, learningDeleteCardResponses, learningDeleteDeckData, learningDeleteDeckErrors, learningDeleteDeckResponses, learningDeleteResearchData, learningDeleteResearchErrors, learningDeleteResearchResponses, learningListCardsData, learningListCardsErrors, learningListCardsResponses, learningListDecksData, learningListDecksErrors, learningListDecksResponses, learningListResearchData, learningListResearchErrors, learningListResearchResponses, learningListReviewsData, learningListReviewsErrors, learningListReviewsResponses, learningProgressData, learningProgressErrors, learningProgressResponses, learningReviewCardData, learningReviewCardErrors, learningReviewCardResponses, learningUpdateCardData, learningUpdateCardErrors, learningUpdateCardResponses, learningUpdateDeckData, learningUpdateDeckErrors, learningUpdateDeckResponses, learningUpdateResearchData, learningUpdateResearchErrors, learningUpdateResearchResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginLogoutData, loginLogoutResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, providersDiagnosticsData, providersDiagnosticsResponses, providersProviderCatalogData, providersProviderCatalogResponses, providersReadRoutingData, providersReadRoutingResponses, providersSaveRoutingData, providersSaveRoutingErrors, providersSaveRoutingResponses, spreadsheetsListSheetsData, spreadsheetsListSheetsErrors, spreadsheetsListSheetsResponses, spreadsheetsSheetCellsData, spreadsheetsSheetCellsErrors, spreadsheetsSheetCellsResponses, studioListOperationsData, studioListOperationsErrors, studioListOperationsResponses, studioPreviewPageData, studioPreviewPageErrors, studioPreviewPageResponses, studioRunOperationData, studioRunOperationErrors, studioRunOperationResponses, traceActivityData, traceActivityErrors, traceActivityResponses, traceDocumentChunksData, traceDocumentChunksErrors, traceDocumentChunksResponses, traceDocumentDetailData, traceDocumentDetailErrors, traceDocumentDetailResponses, traceOverviewData, traceOverviewResponses, tracePermissionsData, tracePermissionsErrors, tracePermissionsResponses, traceRagQueriesData, traceRagQueriesErrors, traceRagQueriesResponses, traceRagSourcesData, traceRagSourcesErrors, traceRagSourcesResponses, traceResponseContextData, traceResponseContextErrors, traceResponseContextResponses, traceResponseDetailData, traceResponseDetailErrors, traceResponseDetailResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, workspacesAttachDocumentData, workspacesAttachDocumentErrors, workspacesAttachDocumentResponses, workspacesCreateAnnotationData, workspacesCreateAnnotationErrors, workspacesCreateAnnotationResponses, workspacesCreateWorkspaceData, workspacesCreateWorkspaceErrors, workspacesCreateWorkspaceResponses, workspacesDeleteAnnotationData, workspacesDeleteAnnotationErrors, workspacesDeleteAnnotationResponses, workspacesDeleteWorkspaceData, workspacesDeleteWorkspaceErrors, workspacesDeleteWorkspaceResponses, workspacesDetachDocumentData, workspacesDetachDocumentErrors, workspacesDetachDocumentResponses, workspacesListAnnotationsData, workspacesListAnnotationsErrors, workspacesListAnnotationsResponses, workspacesListWorkspaceDocumentsData, workspacesListWorkspaceDocumentsErrors, workspacesListWorkspaceDocumentsResponses, workspacesListWorkspacesData, workspacesListWorkspacesResponses, workspacesSearchWorkspaceData, workspacesSearchWorkspaceErrors, workspacesSearchWorkspaceResponses, workspacesUpdateWorkspaceData, workspacesUpdateWorkspaceErrors, workspacesUpdateWorkspaceResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -458,6 +458,74 @@ export class DocumentsService {
     }
 
     /**
+     * Coverage
+     */
+    public static coverage<ThrowOnError extends boolean = true>(options: Options<documentsCoverageData, ThrowOnError>): RequestResult<documentsCoverageResponses, documentsCoverageErrors, ThrowOnError> {
+        return (options.client ?? client).get<documentsCoverageResponses, documentsCoverageErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/documents/{document_id}/coverage',
+            ...options
+        });
+    }
+
+    /**
+     * Media Playback
+     */
+    public static mediaPlayback<ThrowOnError extends boolean = true>(options: Options<documentsMediaPlaybackData, ThrowOnError>): RequestResult<documentsMediaPlaybackResponses, documentsMediaPlaybackErrors, ThrowOnError> {
+        return (options.client ?? client).get<documentsMediaPlaybackResponses, documentsMediaPlaybackErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/documents/{document_id}/playback',
+            ...options
+        });
+    }
+
+    /**
+     * Media Segments
+     */
+    public static mediaSegments<ThrowOnError extends boolean = true>(options: Options<documentsMediaSegmentsData, ThrowOnError>): RequestResult<documentsMediaSegmentsResponses, documentsMediaSegmentsErrors, ThrowOnError> {
+        return (options.client ?? client).get<documentsMediaSegmentsResponses, documentsMediaSegmentsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/documents/{document_id}/segments',
+            ...options
+        });
+    }
+
+    /**
+     * Request Native Index
+     */
+    public static requestNativeIndex<ThrowOnError extends boolean = true>(options: Options<documentsRequestNativeIndexData, ThrowOnError>): RequestResult<documentsRequestNativeIndexResponses, documentsRequestNativeIndexErrors, ThrowOnError> {
+        return (options.client ?? client).post<documentsRequestNativeIndexResponses, documentsRequestNativeIndexErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/documents/{document_id}/prepare-native',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
+    /**
+     * Request Media Analysis
+     */
+    public static requestMediaAnalysis<ThrowOnError extends boolean = true>(options: Options<documentsRequestMediaAnalysisData, ThrowOnError>): RequestResult<documentsRequestMediaAnalysisResponses, documentsRequestMediaAnalysisErrors, ThrowOnError> {
+        return (options.client ?? client).post<documentsRequestMediaAnalysisResponses, documentsRequestMediaAnalysisErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/documents/{document_id}/analyze',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
+    /**
      * Thumbnail
      */
     public static thumbnail<ThrowOnError extends boolean = true>(options: Options<documentsThumbnailData, ThrowOnError>): RequestResult<documentsThumbnailResponses, documentsThumbnailErrors, ThrowOnError> {
@@ -634,6 +702,32 @@ export class DocumentsService {
                 'Content-Type': 'application/json',
                 ...options.headers
             }
+        });
+    }
+}
+
+export class SpreadsheetsService {
+    /**
+     * List Sheets
+     */
+    public static listSheets<ThrowOnError extends boolean = true>(options: Options<spreadsheetsListSheetsData, ThrowOnError>): RequestResult<spreadsheetsListSheetsResponses, spreadsheetsListSheetsErrors, ThrowOnError> {
+        return (options.client ?? client).get<spreadsheetsListSheetsResponses, spreadsheetsListSheetsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/documents/{document_id}/sheets',
+            ...options
+        });
+    }
+
+    /**
+     * Sheet Cells
+     */
+    public static sheetCells<ThrowOnError extends boolean = true>(options: Options<spreadsheetsSheetCellsData, ThrowOnError>): RequestResult<spreadsheetsSheetCellsResponses, spreadsheetsSheetCellsErrors, ThrowOnError> {
+        return (options.client ?? client).get<spreadsheetsSheetCellsResponses, spreadsheetsSheetCellsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/documents/{document_id}/sheets/cells',
+            ...options
         });
     }
 }
@@ -984,6 +1078,30 @@ export class StudioService {
 
 export class TraceService {
     /**
+     * Rag Sources
+     */
+    public static ragSources<ThrowOnError extends boolean = true>(options?: Options<traceRagSourcesData, ThrowOnError>): RequestResult<traceRagSourcesResponses, traceRagSourcesErrors, ThrowOnError> {
+        return (options?.client ?? client).get<traceRagSourcesResponses, traceRagSourcesErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/trace/rag/sources',
+            ...options
+        });
+    }
+
+    /**
+     * Rag Queries
+     */
+    public static ragQueries<ThrowOnError extends boolean = true>(options?: Options<traceRagQueriesData, ThrowOnError>): RequestResult<traceRagQueriesResponses, traceRagQueriesErrors, ThrowOnError> {
+        return (options?.client ?? client).get<traceRagQueriesResponses, traceRagQueriesErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/trace/rag/queries',
+            ...options
+        });
+    }
+
+    /**
      * Overview
      */
     public static overview<ThrowOnError extends boolean = true>(options?: Options<traceOverviewData, ThrowOnError>): RequestResult<traceOverviewResponses, unknown, ThrowOnError> {
@@ -1015,6 +1133,30 @@ export class TraceService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/trace/responses/{message_id}',
+            ...options
+        });
+    }
+
+    /**
+     * Response Context
+     */
+    public static responseContext<ThrowOnError extends boolean = true>(options: Options<traceResponseContextData, ThrowOnError>): RequestResult<traceResponseContextResponses, traceResponseContextErrors, ThrowOnError> {
+        return (options.client ?? client).get<traceResponseContextResponses, traceResponseContextErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/trace/responses/{message_id}/context',
+            ...options
+        });
+    }
+
+    /**
+     * Document Chunks
+     */
+    public static documentChunks<ThrowOnError extends boolean = true>(options: Options<traceDocumentChunksData, ThrowOnError>): RequestResult<traceDocumentChunksResponses, traceDocumentChunksErrors, ThrowOnError> {
+        return (options.client ?? client).get<traceDocumentChunksResponses, traceDocumentChunksErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/trace/documents/{document_id}/chunks',
             ...options
         });
     }

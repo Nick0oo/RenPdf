@@ -13,16 +13,16 @@ export function AppSidebar() {
   const { user } = useAuth()
   return (
     <Sidebar collapsible="icon" className="border-r">
-      <SidebarHeader className="border-b border-sidebar-border px-5 py-5 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
         <Logo variant="responsive" />
         <p className="mt-1 text-[11px] text-muted-foreground group-data-[collapsible=icon]:hidden">
-          Escritorio de investigación
+          Tus fuentes, conectadas
         </p>
       </SidebarHeader>
       <SidebarContent>
         <Main groups={navigationGroups} />
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border p-3">
+      <SidebarFooter className="border-t border-sidebar-border p-2">
         <User user={user} />
       </SidebarFooter>
     </Sidebar>

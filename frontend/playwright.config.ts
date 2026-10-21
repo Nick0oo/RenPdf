@@ -15,7 +15,7 @@ export default defineConfig({
   testDir: './tests',
   // The public-signup/admin/items/mail workflows belong to the original template.
   // Personal-product acceptance is explicit; the source tests remain for reference.
-  testMatch: /(?:login\.spec|research\.spec|personal-security\.spec|app-recovery\.spec|modules-studio-trace\.spec|studio-preview\.spec|learning\.spec|chat-continuity\.spec)\.ts$/,
+  testMatch: /(?:login\.spec|research\.spec|personal-security\.spec|app-recovery\.spec|modules-studio-trace\.spec|studio-preview\.spec|learning\.spec|chat-continuity\.spec|rag-media-trace\.spec|spreadsheet-workspace\.spec|native-media\.spec)\.ts$/,
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

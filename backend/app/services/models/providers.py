@@ -3,6 +3,7 @@
 import base64
 import json
 import math
+import time
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from typing import Any
@@ -22,6 +23,7 @@ from app.services.models.contracts import (
     ProviderError,
     TokenUsage,
 )
+from app.services.models.media_capabilities import audio_input_capability
 
 
 def validate_endpoint(url: str) -> str:
@@ -80,6 +82,9 @@ def safe_error(error: Exception) -> ProviderError:
     if isinstance(error, ProviderError):
         return error
     code = getattr(error, "code", None)
+    # Only fixed metadata crosses the trace boundary, never SDK messages,
+    # request URLs, credentials, document contents or exception arguments.
+    details = {"exception": type(error).__name__}
     if isinstance(error, httpx.HTTPStatusError):
         code = error.response.status_code
         if code == 500:
@@ -99,22 +104,46 @@ def safe_error(error: Exception) -> ProviderError:
                     "INSUFFICIENT_MEMORY",
                     "El modelo local necesita más memoria disponible. Elige un modelo instalado más pequeño o libera memoria.",
                 )
+    if isinstance(code, int):
+        details["http_status"] = code
+    if code in {400, 413, 422}:
+        return ProviderError(
+            "PROVIDER_INPUT_REJECTED",
+            "El proveedor rechazó el contenido o tamaño de la solicitud. Revisa los detalles de la ejecución.",
+            details=details,
+        )
+    if code in {500, 502, 503, 504}:
+        return ProviderError(
+            "PROVIDER_UNAVAILABLE",
+            "El proveedor no pudo atender la solicitud. Reintenta la consulta.",
+            True,
+            details=details,
+        )
     if code == 429:
         return ProviderError(
-            "QUOTA_EXCEEDED", "Cuota del proveedor agotada. Reintenta más tarde.", True
+            "QUOTA_EXCEEDED",
+            "Cuota del proveedor agotada. Reintenta más tarde.",
+            True,
+            details=details,
         )
     if code in {401, 403}:
         return ProviderError(
-            "AUTH_REJECTED", "El proveedor rechazó las credenciales o permisos."
+            "AUTH_REJECTED",
+            "El proveedor rechazó las credenciales o permisos.",
+            details=details,
         )
     if isinstance(error, httpx.TimeoutException):
         return ProviderError(
-            "PROVIDER_TIMEOUT", "El proveedor excedió el tiempo de espera.", True
+            "PROVIDER_TIMEOUT",
+            "El proveedor excedió el tiempo de espera.",
+            True,
+            details=details,
         )
     return ProviderError(
         "PROVIDER_UNAVAILABLE",
         "No se pudo completar la operación con el proveedor.",
         True,
+        details=details,
     )
 
 
@@ -125,6 +154,8 @@ class BaseProvider:
     configured = True
     last_usage: TokenUsage | None = None
     last_finish_reason: str | None = None
+    response_mode: str = "stream"
+    transport_attempts: int | None = None
 
     def discover(self) -> list[ModelDescriptor]:
         raise NotImplementedError
@@ -200,7 +231,21 @@ class GeminiProvider(BaseProvider):
                             streaming="declared"
                             if "generateContent" in actions and not audio_workload
                             else "unsupported",
-                            vision="unsupported" if audio_workload else "unknown",
+                            vision="unsupported"
+                            if audio_workload
+                            else "declared"
+                            if "embedding-2" in identifier
+                            else "unknown",
+                            audio="unsupported"
+                            if audio_workload
+                            else "declared"
+                            if "embedding-2" in identifier
+                            else audio_input_capability(identifier),
+                            video="declared"
+                            if "embedding-2" in identifier
+                            else "unsupported"
+                            if audio_workload
+                            else "unknown",
                             context_window=model.input_token_limit,
                         ),
                     )
@@ -247,6 +292,11 @@ class GeminiProvider(BaseProvider):
             raise safe_error(error) from None
 
     def stream(self, request: InferenceRequest) -> Iterator[str]:
+        self.last_usage = None
+        self.last_finish_reason = None
+        self.response_mode = "buffered_native" if request.media else "stream"
+        self.transport_attempts = 0
+        started = time.monotonic()
         try:
             with self.client() as client:
                 config = types.GenerateContentConfig(
@@ -264,11 +314,42 @@ class GeminiProvider(BaseProvider):
                     types.Part.from_bytes(data=data, mime_type="image/png")
                     for data in request.images
                 )
-                for chunk in client.models.generate_content_stream(
-                    model=request.model,
-                    contents=types.Content(role="user", parts=contents),
-                    config=config,
-                ):
+                contents.extend(
+                    types.Part.from_bytes(data=item.data, mime_type=item.mime_type)
+                    for item in request.media
+                )
+                arguments: dict[str, Any] = {
+                    "model": request.model,
+                    "contents": types.Content(role="user", parts=contents),
+                    "config": config,
+                }
+                # Native media responses can lose their HTTP stream while the
+                # provider processes several clips. A regular response retains
+                # the same model, bytes and citations without replaying a request.
+                if request.media:
+                    # The SDK retries HTTP error statuses but not a socket reset
+                    # during response reading. Retry once before any text is sent,
+                    # within the selected timeout and with exactly the same input.
+                    for attempt in range(2):
+                        self.transport_attempts = attempt + 1
+                        config.http_options = types.HttpOptions(
+                            timeout=max(
+                                1,
+                                int(
+                                    (self.timeout - (time.monotonic() - started)) * 1000
+                                ),
+                            )
+                        )
+                        try:
+                            chunks = [client.models.generate_content(**arguments)]
+                            break
+                        except httpx.ReadError, httpx.RemoteProtocolError:
+                            if attempt or time.monotonic() - started >= self.timeout:
+                                raise
+                else:
+                    self.transport_attempts = 1
+                    chunks = client.models.generate_content_stream(**arguments)
+                for chunk in chunks:
                     if chunk.usage_metadata:
                         self.last_usage = TokenUsage(
                             input_tokens=chunk.usage_metadata.prompt_token_count or 0,
@@ -298,13 +379,21 @@ class GeminiProvider(BaseProvider):
                 for item in inputs:
                     if before_send:
                         before_send()
-                    parts = [
-                        types.Part.from_text(text=f"title: none | text: {item.text}")
-                    ]
+                    parts = (
+                        [types.Part.from_text(text=f"title: none | text: {item.text}")]
+                        if item.text
+                        else []
+                    )
                     if item.image:
                         parts.append(
                             types.Part.from_bytes(
                                 data=item.image, mime_type="image/png"
+                            )
+                        )
+                    if item.media:
+                        parts.append(
+                            types.Part.from_bytes(
+                                data=item.media.data, mime_type=item.media.mime_type
                             )
                         )
                     response = client.models.embed_content(
@@ -487,6 +576,103 @@ class OllamaProvider(HttpProvider):
             raise safe_error(error) from None
 
 
+class NativeEmbeddingProvider(HttpProvider):
+    name = "embeddinggemma"
+
+    def stream(self, request: InferenceRequest) -> Iterator[str]:
+        raise ProviderError(
+            "CHAT_UNSUPPORTED",
+            "EmbeddingGemma crea embeddings; selecciona un modelo generativo para chat.",
+        )
+
+    def __init__(self, timeout: int | None = None):
+        super().__init__(settings.EMBEDDINGGEMMA_BASE_URL, timeout or 300)
+        if self.is_cloud:
+            raise ProviderError(
+                "LOCAL_ENDPOINT_REQUIRED",
+                "EmbeddingGemma nativo requiere un endpoint local.",
+            )
+
+    def discover(self) -> list[ModelDescriptor]:
+        try:
+            return self._discover()
+        except Exception as error:
+            raise safe_error(error) from None
+
+    def _discover(self) -> list[ModelDescriptor]:
+        with self.client() as client:
+            response = client.get("v1/models")
+            response.raise_for_status()
+            return [
+                ModelDescriptor(
+                    id=item["id"],
+                    provider=self.name,
+                    version=item["version"],
+                    capabilities=ModelCapabilities(
+                        text="unsupported",
+                        streaming="unsupported",
+                        embeddings="declared",
+                        vision="declared",
+                        audio="declared",
+                        video="declared",
+                        embedding_dimensions=768,
+                        context_window=8192,
+                    ),
+                )
+                for item in response.json()["data"]
+            ]
+
+    def embed(
+        self, model: str, texts: list[str], dimensions: int, *, query: bool = False
+    ) -> list[list[float]]:
+        return self.embed_multimodal(
+            model,
+            [EmbeddingInput(text=value) for value in texts],
+            dimensions,
+            query=query,
+        )
+
+    def embed_multimodal(
+        self,
+        model: str,
+        inputs: list[EmbeddingInput],
+        dimensions: int,
+        *,
+        query: bool = False,
+        before_send: Callable[[], None] | None = None,
+    ) -> list[list[float]]:
+        if before_send:
+            before_send()
+        values = [
+            {
+                "text": item.text,
+                "image": base64.b64encode(item.image).decode() if item.image else None,
+                "media": base64.b64encode(item.media.data).decode()
+                if item.media
+                else None,
+                "mime_type": item.media.mime_type if item.media else None,
+            }
+            for item in inputs
+        ]
+        try:
+            with self.client() as client:
+                response = client.post(
+                    "embed",
+                    json={
+                        "model": model,
+                        "inputs": values,
+                        "dimensions": dimensions,
+                        "query": query,
+                    },
+                )
+                response.raise_for_status()
+                return normalized_vectors(
+                    response.json()["embeddings"], len(inputs), dimensions
+                )
+        except Exception as error:
+            raise safe_error(error) from None
+
+
 class OpenAICompatibleProvider(HttpProvider):
     name = "openai-compatible"
 
@@ -610,11 +796,15 @@ class OpenAICompatibleProvider(HttpProvider):
 
 def get_provider(
     name: str, timeout: int | None = None
-) -> GeminiProvider | OllamaProvider | OpenAICompatibleProvider:
+) -> (
+    GeminiProvider | OllamaProvider | OpenAICompatibleProvider | NativeEmbeddingProvider
+):
     if name == "gemini":
         return GeminiProvider(timeout)
     if name == "ollama":
         return OllamaProvider(timeout)
+    if name == "embeddinggemma":
+        return NativeEmbeddingProvider(timeout)
     if name in {"llamacpp", "openai-compatible"}:
         return OpenAICompatibleProvider(name, timeout)
     raise ProviderError("UNKNOWN_PROVIDER", "Proveedor desconocido.")

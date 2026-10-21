@@ -6,7 +6,7 @@ const api = "http://localhost:8000/api/v1"
 const fixture = (name: string) =>
   fs.readFileSync(path.resolve(`../backend/tests/fixtures/${name}`))
 
-test("indexing all pages keeps the draft editable and blocks sending until the index is ready", async ({
+test("extracted documents support text search while the first semantic index builds, and unprepared sources stay blocked", async ({
   page,
 }) => {
   test.setTimeout(120000)
@@ -30,6 +30,7 @@ test("indexing all pages keeps the draft editable and blocks sending until the i
   expect(workspaceResponse.ok()).toBeTruthy()
   const workspace = await workspaceResponse.json()
   let ready = false
+  let prepared = false
   let documentPolls = 0
   let sent = 0
   let completed = false
@@ -59,7 +60,7 @@ test("indexing all pages keeps the draft editable and blocks sending until the i
       `${api}/workspaces/${workspace.id}/conversations`,
       {
         data: {
-          title: "Esperar el índice sin perder la pregunta",
+          title: "Consultar texto durante la indexación",
           provider: "gemini",
           model: "gemini-2.5-flash",
         },
@@ -77,7 +78,10 @@ test("indexing all pages keeps the draft editable and blocks sending until the i
           json: [
             {
               ...extractedDocument,
-              status: ready ? "READY" : "INDEXING",
+              current_version_id: prepared
+                ? extractedDocument.current_version_id
+                : null,
+              status: !prepared ? "UPLOADED" : ready ? "READY" : "INDEXING",
               active_index_id: ready
                 ? "00000000-0000-4000-8000-000000000003"
                 : null,
@@ -91,9 +95,10 @@ test("indexing all pages keeps the draft editable and blocks sending until the i
       async (route) => {
         if (route.request().method() === "POST") {
           sent += 1
-          expect(ready).toBe(true)
+          expect(prepared).toBe(true)
+          expect(ready).toBe(false)
           expect(route.request().postDataJSON().question).toBe(
-            "Mi pregunta espera el índice completo",
+            "Mi pregunta usa el texto extraído",
           )
           completed = true
           await route.fulfill({
@@ -109,7 +114,7 @@ test("indexing all pages keeps the draft editable and blocks sending until the i
                     id: messageId,
                     role: "assistant",
                     content:
-                      "Pregunta enviada después de preparar la búsqueda.",
+                      "Pregunta enviada durante la indexación con búsqueda textual.",
                     state: "COMPLETE",
                     provider: "gemini",
                     model: "gemini-2.5-flash",
@@ -128,38 +133,42 @@ test("indexing all pages keeps the draft editable and blocks sending until the i
       name: "Pregunta sobre tus documentos",
     })
     const send = page.getByRole("button", { name: "Preguntar", exact: true })
-    await expect(
-      page.getByText(
-        /Preparando la búsqueda por significado de todas las páginas/,
-      ),
-    ).toBeVisible()
     await expect(question).toBeEditable()
     await expect(question).toHaveAttribute(
       "placeholder",
-      "Escribe tu pregunta mientras preparamos la búsqueda…",
+      "Escribe mientras preparamos tus fuentes…",
     )
-    await question.fill("Mi pregunta espera el índice completo")
+    await question.fill("Mi pregunta usa el texto extraído")
     await expect(send).toBeDisabled()
     await question.press("Enter")
+    expect(sent).toBe(0)
+    prepared = true
+    await expect(page.getByText(/Búsqueda textual disponible/)).toBeVisible({
+      timeout: 12000,
+    })
+    await expect(question).toHaveAttribute(
+      "placeholder",
+      "Escribe tu pregunta sobre las fuentes…",
+    )
+    await expect(send).toBeEnabled()
     await expect
       .poll(() => documentPolls, { timeout: 12000 })
       .toBeGreaterThanOrEqual(3)
-    expect(sent).toBe(0)
-    await expect(question).toHaveValue("Mi pregunta espera el índice completo")
-    await expect(send).toBeDisabled()
-    ready = true
-    await expect(send).toBeEnabled({ timeout: 12000 })
-    await expect(question).toHaveValue("Mi pregunta espera el índice completo")
-    await expect(
-      page.getByText(
-        /Preparando la búsqueda por significado de todas las páginas/,
-      ),
-    ).toHaveCount(0)
-    await send.click()
+    await expect(question).toHaveValue("Mi pregunta usa el texto extraído")
+    await question.press("Enter")
     await expect.poll(() => sent).toBe(1)
     await expect(page.getByTestId("chat-messages")).toContainText(
-      "Pregunta enviada después de preparar la búsqueda.",
+      "Pregunta enviada durante la indexación con búsqueda textual.",
     )
+    await question.fill("Borrador conservado al activar el índice semántico")
+    ready = true
+    await expect(page.getByText(/Búsqueda textual disponible/)).toHaveCount(0, {
+      timeout: 12000,
+    })
+    await expect(question).toHaveValue(
+      "Borrador conservado al activar el índice semántico",
+    )
+    await expect(send).toBeEnabled()
   } finally {
     test.setTimeout(150000)
     await page.request.delete(`${api}/workspaces/${workspace.id}`)
@@ -233,6 +242,23 @@ test("a pending chat request survives document polls, notes and opening the PDF"
         { timeout: 60000 },
       )
       .toBeTruthy()
+    const extractedDocument = await (
+      await page.request.get(`${api}/documents/${document.id}`)
+    ).json()
+    // The stream is controlled below; its lifetime must not depend on the shared embedding queue.
+    await page.route(
+      `**/api/v1/workspaces/${workspace.id}/documents`,
+      (route) =>
+        route.fulfill({
+          json: [
+            {
+              ...extractedDocument,
+              status: "READY",
+              active_index_id: "00000000-0000-4000-8000-000000000004",
+            },
+          ],
+        }),
+    )
     const conversationResponse = await page.request.post(
       `${api}/workspaces/${workspace.id}/conversations`,
       {
@@ -278,10 +304,6 @@ test("a pending chat request survives document polls, notes and opening the PDF"
         }
       },
     )
-    await page.goto(`/workspaces/${workspace.id}`)
-    await expect(
-      page.getByRole("textbox", { name: "Pregunta sobre tus documentos" }),
-    ).toBeVisible()
     page.on("request", (request) => {
       if (request.isNavigationRequest() && request.frame() === page.mainFrame())
         documentLoads += 1
@@ -306,6 +328,15 @@ test("a pending chat request survives document polls, notes and opening the PDF"
       )
         failedStreams.push(request.failure()?.errorText ?? "failed")
     })
+    await page.goto(`/workspaces/${workspace.id}`)
+    await expect(page.getByTestId("workspace-chat")).toBeVisible()
+    await expect(page.getByTestId("workspace-reader")).toHaveCount(0)
+    await page
+      .getByRole("button", { name: "Abrir visor de fuente", exact: true })
+      .click()
+    await expect(page.getByTestId("workspace-reader")).toBeVisible()
+    await expect(page.locator("[data-testid=pdf-page] canvas")).toBeVisible()
+    documentLoads = 0
     await page
       .getByRole("textbox", { name: "Pregunta sobre tus documentos" })
       .fill("Mantén esta pregunta mientras consulto mis fuentes")
@@ -318,6 +349,10 @@ test("a pending chat request survives document polls, notes and opening the PDF"
       .getByRole("textbox", { name: "Pregunta sobre tus documentos" })
       .fill("Mi siguiente pregunta queda escrita")
     await page
+      .locator("summary")
+      .filter({ hasText: /^Notas/ })
+      .click()
+    await page
       .getByRole("textbox", { name: "Nota personal", exact: true })
       .fill("Nota guardada durante la respuesta")
     await page
@@ -329,7 +364,6 @@ test("a pending chat request survives document polls, notes and opening the PDF"
         exact: true,
       }),
     ).toBeVisible()
-    await page.getByRole("button", { name: "Abrir PDF", exact: true }).click()
     await expect(page.locator("[data-testid=pdf-page] canvas")).toBeVisible()
     await expect(
       page.getByRole("button", { name: "Guardar marcador", exact: true }),
@@ -390,6 +424,16 @@ test("a pending chat request survives document polls, notes and opening the PDF"
     expect(documentLoads).toBe(0)
     expect(failedStreams).toEqual([])
     expect(fullPdfDownloads).toBe(1)
+    await page
+      .getByRole("button", { name: "Cerrar visor de fuente", exact: true })
+      .click()
+    await expect(page.getByTestId("workspace-reader")).toHaveCount(0)
+    await expect(
+      page.getByRole("textbox", { name: "Pregunta sobre tus documentos" }),
+    ).toHaveValue("Mi siguiente pregunta queda escrita")
+    await expect(
+      page.getByRole("button", { name: "Detener", exact: true }),
+    ).toBeVisible()
     gate.resolve()
     await expect(page.getByTestId("chat-messages")).toContainText(
       "Respuesta controlada sin envío a proveedores.",

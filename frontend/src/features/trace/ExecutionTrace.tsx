@@ -1,5 +1,6 @@
 import { Clock3, Database, FileSearch, ShieldCheck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { formatTime } from "@/features/media/location"
 
 type JsonObject = Record<string, unknown>
 const object = (value: unknown): JsonObject =>
@@ -38,9 +39,22 @@ export function ExecutionTrace({
   const profiles = list(retrieval.used_profiles)
   const failures = list(retrieval.semantic_failures)
   const stages = list(trace.stages)
+  const ranking = list(retrieval.ranking)
+  const coverage = object(trace.document_coverage)
+  const visual = object(trace.visual_coverage)
+  const extraction = list(trace.extraction_coverage)
+  const native = object(trace.native_media)
+  const clips = list(native.clips)
+  const providerFailure = object(trace.failure)
+  const pendingIndexes = Array.isArray(trace.indexes_pending)
+    ? trace.indexes_pending.filter((id): id is string => typeof id === "string")
+    : []
   const stageNames: Record<string, string> = {
     request_started: "Inicio de consulta",
     retrieval_finished: "Evidencia recuperada",
+    image_regions_prepared: "Imágenes preparadas para lectura",
+    native_clips_prepared: "Segmentos originales preparados para lectura",
+    image_region_prepared: "Región visual preparada",
     inference_started: "Inicio de respuesta",
     inference_finished: "Respuesta recibida",
     citations_validated: "Citas validadas",
@@ -66,9 +80,9 @@ export function ExecutionTrace({
         <div>
           <p className="text-muted-foreground">Resultado</p>
           <p className="mt-1 font-medium">
-            {trace.outcome === "COMPLETE"
+            {trace.outcome === "COMPLETE" || trace.outcome === "complete"
               ? "Completado"
-              : trace.outcome === "FAILED"
+              : trace.outcome === "FAILED" || trace.outcome === "failed"
                 ? "Falló"
                 : text(trace.outcome)}
           </p>
@@ -98,6 +112,17 @@ export function ExecutionTrace({
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">{text(policy.provider)}</Badge>
           <Badge variant="outline">{text(policy.model)}</Badge>
+          {typeof trace.input_modality === "string" && (
+            <Badge variant="secondary">
+              {trace.input_modality === "native_media"
+                ? "Audio/video original"
+                : trace.input_modality === "image_region"
+                  ? "Región de imagen"
+                  : trace.input_modality === "text"
+                    ? "Texto"
+                    : trace.input_modality}
+            </Badge>
+          )}
           {typeof trace.is_cloud === "boolean" && (
             <Badge variant="secondary">
               {trace.is_cloud ? "Proveedor de nube" : "Proveedor local"}
@@ -125,7 +150,31 @@ export function ExecutionTrace({
         <p className="break-all text-xs leading-5 text-muted-foreground">
           Versión de instrucciones: {text(trace.prompt_template_version)}
         </p>
+        {(typeof trace.response_mode === "string" ||
+          typeof trace.transport_attempts === "number") && (
+          <p className="text-xs leading-5 text-muted-foreground">
+            Modo de respuesta:{" "}
+            {trace.response_mode === "buffered_native"
+              ? "Audiovisual completa"
+              : trace.response_mode === "stream"
+                ? "Por fragmentos"
+                : text(trace.response_mode)}{" "}
+            · Intentos de transporte: {text(trace.transport_attempts)}
+          </p>
+        )}
       </div>
+      {pendingIndexes.length > 0 && (
+        <p className="rounded-lg bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
+          Búsqueda textual disponible mientras se preparan índices semánticos:{" "}
+          {pendingIndexes
+            .map(
+              (id) =>
+                documents.find((document) => document.id === id)?.title ?? id,
+            )
+            .join(", ")}
+          .
+        </p>
+      )}
       <div className="space-y-2">
         <h4 className="flex items-center gap-2 text-sm font-medium">
           <FileSearch className="size-4" />
@@ -155,8 +204,12 @@ export function ExecutionTrace({
                   className="flex flex-wrap justify-between gap-2 px-3 py-2 text-xs"
                 >
                   <span>
-                    Fuente {text(source.label, String(index + 1))} · página{" "}
-                    {text(source.page_number ?? source.page)}
+                    Fuente {text(source.label, String(index + 1))} ·{" "}
+                    {typeof source.sheet_name === "string"
+                      ? `${source.sheet_name} · ${text(source.cell_range)}`
+                      : typeof source.start_seconds === "number"
+                        ? `${formatTime(source.start_seconds)}–${formatTime(typeof source.end_seconds === "number" ? source.end_seconds : null)}`
+                        : `p. ${text(source.page_number ?? source.page)}`}
                     <span className="mt-1 block font-medium">
                       {documents.find(
                         (document) => document.id === source.document_id,
@@ -189,6 +242,180 @@ export function ExecutionTrace({
           </div>
         )}
       </div>
+      {Object.keys(native).length > 0 && (
+        <section
+          aria-label="Segmentos nativos enviados al modelo"
+          className="space-y-3 rounded-lg border p-3"
+        >
+          <h4 className="text-sm font-medium">
+            Audio y video original consultado
+          </h4>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {clips.length}{" "}
+            {clips.length === 1 ? "clip enviado" : "clips enviados"} ·{" "}
+            {text(native.bytes, "0")} bytes ·{" "}
+            {text(native.duration_seconds, "0")} segundos. Los intervalos
+            corresponden a los segmentos originales recuperados.
+          </p>
+          {typeof native.omitted === "number" && native.omitted > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {native.omitted}{" "}
+              {native.omitted === 1 ? "clip omitido" : "clips omitidos"} por los
+              límites de esta consulta.
+            </p>
+          )}
+          {clips.map((clip, index) => (
+            <details
+              key={`${text(clip.element_id)}-${index}`}
+              className="rounded-md bg-muted/40 p-3 text-xs"
+            >
+              <summary className="cursor-pointer leading-5">
+                {documents.find((document) => document.id === clip.document_id)
+                  ?.title ??
+                  `Fuente ${text(clip.source_id, String(index + 1))}`}{" "}
+                · {clip.media === "video" ? "Video" : "Audio"} ·{" "}
+                {formatTime(
+                  typeof clip.start_seconds === "number"
+                    ? clip.start_seconds
+                    : null,
+                )}
+                –
+                {formatTime(
+                  typeof clip.end_seconds === "number"
+                    ? clip.end_seconds
+                    : null,
+                )}
+              </summary>
+              <dl className="mt-3 grid gap-2 text-muted-foreground">
+                <div>
+                  <dt>Formato y tamaño</dt>
+                  <dd className="text-foreground">
+                    {text(clip.mime_type)} · {text(clip.bytes)} bytes
+                  </dd>
+                </div>
+                <div>
+                  <dt>Documento / versión / elemento</dt>
+                  <dd className="break-all text-foreground">
+                    {text(clip.document_id)} / {text(clip.version_id)} /{" "}
+                    {text(clip.element_id)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>SHA-256 del clip enviado</dt>
+                  <dd className="break-all font-mono text-foreground">
+                    {text(clip.clip_sha256)}
+                  </dd>
+                </div>
+              </dl>
+              {typeof clip.document_id === "string" && onDocumentSelect && (
+                <button
+                  type="button"
+                  className="mt-3 text-primary underline underline-offset-2"
+                  onClick={() => onDocumentSelect(clip.document_id as string)}
+                >
+                  Ver historial de fuente
+                </button>
+              )}
+            </details>
+          ))}
+        </section>
+      )}
+      {Object.keys(coverage).length > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border p-3 text-xs">
+          <h4 className="font-medium">Cobertura de la consulta</h4>
+          <p>
+            {text(coverage.with_evidence)}/{text(coverage.selected)} documentos
+            aportaron evidencia.
+          </p>
+          <p>
+            {text(visual.sent, "0")}/{text(visual.retrieved, "0")} regiones
+            visuales recuperadas se enviaron al modelo.
+          </p>
+          {typeof visual.omitted === "number" && visual.omitted > 0 && (
+            <p>
+              Quedaron {visual.omitted} regiones fuera del límite de imágenes de
+              esta consulta.
+            </p>
+          )}
+          {Array.isArray(coverage.without_evidence) &&
+            coverage.without_evidence.length > 0 && (
+              <p>
+                Sin evidencia:{" "}
+                {coverage.without_evidence
+                  .map(
+                    (id) =>
+                      documents.find((document) => document.id === id)?.title ??
+                      String(id),
+                  )
+                  .join(", ")}
+                .
+              </p>
+            )}
+        </div>
+      )}
+      {extraction.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer font-medium">
+            Cobertura de extracción al consultar
+          </summary>
+          <div className="mt-2 flex flex-col gap-2">
+            {extraction.map((source) => (
+              <p key={text(source.document_id)}>
+                {documents.find(
+                  (document) => document.id === source.document_id,
+                )?.title ?? text(source.document_id)}
+                :{" "}
+                {source.source_type === "spreadsheet"
+                  ? `${text(source.sheets_extracted)}/${text(source.sheets_total)} hojas · ${text(source.cells_with_chunks)}/${text(source.cells_total)} celdas con procedencia · ${text(source.missing_formula_values)} fórmulas sin valor guardado`
+                  : source.source_type === "audio" ||
+                      source.source_type === "video"
+                    ? source.analysis_mode === "native_embeddings"
+                      ? `${text(source.segments_prepared)}/${text(source.segments_total)} segmentos preparados para embeddings nativos · ${text(source.segments_analyzed, "0")} transcritos · precisión ${text(source.temporal_precision_seconds)} s`
+                      : `${text(source.segments_analyzed)}/${text(source.segments_total)} segmentos analizados · ${text(source.analysis_model)} · precisión ${text(source.temporal_precision_seconds)} s`
+                    : `${text(source.pages_extracted)}/${text(source.pages_total)} páginas · ${text(source.figures_total)} figuras · ${text(source.figures_multimodal_indexed)} con embedding visual.`}
+              </p>
+            ))}
+          </div>
+        </details>
+      )}
+      {ranking.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer font-medium">
+            Recuperación y ranking de chunks ({text(retrieval.candidate_count)})
+          </summary>
+          <p className="my-2 text-muted-foreground">
+            {text(retrieval.strategy)} · {text(retrieval.elapsed_seconds)} s ·
+            puntuaciones RRF, no porcentajes de certeza.
+          </p>
+          <div className="max-h-56 overflow-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr>
+                  <th className="p-2">Posición</th>
+                  <th className="p-2">Chunk</th>
+                  <th className="p-2">Puntuación</th>
+                  <th className="p-2">Selección</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.map((candidate) => (
+                  <tr key={text(candidate.chunk_id)} className="border-t">
+                    <td className="p-2">{text(candidate.rank)}</td>
+                    <td
+                      className="max-w-40 truncate p-2"
+                      title={text(candidate.chunk_id)}
+                    >
+                      {text(candidate.chunk_id)}
+                    </td>
+                    <td className="p-2">{text(candidate.score)}</td>
+                    <td className="p-2">{candidate.selected ? "Sí" : "No"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
       {profiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="flex items-center gap-2 text-sm font-medium">
@@ -238,11 +465,20 @@ export function ExecutionTrace({
               : text(trace.finish_reason)}
         </p>
       )}
-      {(failures.length > 0 || typeof trace.error_code === "string") && (
+      {(failures.length > 0 ||
+        typeof trace.error_code === "string" ||
+        Object.keys(providerFailure).length > 0) && (
         <div className="rounded-lg border border-destructive/30 p-3 text-sm">
           <p className="font-medium">Incidencias registradas</p>
           {typeof trace.error_code === "string" && (
             <p className="mt-1 text-destructive">{text(trace.error_code)}</p>
+          )}
+          {Object.keys(providerFailure).length > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Excepción: {text(providerFailure.exception)}
+              {typeof providerFailure.http_status === "number" &&
+                ` · HTTP: ${providerFailure.http_status}`}
+            </p>
           )}
           {failures.map((failure, index) => (
             <p

@@ -7,6 +7,7 @@ from app.api.routes import (
     learning,
     login,
     providers,
+    spreadsheets,
     studio,
     trace,
     users,
@@ -20,6 +21,7 @@ api_router.include_router(users.router)
 api_router.include_router(utils.router)
 api_router.include_router(items.router)
 api_router.include_router(documents.router)
+api_router.include_router(spreadsheets.router)
 api_router.include_router(workspaces.router)
 api_router.include_router(providers.router)
 api_router.include_router(chat.router)

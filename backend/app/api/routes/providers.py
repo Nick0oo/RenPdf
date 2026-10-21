@@ -37,7 +37,7 @@ def provider_catalog(current_user: CurrentUser):
         return list(
             executor.map(
                 safe_health,
-                ["gemini", "ollama", "llamacpp", "openai-compatible"],
+                ["gemini", "ollama", "llamacpp", "openai-compatible", "embeddinggemma"],
             )
         )
 

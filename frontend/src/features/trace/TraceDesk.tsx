@@ -22,8 +22,15 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  formatTime,
+  sourceLocation,
+  sourceType,
+} from "@/features/media/location"
 import { errorMessage } from "@/features/research/api"
 import { ChoiceSelect } from "@/features/research/ChoiceSelect"
+import { DocumentCoverage } from "@/features/research/DocumentCoverage"
+import { processingLabel } from "@/features/research/presentation"
 import {
   type DocumentTrace,
   moduleRequest,
@@ -36,6 +43,7 @@ import {
   traceWorkspaces,
 } from "./api"
 import { ExecutionTrace } from "./ExecutionTrace"
+import { RagInspector } from "./RagInspector"
 
 export type TraceSection =
   | "activity"
@@ -66,6 +74,9 @@ const stateNames: Record<string, string> = {
   INDEXED: "Listo para consultar",
   BUILDING: "Construyendo",
   READY: "Listo para consultar",
+  MEDIA_READY: "Lista para indexar",
+  NATIVE_QUEUED: "Indexación nativa en cola",
+  NATIVE_PREPARING: "Preparando segmentos nativos",
   DEGRADED: "Revisar extracción",
 }
 const usageNames: Record<string, string> = {
@@ -77,10 +88,11 @@ const usageNames: Record<string, string> = {
   status: "Reporte de uso",
 }
 const scopes: Record<string, string> = {
-  chat: "Respuestas sobre el PDF",
+  chat: "Respuestas sobre las fuentes",
+  media_analysis: "Análisis de audio y video",
   vision: "Lectura de imágenes",
-  embeddings: "Índice de texto",
-  multimodal_embeddings: "Índice de texto e imágenes",
+  embeddings: "Creación de embeddings",
+  multimodal_embeddings: "Embeddings de imágenes, audio y video",
   original_pdf: "PDF original",
 }
 const date = (value: string) =>
@@ -518,6 +530,7 @@ export function TraceDesk({
                 <CheckCheck className="size-4" />
                 Evidencia citada
               </h3>
+              <RagInspector messageId={response.data.message.id} />
               {(response.data.message.citations ?? []).length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   Esta respuesta no guardó citas.
@@ -529,8 +542,8 @@ export function TraceDesk({
                   className="rounded-lg border p-4"
                 >
                   <p className="text-sm font-medium">
-                    Fuente {citation.label} · {citation.document_title} · página{" "}
-                    {citation.page_number}
+                    Fuente {citation.label} · {citation.document_title} ·{" "}
+                    {sourceLocation(citation)}
                   </p>
                   <blockquote className="mt-2 border-l-2 border-primary/30 pl-3 text-sm leading-6 text-muted-foreground">
                     {citation.text}
@@ -540,8 +553,10 @@ export function TraceDesk({
                     {citation.precision}
                   </p>
                   <Button asChild variant="link" className="mt-1 px-0">
-                    <a href={`/workspaces/${response.data?.workspace_id}`}>
-                      Abrir workspace para revisar la página
+                    <a
+                      href={`/workspaces/${response.data?.workspace_id}?${new URLSearchParams({ document: citation.document_id, ...(sourceType(citation) === "spreadsheet" ? { sheet: citation.sheet_name ?? "", cell: citation.cell_range ?? "" } : sourceType(citation) !== "pdf" ? { time: String(citation.start_seconds ?? 0) } : {}) })}`}
+                    >
+                      Abrir fuente en el workspace
                     </a>
                   </Button>
                 </article>
@@ -581,7 +596,7 @@ function DocumentList({
     <section className="divide-y rounded-xl border">
       {documents.length === 0 ? (
         <p className="p-8 text-sm text-muted-foreground">
-          Sube un PDF a tu biblioteca para ver cómo se convierte en evidencia.
+          Sube fuentes a tu biblioteca para ver cómo se convierten en evidencia.
         </p>
       ) : (
         documents.map((document) => (
@@ -594,7 +609,12 @@ function DocumentList({
             <div className="min-w-0">
               <p className="break-words font-medium">{document.title}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {document.page_count} páginas ·{" "}
+                {sourceType(document) === "spreadsheet"
+                  ? `${document.sheet_count ?? 0} hojas`
+                  : sourceType(document) === "pdf"
+                    ? `${document.page_count} páginas`
+                    : `${sourceType(document)} · ${formatTime(document.duration_seconds)}`}{" "}
+                ·{" "}
                 {document.active_index_id
                   ? "Índice activo"
                   : "Sin índice vectorial"}
@@ -608,9 +628,21 @@ function DocumentList({
   )
 }
 
-function DocumentHistory({ trace }: { trace: DocumentTrace }) {
+export function DocumentHistory({
+  trace,
+  workspaceId,
+}: {
+  trace: DocumentTrace
+  workspaceId?: string
+}) {
   return (
     <div className="space-y-5">
+      <DocumentCoverage document={trace.document} />
+      <RagInspector
+        documentId={trace.document.id}
+        sourceType={sourceType(trace.document)}
+        workspaceId={workspaceId}
+      />
       <div>
         <h3 className="break-words font-medium">{trace.document.title}</h3>
         <p className="mt-2 break-all text-xs text-muted-foreground">
@@ -632,11 +664,35 @@ function DocumentHistory({ trace }: { trace: DocumentTrace }) {
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
             {version.parser} {version.parser_version} · {version.chunks}{" "}
-            fragmentos · {version.figures} figuras detectadas
+            fragmentos ·{" "}
+            {sourceType(trace.document) === "spreadsheet"
+              ? `${String(version.extraction?.sheets_extracted ?? 0)} hojas · ${String(version.extraction?.cells_total ?? 0)} celdas`
+              : ["audio", "video"].includes(sourceType(trace.document))
+                ? `${String(version.extraction?.segments_prepared ?? version.extraction?.segments_analyzed ?? 0)} segmentos preparados`
+                : `${version.figures} figuras detectadas`}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {date(version.created_at)}
           </p>
+          {version.extraction?.analysis_mode === "native_embeddings" ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Embeddings nativos ·{" "}
+              {String(version.extraction.segments_prepared ?? 0)}/
+              {String(version.extraction.segments_total ?? 0)} segmentos
+              preparados · {String(version.extraction.clips_reused ?? 0)} clips
+              reutilizados. La transcripción es opcional.
+            </p>
+          ) : (
+            !!version.extraction?.analysis_model && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Análisis: {String(version.extraction.analysis_provider)} ·{" "}
+                {String(version.extraction.analysis_model)} ·{" "}
+                {String(version.extraction.segments_analyzed)}/
+                {String(version.extraction.segments_total)} segmentos ·
+                intervalos de {String(version.extraction.segment_seconds)} s
+              </p>
+            )
+          )}
           {version.indexes.map((index) => (
             <div key={index.id} className="mt-4 border-t pt-3 text-sm">
               <p className="font-medium">
@@ -661,7 +717,7 @@ function DocumentHistory({ trace }: { trace: DocumentTrace }) {
           className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-sm"
         >
           <span>
-            {job.kind} · {job.stage} · {job.progress}%
+            {processingLabel(job.kind, job.state)} · {job.progress}%
           </span>
           <State value={job.state} />
         </div>

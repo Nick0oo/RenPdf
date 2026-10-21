@@ -4,14 +4,17 @@ import {
   BookOpen,
   ChevronDown,
   FilePlus2,
-  FileText,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Settings2,
   Shield,
   StickyNote,
+  Table2,
+  X,
 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type {
   BBox,
@@ -36,8 +39,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { ChatPanel } from "@/features/chat/ChatPanel"
+import { sourceLocation, sourceType } from "@/features/media/location"
+import { MediaReader } from "@/features/media/MediaReader"
 import { ProviderModelSelect } from "@/features/models/ProviderModelSelect"
-import { PdfReader } from "@/features/pdf-viewer/PdfReader"
+import { SpreadsheetReader } from "@/features/spreadsheet/SpreadsheetReader"
+import { cn } from "@/lib/utils"
 import {
   errorMessage,
   modelSelection,
@@ -49,11 +55,20 @@ import { WorkspaceContext } from "./WorkspaceContext"
 import { WorkspaceProperties } from "./WorkspaceProperties"
 import { type SettingsTab, WorkspaceSettings } from "./WorkspaceSettings"
 
+const PdfReader = lazy(() =>
+  import("@/features/pdf-viewer/PdfReader").then((module) => ({
+    default: module.PdfReader,
+  })),
+)
+
 export function WorkspaceDesk({
   workspace,
   library,
   providers,
   entryDocumentId,
+  entryTime,
+  entrySheet,
+  entryCell,
   openChatOnLoad = false,
   onBack,
 }: {
@@ -61,6 +76,9 @@ export function WorkspaceDesk({
   library: DocumentPublic[]
   providers: ProviderConfig[]
   entryDocumentId?: string
+  entryTime?: number
+  entrySheet?: string
+  entryCell?: string
   openChatOnLoad?: boolean
   onBack: () => void
 }) {
@@ -96,13 +114,57 @@ export function WorkspaceDesk({
   const [conversationId, setConversationId] = useState(
     localStorage.getItem(`workspace-conversation:${workspace.id}`) ?? "",
   )
-  const [selectedIds, setSelectedIds] = useState<string[] | null>(
-    entryDocumentId ? [entryDocumentId] : null,
-  )
+  const [selectedIds, setSelectedIds] = useState<string[] | null>(() => {
+    if (entryDocumentId) return [entryDocumentId]
+    try {
+      const saved: unknown = JSON.parse(
+        localStorage.getItem(`workspace-sources:${workspace.id}`) ?? "null",
+      )
+      return Array.isArray(saved) && saved.every((id) => typeof id === "string")
+        ? saved
+        : null
+    } catch {
+      return null
+    }
+  })
+  useEffect(() => {
+    localStorage.setItem(
+      `workspace-sources:${workspace.id}`,
+      JSON.stringify(selectedIds),
+    )
+  }, [selectedIds, workspace.id])
   const [source, setSource] = useState<EvidencePublic>()
-  const [readerOpen, setReaderOpen] = useState(false)
+  const [readerOpen, setReaderOpen] = useState(
+    () => localStorage.getItem(`workspace-reader:${workspace.id}`) === "open",
+  )
+  const [sourcesOpen, setSourcesOpen] = useState(
+    () =>
+      localStorage.getItem(`workspace-sidebar:${workspace.id}`) !== "closed",
+  )
+  useEffect(() => {
+    localStorage.setItem(
+      `workspace-reader:${workspace.id}`,
+      readerOpen ? "open" : "closed",
+    )
+  }, [readerOpen, workspace.id])
+  useEffect(() => {
+    localStorage.setItem(
+      `workspace-sidebar:${workspace.id}`,
+      sourcesOpen ? "open" : "closed",
+    )
+  }, [sourcesOpen, workspace.id])
   const [contextOpen, setContextOpen] = useState(false)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
+  useEffect(() => {
+    if (entryDocumentId) {
+      setDocumentId(entryDocumentId)
+      setSelectedIds((ids) =>
+        ids === null ? null : [...new Set([...ids, entryDocumentId])],
+      )
+      setSource(undefined)
+      if (entryTime !== undefined || !openChatOnLoad) setReaderOpen(true)
+    }
+  }, [entryDocumentId, entryTime, openChatOnLoad])
   const openedChat = useRef(false)
   const [controls, setControls] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("fuentes")
@@ -117,6 +179,10 @@ export function WorkspaceDesk({
   const activeDocument =
     documents.data?.find((document) => document.id === documentId) ??
     documents.data?.[0]
+  const showReader = readerOpen && !!activeDocument
+  useEffect(() => {
+    if (documents.isSuccess && !documents.data.length) setReaderOpen(false)
+  }, [documents.isSuccess, documents.data])
   const conversation =
     conversations.data?.find((item) => item.id === conversationId) ??
     conversations.data?.[0]
@@ -168,7 +234,6 @@ export function WorkspaceDesk({
     },
     onSuccess: (response) => {
       setConversationId(response.data.id)
-      setReaderOpen(false)
       return cache.invalidateQueries({
         queryKey: ["conversations", workspace.id],
       })
@@ -259,11 +324,13 @@ export function WorkspaceDesk({
   }
   const ask = (text: string, element?: ElementPublic, vision?: boolean) => {
     setDraft({ text, elementId: element?.id, vision, nonce: Date.now() })
-    setReaderOpen(false)
     if (!conversation && !newConversation.isPending) newConversation.mutate()
   }
   const openPdf = (id: string) => {
     setDocumentId(id)
+    setSource(undefined)
+    setContextOpen(false)
+    setCurrentPage(1)
     setReaderOpen(true)
   }
   const context = (
@@ -274,12 +341,19 @@ export function WorkspaceDesk({
       activeDocument={activeDocument}
       selectedIds={selectedIds}
       onSelectionChange={setSelectedIds}
-      onDocumentChange={(id) => {
-        setDocumentId(id)
-        setSource(undefined)
-      }}
+      onDocumentChange={openPdf}
       onDocumentsChange={invalidateDocuments}
       onOpenPdf={openPdf}
+      onPrepareSource={(id) => {
+        setDocumentId(id)
+        if (
+          ["audio", "video"].includes(
+            sourceType(documents.data?.find((document) => document.id === id)),
+          )
+        )
+          openPdf(id)
+        else manageSources()
+      }}
       currentPage={currentPage}
       onSaveNote={(text) =>
         addNote.mutateAsync({ page: currentPage, kind: "note", text })
@@ -289,94 +363,115 @@ export function WorkspaceDesk({
   )
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <header className="shrink-0 border-b px-5 py-5 md:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <button
-              type="button"
-              onClick={onBack}
-              className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft size={13} /> Workspaces
-            </button>
-            <h1
-              className="line-clamp-2 text-xl font-semibold tracking-tight sm:truncate sm:text-2xl"
-              title={workspace.name}
-            >
-              {workspace.name}
-            </h1>
-            <p className="mt-2 max-w-2xl truncate text-sm text-muted-foreground">
-              {workspace.description ||
-                "Tu investigación, tus conversaciones y las ideas que estás construyendo."}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+      <header
+        data-testid="workspace-toolbar"
+        className="flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2"
+      >
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Volver a workspaces"
+          onClick={onBack}
+        >
+          <ArrowLeft data-icon="inline-start" />
+        </Button>
+        <div className="min-w-0 flex-1 md:max-w-[25rem]">
+          <h1 className="truncate text-sm font-semibold" title={workspace.name}>
+            {workspace.name}
+          </h1>
+          <p className="text-[11px] text-muted-foreground">
+            {activeDocs.length} de {documents.data?.length ?? 0} fuentes activas
+          </p>
+        </div>
+        {conversation && (
+          <ProviderModelSelect
+            providers={providers}
+            task="chat"
+            label="Modelo de conversación"
+            value={modelValue(conversation.provider, conversation.model)}
+            onValueChange={(value) => changeModel.mutate(value)}
+            disabled={changeModel.isPending}
+            size="sm"
+            className="order-last max-w-full basis-full sm:order-none sm:ml-auto sm:max-w-56 sm:basis-auto"
+          />
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="Fuentes y permisos"
+          onClick={() => manageSources()}
+        >
+          <Shield data-icon="inline-start" />
+          <span className="hidden sm:inline">Permisos</span>
+        </Button>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Configuración del workspace"
+          onClick={() => setPropertiesOpen(true)}
+        >
+          <Settings2 data-icon="inline-start" />
+        </Button>
+      </header>
+      <div
+        data-testid="workspace-panels"
+        className={cn(
+          "grid min-h-0 flex-1 grid-cols-1 overflow-hidden",
+          showReader
+            ? "grid-rows-[minmax(16rem,1fr)_minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:grid-rows-1"
+            : "grid-rows-1",
+          sourcesOpen &&
+            (showReader
+              ? "xl:grid-cols-[15.5rem_minmax(0,1fr)_minmax(0,1.1fr)]"
+              : "xl:grid-cols-[15.5rem_minmax(0,1fr)]"),
+        )}
+      >
+        <aside
+          aria-label="Fuentes y notas persistentes"
+          className={cn(
+            "hidden min-h-0 overflow-y-auto border-r bg-muted/15 p-3",
+            sourcesOpen && "xl:block",
+          )}
+        >
+          {context}
+        </aside>
+        <div
+          data-testid="workspace-chat"
+          className="flex min-h-0 min-w-0 flex-col"
+        >
+          <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b px-3">
             <Button
-              size="sm"
-              variant="outline"
-              aria-label="Fuentes y permisos"
-              onClick={() => manageSources()}
+              size="icon-sm"
+              variant="ghost"
+              className="hidden xl:inline-flex"
+              aria-label={
+                sourcesOpen
+                  ? "Ocultar fuentes y notas"
+                  : "Mostrar fuentes y notas"
+              }
+              onClick={() => setSourcesOpen((value) => !value)}
             >
-              <Shield size={14} />{" "}
-              <span className="hidden sm:inline">Fuentes y permisos</span>
+              {sourcesOpen ? (
+                <PanelLeftClose data-icon="inline-start" />
+              ) : (
+                <PanelLeftOpen data-icon="inline-start" />
+              )}
             </Button>
             <Button
               size="icon-sm"
               variant="ghost"
-              aria-label="Configuración del workspace"
-              onClick={() => setPropertiesOpen(true)}
+              className="xl:hidden"
+              aria-label="Fuentes y notas"
+              onClick={() => setContextOpen(true)}
             >
-              <Settings2 size={16} />
+              <StickyNote data-icon="inline-start" />
             </Button>
-          </div>
-        </div>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <FileText size={14} /> {activeDocs.length} de{" "}
-            {documents.data?.length ?? 0} fuentes activas
-          </span>
-          <span className="hidden h-4 border-l sm:block" />
-          {conversation && (
-            <ProviderModelSelect
-              providers={providers}
-              task="chat"
-              label="Modelo de conversación"
-              value={modelValue(conversation.provider, conversation.model)}
-              onValueChange={(value) => changeModel.mutate(value)}
-              disabled={changeModel.isPending}
-              size="sm"
-              className="max-w-xs"
-            />
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!activeDocument}
-            onClick={() => {
-              if (activeDocument) openPdf(activeDocument.id)
-            }}
-          >
-            <BookOpen size={14} /> Abrir PDF
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="ml-auto xl:hidden"
-            onClick={() => setContextOpen(true)}
-          >
-            <StickyNote size={14} /> Fuentes y notas
-          </Button>
-        </div>
-      </header>
-      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-h-0 min-w-0 flex-col">
-          <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b px-5 md:px-8">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="max-w-[min(70%,26rem)] justify-start px-0"
+                  className="mr-auto min-w-0 max-w-[min(60%,26rem)] shrink justify-start px-0"
                   aria-label="Historial de chats"
                 >
                   <MessageSquare size={15} />
@@ -416,6 +511,17 @@ export function WorkspaceDesk({
                 </div>
               </PopoverContent>
             </Popover>
+            {!showReader && activeDocument && (
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label="Abrir visor de fuente"
+                onClick={() => openPdf(activeDocument.id)}
+              >
+                <BookOpen data-icon="inline-start" />
+                <span className="hidden sm:inline">Ver fuente</span>
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
@@ -447,8 +553,9 @@ export function WorkspaceDesk({
                 Abre la conversación de tu investigación
               </h2>
               <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-                Añade tus PDFs y pregunta sobre lo que necesitas comprender. Las
-                respuestas citadas volverán a su página original.
+                Añade documentos, hojas de cálculo, audios o videos y consulta
+                varias fuentes a la vez. Las citas abren la página, celda o
+                minuto que respalda la respuesta.
               </p>
               <Button
                 className="mt-6"
@@ -463,15 +570,128 @@ export function WorkspaceDesk({
                   className="mt-3"
                   onClick={() => setContextOpen(true)}
                 >
-                  <FilePlus2 size={15} /> Importar PDFs
+                  <FilePlus2 size={15} /> Importar fuentes
                 </Button>
               )}
             </div>
           )}
         </div>
-        <aside className="hidden min-h-0 overflow-y-auto border-l bg-muted/15 p-5 xl:block">
-          {context}
-        </aside>
+        {readerOpen && activeDocument && (
+          <section
+            aria-label="Visor de fuentes"
+            data-testid="workspace-reader"
+            className="flex min-h-0 min-w-0 flex-col border-t bg-muted/15 md:border-l md:border-t-0"
+          >
+            <div className="flex h-11 shrink-0 items-center gap-2 border-b px-3">
+              {sourceType(activeDocument) === "spreadsheet" ? (
+                <Table2 data-icon="inline-start" />
+              ) : (
+                <BookOpen data-icon="inline-start" />
+              )}
+              <h2
+                className="min-w-0 flex-1 truncate text-sm font-medium"
+                title={activeDocument.title}
+              >
+                {activeDocument.title}
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {sourceType(activeDocument) === "pdf"
+                  ? `p. ${currentPage}`
+                  : sourceType(activeDocument) === "video"
+                    ? "Video"
+                    : sourceType(activeDocument) === "spreadsheet"
+                      ? "Excel"
+                      : "Audio"}
+              </span>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Cerrar visor de fuente"
+                onClick={() => setReaderOpen(false)}
+              >
+                <X data-icon="inline-start" />
+              </Button>
+            </div>
+            <div className="min-h-0 flex-1">
+              {sourceType(activeDocument) === "pdf" ? (
+                <div className="h-full p-2">
+                  <Suspense
+                    fallback={
+                      <p
+                        role="status"
+                        className="p-4 text-sm text-muted-foreground"
+                      >
+                        Abriendo PDF…
+                      </p>
+                    }
+                  >
+                    <PdfReader
+                      document={activeDocument}
+                      citation={
+                        source?.document_id === activeDocument.id
+                          ? source
+                          : undefined
+                      }
+                      onAsk={ask}
+                      onPage={onPage}
+                      onHighlight={(page, bbox, text) =>
+                        addNote.mutate({ page, bbox, text, kind: "highlight" })
+                      }
+                      onBookmark={(page) =>
+                        addNote.mutate({ page, kind: "bookmark", text: "" })
+                      }
+                    />
+                  </Suspense>
+                </div>
+              ) : sourceType(activeDocument) === "spreadsheet" ? (
+                <SpreadsheetReader
+                  key={activeDocument.id}
+                  document={activeDocument}
+                  citation={
+                    source?.document_id === activeDocument.id
+                      ? source
+                      : undefined
+                  }
+                  initialSheet={
+                    entryDocumentId === activeDocument.id
+                      ? entrySheet
+                      : undefined
+                  }
+                  initialCell={
+                    entryDocumentId === activeDocument.id
+                      ? entryCell
+                      : undefined
+                  }
+                />
+              ) : (
+                <MediaReader
+                  key={activeDocument.id}
+                  document={activeDocument}
+                  citation={
+                    source?.document_id === activeDocument.id
+                      ? source
+                      : undefined
+                  }
+                  initialTime={
+                    entryDocumentId === activeDocument.id
+                      ? entryTime
+                      : undefined
+                  }
+                  providers={providers}
+                  onDocumentsChange={invalidateDocuments}
+                />
+              )}
+            </div>
+            {source?.text && source.document_id === activeDocument.id && (
+              <div className="shrink-0 border-t px-3 py-2 text-xs text-muted-foreground">
+                <p className="font-medium">
+                  {source.document_title} · {sourceLocation(source)}
+                </p>
+                <p className="mt-1 line-clamp-2">{source.text}</p>
+              </div>
+            )}
+          </section>
+        )}
       </div>
       <WorkspaceSettings
         open={controls}
@@ -512,46 +732,6 @@ export function WorkspaceDesk({
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto p-6">{context}</div>
-        </SheetContent>
-      </Sheet>
-      <Sheet open={readerOpen} onOpenChange={setReaderOpen}>
-        <SheetContent className="w-full gap-0 sm:max-w-[min(72rem,92vw)]">
-          <SheetHeader className="border-b p-5 pr-12">
-            <SheetTitle className="truncate">
-              {activeDocument?.title ?? "Lector PDF"}
-            </SheetTitle>
-            <SheetDescription>
-              Lee la evidencia y vuelve al chat al terminar.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 p-3 md:p-5">
-            {activeDocument && (
-              <PdfReader
-                document={activeDocument}
-                citation={
-                  source?.document_id === activeDocument.id ? source : undefined
-                }
-                onAsk={ask}
-                onPage={onPage}
-                onHighlight={(page, bbox, text) =>
-                  addNote.mutate({ page, bbox, text, kind: "highlight" })
-                }
-                onBookmark={(page) =>
-                  addNote.mutate({ page, kind: "bookmark", text: "" })
-                }
-              />
-            )}
-          </div>
-          {source?.text && (
-            <div className="shrink-0 border-t bg-primary/5 px-5 py-3">
-              <p className="text-xs font-medium">
-                {source.document_title} · página {source.page_number}
-              </p>
-              <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                {source.text}
-              </p>
-            </div>
-          )}
         </SheetContent>
       </Sheet>
     </div>

@@ -1,0 +1,81 @@
+{
+  "synthetic_data_only": true,
+  "date": "2026-10-20T19:37:02.352144+00:00",
+  "checks": {
+    "local_index_visual_chat": {
+      "passed": true,
+      "seconds": 8.49,
+      "profiles": [
+        {
+          "profile_id": "1a5fed8f-aef6-4d31-8883-f7c3bda8e2e8",
+          "provider": "llamacpp",
+          "model": "embeddinggemma-2-q8_0",
+          "model_version": "2188ac1deca4b77dffefd603c2776a9d76d9d74ec01841392982ebb840b09135",
+          "dimensions": 768,
+          "modality": "text",
+          "index_ids": [
+            "fc4a183e-f2da-43bc-9430-8b97c91c54d4"
+          ]
+        }
+      ]
+    },
+    "multimodal_index_coverage": {
+      "passed": true,
+      "coverage": {
+        "document_id": "2f0ed291-223e-45be-aa19-9b401b78a240",
+        "version_id": "c9f3e7e3-ee92-4f66-a008-6140f1237be5",
+        "pages_total": 2,
+        "pages_extracted": 2,
+        "ocr_pending_pages": [],
+        "figures_total": 2,
+        "figures_with_chunks": 2,
+        "figures_multimodal_indexed": 2,
+        "visual_status": "MULTIMODAL_INDEXED",
+        "index_modality": "multimodal"
+      }
+    },
+    "native_multimodal_retrieval": {
+      "passed": true,
+      "seconds": 11.86
+    },
+    "cross_document_comparison_and_trace": {
+      "passed": true,
+      "seconds": 7.44,
+      "citations": 2,
+      "context_sources": 5
+    },
+    "final_visual_page_filter": {
+      "passed": true,
+      "context_sources": 2
+    },
+    "final_multi_document_scope": {
+      "passed": true,
+      "context_sources": 5
+    }
+  },
+  "workspace_id": "37e562a4-70e6-4889-98be-0c5455fe4a06",
+  "document_ids": [
+    "2f0ed291-223e-45be-aa19-9b401b78a240",
+    "9a38700b-a7a6-4137-844e-a04d4ab913d0"
+  ],
+  "conversation_id": "4e7b89bf-38b5-4bab-96f9-e174a2b1c0fe",
+  "chat_model": "gemini-3.8-flash",
+  "passed": true,
+  "final_backend_rechecked": true,
+  "validation": {
+    "backend_passed": 157,
+    "backend_seconds": 355.16,
+    "chromium_passed": 27,
+    "chromium_skipped": 1,
+    "skip_reason": "Existing opt-in cloud E2E; separate live synthetic Gemini acceptance passed",
+    "static_checks": [
+      "ruff",
+      "ruff-format",
+      "ty",
+      "typescript",
+      "biome",
+      "production-build",
+      "openapi-client"
+    ]
+  }
+}

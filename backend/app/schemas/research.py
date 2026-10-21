@@ -40,6 +40,10 @@ class DocumentPublic(DTO):
     original_filename: str
     file_size: int
     page_count: int
+    source_type: Literal["pdf", "audio", "video", "spreadsheet"] = "pdf"
+    mime_type: str = "application/pdf"
+    duration_seconds: float | None = None
+    sheet_count: int = 0
     status: str
     current_version_id: uuid.UUID | None
     active_index_id: uuid.UUID | None
@@ -66,9 +70,14 @@ class JobPublic(DTO):
     updated_at: datetime
 
 
-ProviderName = Literal["gemini", "ollama", "llamacpp", "openai-compatible"]
+ProviderName = Literal["gemini", "ollama", "llamacpp", "openai-compatible", "embeddinggemma"]
 ConsentScope = Literal[
-    "embeddings", "multimodal_embeddings", "chat", "vision", "original_pdf"
+    "embeddings",
+    "multimodal_embeddings",
+    "chat",
+    "vision",
+    "original_pdf",
+    "media_analysis",
 ]
 
 
@@ -155,7 +164,12 @@ class EvidencePublic(DTO):
     document_id: uuid.UUID
     version_id: uuid.UUID
     document_title: str
-    page_number: int
+    page_number: int | None
+    source_type: Literal["pdf", "audio", "video", "spreadsheet"] = "pdf"
+    start_seconds: float | None = None
+    end_seconds: float | None = None
+    sheet_name: str | None = None
+    cell_range: str | None = None
     text: str
     bbox: BBox | None
     rotation: int

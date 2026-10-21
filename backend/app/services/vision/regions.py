@@ -44,10 +44,20 @@ def visual_evidence(
             element.text
             or f"Región visual de tipo {element.element_type}; interpretación aún no verificada."
         )
+        page_text = session.exec(
+            select(DocumentElement.text).where(
+                col(DocumentElement.page_id) == page.id,
+                col(DocumentElement.element_type) != "figure",
+            )
+        ).all()
         chunk = Chunk(
             version_id=page.version_id,
             text=text,
-            contextualized_text=text,
+            contextualized_text=(
+                f"{document.title}\nPágina {page.page_number} · imagen figura gráfico diagrama\n"
+                f"{text}\nContexto de la página (no describe la imagen):\n"
+                + "\n".join(page_text)[:1600]
+            ),
             content_hash=hashlib.sha256(text.encode()).hexdigest(),
             chunking_profile="visual-region-v1",
         )
@@ -57,7 +67,7 @@ def visual_evidence(
             chunk_id=chunk.id, element_id=element.id, span_end=len(text)
         )
         session.add(provenance)
-        session.commit()
+        session.flush()
     return EvidencePublic(
         chunk_id=provenance.chunk_id,
         element_id=element.id,

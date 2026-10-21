@@ -4,9 +4,30 @@ import { DocumentsService, ProvidersService, WorkspacesService } from "@/client"
 import { errorMessage } from "@/features/research/api"
 import { WorkspaceDesk } from "@/features/research/WorkspaceDesk"
 export const Route = createFileRoute("/_layout/workspaces/$workspaceId")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    document?: string
+    start?: boolean
+    time?: number
+    sheet?: string
+    cell?: string
+  } => ({
     document: typeof search.document === "string" ? search.document : undefined,
     start: search.start === true || search.start === "true" ? true : undefined,
+    sheet:
+      typeof search.sheet === "string" ? search.sheet.slice(0, 100) : undefined,
+    cell:
+      typeof search.cell === "string" &&
+      /^\$?[A-Za-z]+\$?[1-9]\d*(?::\$?[A-Za-z]+\$?[1-9]\d*)?$/.test(search.cell)
+        ? search.cell
+        : undefined,
+    time:
+      search.time !== undefined &&
+      Number.isFinite(Number(search.time)) &&
+      Number(search.time) >= 0
+        ? Number(search.time)
+        : undefined,
   }),
   component: WorkspacePage,
 })
@@ -51,11 +72,14 @@ function WorkspacePage() {
     )
   return (
     <WorkspaceDesk
-      key={`${workspaceId}:${search.document ?? ""}`}
+      key={workspaceId}
       workspace={workspace}
       library={library.data ?? []}
       providers={providers.data ?? []}
       entryDocumentId={search.document}
+      entryTime={search.time}
+      entrySheet={search.sheet}
+      entryCell={search.cell}
       openChatOnLoad={search.start}
       onBack={() => void navigate({ to: "/" })}
     />

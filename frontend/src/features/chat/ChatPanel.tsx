@@ -34,8 +34,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { sourceLocation } from "@/features/media/location"
 import { apiRoot, errorMessage } from "@/features/research/api"
 import { chatDate } from "@/features/research/presentation"
+import { ExecutionTrace } from "@/features/trace/ExecutionTrace"
+import { RagInspector } from "@/features/trace/RagInspector"
 
 type Props = {
   conversation: ConversationPublic
@@ -95,7 +98,7 @@ export function ChatPanel({
           path: { document_id: documents[0]?.id ?? "" },
         })
       ).data,
-    enabled: !!documents[0],
+    enabled: !!documents[0]?.current_version_id,
     refetchInterval: 5000,
   })
   useEffect(() => {
@@ -152,10 +155,18 @@ export function ChatPanel({
       )
       if (!response.ok || !response.body) {
         const detail = await response.json().catch(() => null)
+        const failure = detail?.detail ?? detail
+        if (failure?.code === "CONSENT_REQUIRED") {
+          setErrorCode("CONSENT_REQUIRED")
+          setQuestion((current) => current || submitted)
+          onManageSources("CONSENT_REQUIRED")
+        }
         throw new Error(
           typeof detail?.detail === "string"
             ? detail.detail
-            : "No se pudo iniciar la respuesta. Verifica tu sesión.",
+            : typeof failure?.message === "string"
+              ? failure.message
+              : "No se pudo iniciar la respuesta. Verifica tu sesión.",
         )
       }
       const reader = response.body.getReader(),
@@ -183,6 +194,10 @@ export function ChatPanel({
             setError(data.message)
             setErrorCode(data.code ?? "")
             setPartial("")
+            if (data.code === "CONSENT_REQUIRED") {
+              setQuestion((current) => current || submitted)
+              onManageSources("CONSENT_REQUIRED")
+            }
           }
           boundary = buffer.indexOf("\n\n")
         }
@@ -226,13 +241,12 @@ export function ChatPanel({
     messages.data?.some((message) => message.state === "GENERATING")
   const searchable =
     documents.length > 0 &&
-    documents.every(
-      (document) =>
-        !!document.current_version_id &&
-        !(document.status === "INDEXING" && !document.active_index_id),
-    )
+    documents.every((document) => !!document.current_version_id)
   const indexing = documents.filter(
-    (document) => document.status === "INDEXING" && !document.active_index_id,
+    (document) =>
+      !!document.current_version_id &&
+      document.status === "INDEXING" &&
+      !document.active_index_id,
   )
   const processing = documents.filter(
     (document) => !document.current_version_id,
@@ -258,7 +272,7 @@ export function ChatPanel({
       aria-label="Chat con tus documentos"
       className={
         embedded
-          ? "relative flex h-full min-h-0 flex-col overflow-hidden bg-background"
+          ? "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
           : "relative flex h-full min-h-[360px] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm"
       }
     >
@@ -277,8 +291,8 @@ export function ChatPanel({
             <p className="mt-1 truncate text-[11px] text-muted-foreground">
               {documents.length}{" "}
               {documents.length === 1
-                ? "PDF en esta conversación"
-                : "PDFs en esta conversación"}{" "}
+                ? "fuente en esta conversación"
+                : "fuentes en esta conversación"}{" "}
               · {conversation.provider}
             </p>
           </div>
@@ -310,7 +324,7 @@ export function ChatPanel({
             title={documents.map((document) => document.title).join(", ")}
           >
             {documents.map((document) => document.title).join(" · ") ||
-              "Añade un PDF para preguntar"}
+              "Añade una fuente para preguntar"}
           </p>
           <button
             type="button"
@@ -327,8 +341,8 @@ export function ChatPanel({
           className="flex shrink-0 items-start gap-2 bg-amber-500/5 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground"
         >
           <LoaderCircle size={14} className="mt-0.5 shrink-0" />
-          <span>
-            {`${processing.length} ${processing.length === 1 ? "PDF todavía no tiene" : "PDFs todavía no tienen"} texto disponible. Espera a que termine la extracción o elige las fuentes ya extraídas en Fuentes y permisos.`}
+          <span className="line-clamp-2 sm:line-clamp-none">
+            {`${processing.length} ${processing.length === 1 ? "fuente todavía no tiene" : "fuentes todavía no tienen"} evidencia disponible. Espera al procesamiento; abre los audios o videos para preparar su índice nativo, o desmárcalos para consultar las fuentes listas.`}
           </span>
         </div>
       )}
@@ -338,16 +352,17 @@ export function ChatPanel({
           className="flex shrink-0 items-start gap-2 bg-primary/5 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground"
         >
           <LoaderCircle size={14} className="mt-0.5 shrink-0 animate-spin" />
-          <span>
-            Preparando la búsqueda por significado de todas las páginas de{" "}
-            {indexing.length} PDF. Puedes escribir tu pregunta; podrás enviarla
-            al terminar.
+          <span className="line-clamp-2 sm:line-clamp-none">
+            Búsqueda textual disponible en {indexing.length}{" "}
+            {indexing.length === 1 ? "fuente extraída" : "fuentes extraídas"}.
+            Estamos preparando su índice semántico en segundo plano.
+            {processing.length === 0 && " Puedes preguntar mientras termina."}
           </span>
         </div>
       )}
       <div
         ref={viewport}
-        className="min-h-0 flex-1 space-y-7 overflow-y-auto overscroll-contain px-5 py-7 md:px-10"
+        className="min-h-0 flex-1 space-y-7 overflow-y-auto overscroll-contain px-4 py-3 md:px-6 md:py-7"
         data-testid="chat-messages"
         onScroll={(event) => {
           const area = event.currentTarget
@@ -384,11 +399,11 @@ export function ChatPanel({
         {!messages.isPending && !messages.data?.length && !streaming && (
           <div className="mx-auto max-w-md py-2">
             <h3 className="text-lg font-semibold tracking-tight">
-              ¿Qué quieres saber del PDF?
+              ¿Qué quieres saber de tus fuentes?
             </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Pregunta por un dato o una idea. Las citas te llevan a la página
-              original.
+              Pregunta por un dato o una idea. Las citas abren la página, celda
+              o minuto que respalda cada respuesta.
             </p>
             <div className="mt-4 grid gap-2 text-left sm:grid-cols-2">
               {[
@@ -495,7 +510,7 @@ export function ChatPanel({
                       <span className="block font-semibold text-primary">
                         Fuente {source.label}{" "}
                         <span className="font-normal">
-                          · p. {source.page_number}
+                          · {sourceLocation(source)}
                         </span>
                       </span>
                       <span className="mt-1 block max-w-40 truncate text-[11px] text-muted-foreground">
@@ -575,7 +590,7 @@ export function ChatPanel({
                 {message.model && (
                   <details className="w-full">
                     <summary className="cursor-pointer text-[10px]">
-                      Detalles de respuesta
+                      Detalles de respuesta y RAG
                     </summary>
                     <p className="mt-1 text-[10px]">
                       {message.model} ·{" "}
@@ -583,6 +598,11 @@ export function ChatPanel({
                         ? "Búsqueda semántica y en texto"
                         : "Búsqueda en texto"}
                     </p>
+                    <ExecutionTrace
+                      value={message.usage?.trace}
+                      documents={documents}
+                    />
+                    <RagInspector messageId={message.id} />
                   </details>
                 )}
               </div>
@@ -659,7 +679,7 @@ export function ChatPanel({
           event.preventDefault()
           void send()
         }}
-        className="mx-auto w-full max-w-[min(100%,54rem)] shrink-0 bg-background px-4 pb-5 pt-3 md:px-8"
+        className="mx-auto w-full max-w-[min(100%,54rem)] shrink-0 bg-background px-3 pb-2 pt-2 md:px-6 md:pb-5 md:pt-3"
       >
         {!!suggestions.data?.questions?.length && !messages.data?.length && (
           <div className="mb-3 max-h-24 space-y-1 overflow-y-auto">
@@ -699,11 +719,9 @@ export function ChatPanel({
             ref={input}
             aria-label="Pregunta sobre tus documentos"
             placeholder={
-              indexing.length
-                ? "Escribe tu pregunta mientras preparamos la búsqueda…"
-                : searchable
-                  ? "Escribe tu pregunta sobre el PDF…"
-                  : "Tu pregunta, cuando el PDF tenga texto disponible…"
+              searchable
+                ? "Escribe tu pregunta sobre las fuentes…"
+                : "Escribe mientras preparamos tus fuentes…"
             }
             value={question}
             rows={2}
@@ -719,7 +737,7 @@ export function ChatPanel({
                 if (searchable) void send()
               }
             }}
-            className="max-h-36 min-h-16 w-full resize-none bg-transparent px-2 py-1.5 text-sm leading-6 outline-none"
+            className="max-h-36 min-h-12 w-full resize-none bg-transparent px-2 py-1.5 text-sm leading-6 outline-none md:min-h-16"
           />
           <div className="flex items-center justify-between gap-2 px-1">
             <span className="text-[10px] text-muted-foreground">
@@ -754,7 +772,7 @@ export function ChatPanel({
                 !document.active_index_id && document.current_version_id,
             )
               ? "Puedes consultar el texto extraído. Un índice mejora la búsqueda por significado."
-              : "Abre las citas para comprobar cada respuesta en tu PDF."}
+              : "Abre las citas para comprobar la página, celda o minuto original."}
           </p>
           {embedded && (
             <DropdownMenu>

@@ -145,6 +145,19 @@ def extract(identifier):
         return job.id
 
 
+def test_native_local_pdf_defaults_to_multimodal(uploaded, monkeypatch):
+    monkeypatch.setattr(settings, "DEFAULT_EMBEDDING_PROVIDER", "embeddinggemma")
+    monkeypatch.setattr(settings, "DEFAULT_EMBEDDING_MODEL", "embeddinggemma-2-native")
+    monkeypatch.setattr(settings, "EMBEDDINGGEMMA_BASE_URL", "http://127.0.0.1:8082")
+    extract(uploaded)
+    with Session(engine) as session:
+        index = session.exec(
+            select(Job).where(Job.document_id == uploaded, Job.kind == "index")
+        ).one()
+        assert index.parameters["provider"] == "embeddinggemma"
+        assert index.parameters["modality"] == "multimodal"
+
+
 def test_auto_indexes_every_chunk_then_answers_arbitrary_topic(
     uploaded, automatic, client, superuser_token_headers, monkeypatch
 ):

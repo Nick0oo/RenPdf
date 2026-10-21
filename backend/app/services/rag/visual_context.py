@@ -44,6 +44,7 @@ def visual_context_candidates(
     *,
     owner_id: uuid.UUID,
     limit: int = MAX_AUTO_IMAGES,
+    allow_text_regions: bool = False,
 ) -> list[VisualContextRegion]:
     """Never broaden a text search into unrelated page images or another owner."""
     allowed = set(document_ids)
@@ -55,11 +56,24 @@ def visual_context_candidates(
                     str(profile.get("profile_id"))
                 )
     count = max(0, min(MAX_AUTO_IMAGES, limit))
-    if not used_indexes or not count:
+    if (not used_indexes and not allow_text_regions) or not count:
         return []
     result: list[VisualContextRegion] = []
     seen: set[uuid.UUID] = set()
+    source_groups: dict[uuid.UUID, list[EvidencePublic]] = {}
     for source in sources:
+        element = session.get(DocumentElement, source.element_id)
+        if element and element.element_type == "figure":
+            source_groups.setdefault(source.document_id, []).append(source)
+    ordered_sources = [
+        group[position]
+        for position in range(
+            max((len(group) for group in source_groups.values()), default=0)
+        )
+        for group in source_groups.values()
+        if position < len(group)
+    ]
+    for source in ordered_sources:
         if source.document_id not in allowed or source.element_id in seen:
             continue
         document = session.get(Document, source.document_id)
@@ -84,16 +98,19 @@ def visual_context_candidates(
             or not page
             or page.version_id != document.current_version_id
             or source.version_id != page.version_id
-            or not index
+            or not chunk
+            or chunk.version_id != page.version_id
+            or not provenance
+        ):
+            continue
+        if not allow_text_regions and (
+            not index
             or index.status != "READY"
             or index.version_id != page.version_id
             or str(index.id) not in used_indexes
             or not profile
             or profile.modality != "multimodal"
             or str(profile.id) not in used_indexes[str(index.id)]
-            or not chunk
-            or chunk.version_id != page.version_id
-            or not provenance
             or not indexed_chunk
         ):
             continue

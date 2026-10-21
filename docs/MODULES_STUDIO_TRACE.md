@@ -70,3 +70,23 @@ El contexto visual automático se limita ahora a figuras persistidas que aparece
 Este comportamiento **no convierte el índice de texto local en un buscador de píxeles**. El índice multimodal disponible usa Gemini Embedding 2 con autorización explícita; la consulta manual de una región sigue disponible por separado. No se descargan modelos visuales locales nuevos.
 
 El archivo de pruebas backend/tests/test_visual_context.py tiene siete pruebas aprobadas con PNG reales del fixture público y proveedor de inferencia controlado exclusivamente en tests. Incluyen selección y límites, exclusión de índices de texto/fuentes ajenas/versiones antiguas/regiones sin vector, integridad del índice, invocación automática sin elegir una región manual y denegación antes de renderizar o invocar si falta permiso de visión. No son una evaluación de calidad de un modelo de visión externo ni envían documentos privados a la nube.
+
+## Inspección del RAG
+
+Cada respuesta nueva ofrece **Detalles de respuesta y RAG** en el chat, con
+etapas, perfiles, ranking RRF, cobertura por fuente e imágenes enviadas.
+**Inspeccionar contexto RAG** muestra la consulta y los fragmentos efectivamente
+seleccionados, con IDs, páginas y puntuaciones. El detalle de una fuente permite
+**Explorar chunks del documento**, filtrar por página y recorrer sus referencias.
+Los endpoints comprueban propiedad de la conversación y del documento; no se
+agregan prompts ni texto documental a logs. El historial antiguo conserva los
+datos que realmente registró, sin inventar consultas ni etapas.
+
+La navegación añade **RAG y segmentos** (`/trace/rag`) con fuentes PDF/audio/video,
+filtros por workspace/formato, cobertura e historial de análisis/índice. Las
+consultas abren su ejecución y contexto efectivo; los chunks de medios muestran
+tiempos, modelo, hashes y uso reportado, con enlace al reproductor. El historial
+de PDF comparte estos inspectores. Excel aparece como fuente propia, con cobertura
+por hojas/celdas, filtro por hoja y referencia A1, valores, fórmulas, caché y enlaces
+al visor en la celda exacta. Alcance y pruebas en [MEDIA_RAG.md](MEDIA_RAG.md)
+y [SPREADSHEET_RAG.md](SPREADSHEET_RAG.md).

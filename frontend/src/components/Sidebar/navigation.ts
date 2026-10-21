@@ -52,6 +52,7 @@ export const navigationGroups: NavigationGroup[] = [
         icon: MessageSquareText,
       },
       { title: "Fuentes", href: "/trace/documents", icon: FileText },
+      { title: "RAG y segmentos", href: "/trace/rag", icon: Layers },
       { title: "Permisos", href: "/trace/permissions", icon: ShieldCheck },
     ],
   },

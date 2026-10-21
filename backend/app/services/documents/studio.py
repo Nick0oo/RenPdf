@@ -35,6 +35,8 @@ def create_derivative(
     documents = [
         owned_document(session, owner_id, source.document_id) for source in body.sources
     ]
+    if any(document.source_type != "pdf" for document in documents):
+        raise HTTPException(422, "Studio trabaja con fuentes PDF")
     byte_limit = min(settings.MAX_UPLOAD_SIZE_MB, 50) * 1024 * 1024
     page_limit = min(settings.MAX_DOCUMENT_PAGES, 500)
     if sum(document.file_size for document in documents) > byte_limit:

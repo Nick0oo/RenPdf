@@ -1,12 +1,13 @@
 import re
+import time
 import unicodedata
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from pgvector import Vector
-from sqlalchemy import text
+from sqlalchemy import and_, or_, text
 from sqlmodel import Session, col, select
 
 from app.domain import (
@@ -33,11 +34,14 @@ QUESTION_WORDS = set(
     son hay tiene tienen tenemos tengo este esta estos estas ese esa eso esto
     documento documentos pdf archivo archivos texto pagina paginas informacion
     cual cuales que como cuando donde cuanto cuantos quien porque segun hacer
-    haz hazme saber seria dame dar me mi puedes pdfs
+    haz hazme saber seria dame dar me mi puedes pdfs y o cada
+    audio audios video videos grabacion grabaciones recording recordings clip clips
     can could would please tell explain show give answer question according
     document documents file files pdf text page pages information what which
     how where when who why about from this that these those does do did is are
     was were has have the a an in on of to for and or i my me you your it
+    hoja hojas celda celdas libro libros excel spreadsheet sheet sheets workbook
+    workbooks cell cells fila filas columna columnas column columns
     """.split()
 )
 
@@ -49,6 +53,9 @@ OVERVIEW_WORDS = set(
     esencial esenciales fuente fuentes citas cita citando referencias sus su se
     overview summarize summarise summary summaries main key points ideas topics
     topic takeaways overall entire whole contents sources citations references
+    compara comparar comparacion diferencia diferencias diferencian semejanzas
+    similitudes entre relacion relacionan ambos versus vs compare comparison
+    difference differences differ similar similarities related relationship
     """.split()
 )
 
@@ -105,6 +112,14 @@ def is_document_overview(question: str) -> bool:
             "summarise",
             "summary",
             "takeaways",
+            "compara",
+            "comparar",
+            "comparacion",
+            "diferencian",
+            "diferencias",
+            "compare",
+            "comparison",
+            "differences",
         }
         or re.search(r"de que trata(?:n)?\b", normalized)
         or words & {"principales", "main", "key"}
@@ -207,7 +222,9 @@ def overview_evidence(
     result.sort(
         key=lambda item: (
             document_order[item.document_id],
-            item.page_number,
+            item.start_seconds
+            if item.start_seconds is not None
+            else item.page_number or 0,
             item.bbox.y if item.bbox else 1,
             item.bbox.x if item.bbox else 0,
             str(item.chunk_id),
@@ -352,7 +369,9 @@ def adjacent_field_evidence(
     result.sort(
         key=lambda item: (
             document_order[item.document_id],
-            item.page_number,
+            item.start_seconds
+            if item.start_seconds is not None
+            else item.page_number or 0,
             item.bbox.y if item.bbox else 1,
             item.bbox.x if item.bbox else 0,
             str(item.chunk_id),
@@ -409,12 +428,26 @@ def evidence_for_chunk(
                 document_id=document.id,
                 version_id=page.version_id,
                 document_title=document.title,
-                page_number=page.page_number,
+                page_number=page.page_number if document.source_type == "pdf" else None,
+                source_type=cast(
+                    Literal["pdf", "audio", "video", "spreadsheet"],
+                    document.source_type,
+                ),
+                start_seconds=element.start_seconds,
+                end_seconds=element.end_seconds,
+                sheet_name=element.sheet_name,
+                cell_range=element.cell_range,
                 text=element.text[provenance.span_start : provenance.span_end]
                 or chunk.text,
                 bbox=element.bbox,
                 rotation=page.rotation,
-                precision="region" if element.bbox else "page",
+                precision="cell"
+                if element.cell_range
+                else "time_range"
+                if element.start_seconds is not None
+                else "region"
+                if element.bbox
+                else "page",
                 label=label,
                 score=score,
             )
@@ -431,13 +464,22 @@ def retrieve(
     selected_element_id: uuid.UUID | None = None,
     diagnostics: dict[str, Any] | None = None,
 ) -> tuple[list[EvidencePublic], str]:
+    started = time.monotonic()
     if diagnostics is not None:
-        diagnostics.update(used_profiles=[], semantic_failures=[])
+        diagnostics.update(
+            used_profiles=[],
+            semantic_failures=[],
+            strategy="hybrid-document-balanced-v2",
+        )
     if not document_ids:
         return [], "lexical"
     documents = session.exec(
         select(Document).where(col(Document.id).in_(document_ids))
     ).all()  # type: ignore[attr-defined]
+    order = {identifier: position for position, identifier in enumerate(document_ids)}
+    documents = sorted(documents, key=lambda document: order[document.id])
+    if len(documents) > 1:
+        top_k = max(top_k, min(24, len(documents) * 2))
     versions = [
         document.current_version_id
         for document in documents
@@ -445,11 +487,144 @@ def retrieve(
     ]
     if not versions:
         return [], "lexical"
+    from app.services.rag.spreadsheet_retrieval import (
+        balanced_sheet_candidates,
+        chunk_units,
+        scope_for_question,
+    )
+
+    sheet_scope = scope_for_question(session, documents, question)
+    if sheet_scope.units:
+        top_k = max(top_k, min(24, len(sheet_scope.units) * 2))
     if selected_element_id is None and is_document_overview(question):
         return overview_evidence(session, documents, top_k), "document_overview"
     lexical, lexical_mode = lexical_candidates(session, versions, question)
+    if len(versions) > 1:
+        # A long first PDF must not consume the entire candidate pool.
+        per_document = [
+            lexical_candidates(session, [version], question)[0] for version in versions
+        ]
+        lexical = list(
+            dict.fromkeys(
+                identifier
+                for rank in range(30)
+                for ranking in per_document
+                if rank < len(ranking)
+                for identifier in [ranking[rank]]
+            )
+        )
     rankings: list[list[uuid.UUID]] = [list(lexical)]
+    sheet_candidates = balanced_sheet_candidates(
+        session, sheet_scope, lexical_keywords(question)
+    )
+    if sheet_candidates:
+        rankings.insert(0, sheet_candidates)
+    if sheet_scope.cell_chunks:
+        rankings.insert(0, sorted(sheet_scope.cell_chunks, key=str))
+    requested_time = None
+    requested_times = []
+    if any(document.source_type in {"audio", "video"} for document in documents):
+        stamp = re.search(r"\b(\d{1,3}):(\d{2})(?::(\d{2}))?\b", question)
+        minute = re.search(
+            r"\b(?:minuto|minute)\s+(\d+(?:[.,]\d+)?)", question, re.IGNORECASE
+        )
+        second = re.search(
+            r"\b(?:segundo|second)\s+(\d+(?:[.,]\d+)?)", question, re.IGNORECASE
+        )
+        if stamp and int(stamp[2]) < 60 and (stamp[3] is None or int(stamp[3]) < 60):
+            requested_time = (
+                int(stamp[1]) * (3600 if stamp[3] else 60)
+                + int(stamp[2]) * (60 if stamp[3] else 1)
+                + int(stamp[3] or 0)
+            )
+        elif minute:
+            requested_time = float(minute[1].replace(",", ".")) * 60
+        elif second:
+            requested_time = float(second[1].replace(",", "."))
+        for stamp in re.finditer(r"\b(\d{1,3}):(\d{2})(?::(\d{2}))?\b", question):
+            if int(stamp[2]) < 60 and (stamp[3] is None or int(stamp[3]) < 60):
+                requested_times.append(
+                    int(stamp[1]) * (3600 if stamp[3] else 60)
+                    + int(stamp[2]) * (60 if stamp[3] else 1)
+                    + int(stamp[3] or 0)
+                )
+        requested_times.extend(
+            float(match[1].replace(",", ".")) * multiplier
+            for pattern, multiplier in [
+                (r"\b(?:minuto|minute)\s+(\d+(?:[.,]\d+)?)", 60),
+                (r"\b(?:segundo|second)\s+(\d+(?:[.,]\d+)?)", 1),
+            ]
+            for match in re.finditer(pattern, question, re.IGNORECASE)
+        )
+        requested_times = list(dict.fromkeys(requested_times))[:12]
+        if requested_times:
+            requested_time = requested_times[0]
+    time_chunks: set[uuid.UUID] | None = None
+    if requested_time is not None:
+        time_chunks = set(
+            session.exec(
+                select(ChunkProvenance.chunk_id)
+                .join(DocumentElement)
+                .join(DocumentPage)
+                .where(
+                    col(DocumentPage.version_id).in_(versions),
+                    or_(
+                        *(
+                            and_(
+                                col(DocumentElement.start_seconds) <= value,
+                                col(DocumentElement.end_seconds) > value,
+                            )
+                            for value in requested_times
+                        )
+                    ),
+                )
+            ).all()
+        )
+        rankings.insert(0, sorted(time_chunks, key=str))
+    visual_request = bool(
+        re.search(
+            r"\b(imagen(?:es)?|figura(?:s)?|gr[aá]fic[oa]s?|diagrama(?:s)?|colores?|forma|image(?:s)?|chart(?:s)?|diagram(?:s)?|picture(?:s)?|shape)\b",
+            question,
+            re.IGNORECASE,
+        )
+    )
+    page_match = re.search(
+        r"\b(?:p[aá]gina|page|p\.)\s*(\d+)\b", question, re.IGNORECASE
+    )
+    if visual_request:
+        figures = (
+            select(Chunk.id)
+            .join(ChunkProvenance)
+            .join(DocumentElement)
+            .join(DocumentPage)
+            .where(
+                col(Chunk.version_id).in_(versions),
+                col(DocumentElement.element_type) == "figure",
+            )
+        )
+        if page_match:
+            figures = figures.where(col(DocumentPage.page_number) == int(page_match[1]))
+        visual_rankings = [
+            list(
+                session.exec(
+                    figures.where(col(Chunk.version_id) == version)
+                    .order_by(col(DocumentPage.page_number), col(Chunk.id))
+                    .limit(12)
+                ).all()
+            )
+            for version in versions
+        ]
+        rankings.insert(
+            0,
+            [
+                ranking[rank]
+                for rank in range(12)
+                for ranking in visual_rankings
+                if rank < len(ranking)
+            ],
+        )
     semantic_used = False
+    multimodal_used = False
     grouped: dict[uuid.UUID, list[tuple[Document, DocumentIndex]]] = defaultdict(list)
     for document in documents:
         index = (
@@ -492,20 +667,29 @@ def retrieve(
             query = provider.embed(
                 profile.model, [question], profile.dimensions, query=True
             )[0]
-            rows = session.exec(
-                select(col(ChunkEmbedding.chunk_id))
-                .where(
-                    col(ChunkEmbedding.index_id).in_([idx.id for _doc, idx in pairs])
-                )  # type: ignore[attr-defined]
-                .order_by(
-                    cast(Any, col(ChunkEmbedding.embedding)).cosine_distance(
-                        Vector(query)
+            per_index = []
+            for _document, active_index in pairs:
+                rows = session.exec(
+                    select(col(ChunkEmbedding.chunk_id))
+                    .where(col(ChunkEmbedding.index_id) == active_index.id)
+                    .order_by(
+                        cast(Any, col(ChunkEmbedding.embedding)).cosine_distance(
+                            Vector(query)
+                        )
                     )
-                )
-                .limit(30)
-            ).all()
-            rankings.append(list(rows))
+                    .limit(30)
+                ).all()
+                per_index.append(list(rows))
+            rankings.append(
+                [
+                    ranking[rank]
+                    for rank in range(30)
+                    for ranking in per_index
+                    if rank < len(ranking)
+                ]
+            )
             semantic_used = True
+            multimodal_used = multimodal_used or profile.modality == "multimodal"
             if diagnostics is not None:
                 diagnostics["used_profiles"].append(
                     {
@@ -535,16 +719,146 @@ def retrieve(
             )
         ).all()  # type: ignore[attr-defined]
         rankings.insert(0, list(selected))
-    ranked = reciprocal_rank_fusion(rankings)[:top_k]
+    fused = reciprocal_rank_fusion(rankings)
+    sheet_units = chunk_units(
+        session, [identifier for identifier, _score in fused], sheet_scope
+    )
+    chunk_versions = (
+        dict(
+            session.exec(
+                select(Chunk.id, Chunk.version_id).where(
+                    col(Chunk.id).in_([identifier for identifier, _score in fused])
+                )
+            ).all()
+        )
+        if fused
+        else {}
+    )
+    non_temporal_versions = {
+        document.current_version_id
+        for document in documents
+        if document.source_type not in {"audio", "video"}
+    }
+    media_versions = {
+        document.current_version_id
+        for document in documents
+        if document.source_type != "pdf"
+    }
+    pdf_versions = {
+        document.current_version_id
+        for document in documents
+        if document.source_type == "pdf"
+    }
+    if sheet_scope.named or sheet_scope.cell_chunks is not None:
+        fused = [
+            pair
+            for pair in fused
+            if chunk_versions.get(pair[0]) not in sheet_scope.versions
+            or (
+                pair[0] in sheet_scope.cell_chunks
+                if sheet_scope.cell_chunks is not None
+                else pair[0] in sheet_units
+            )
+        ]
+    if time_chunks is not None:
+        fused = [
+            pair
+            for pair in fused
+            if pair[0] in time_chunks
+            or chunk_versions.get(pair[0]) in non_temporal_versions
+        ]
+    if not visual_request and not selected_element_id and not multimodal_used:
+        # Page captions make images discoverable for visual questions; they
+        # must not turn an ordinary text question into a request for pixels.
+        visual_only = set(
+            session.exec(
+                select(Chunk.id).where(
+                    col(Chunk.version_id).in_(versions),
+                    col(Chunk.chunking_profile) == "visual-region-v1",
+                )
+            ).all()
+        )
+        fused = [pair for pair in fused if pair[0] not in visual_only]
+    if page_match:
+        page_chunks = set(
+            session.exec(
+                select(ChunkProvenance.chunk_id)
+                .join(DocumentElement)
+                .join(DocumentPage)
+                .where(
+                    col(DocumentPage.version_id).in_(list(pdf_versions)),
+                    col(DocumentPage.page_number) == int(page_match[1]),
+                )
+            ).all()
+        )
+        fused = [
+            pair
+            for pair in fused
+            if pair[0] in page_chunks or chunk_versions.get(pair[0]) in media_versions
+        ]
+    # Reserve one relevant seed per source, then spend the remaining budget by rank.
+    reserved = []
+    for version in versions:
+        match = next(
+            (pair for pair in fused if chunk_versions.get(pair[0]) == version), None
+        )
+        if match:
+            reserved.append(match)
+    for unit_id in sheet_scope.units:
+        match = next(
+            (pair for pair in fused if sheet_units.get(pair[0]) == unit_id), None
+        )
+        if match and match not in reserved:
+            reserved.append(match)
+    reserved_ids = {identifier for identifier, _score in reserved}
+    ranked = (reserved + [pair for pair in fused if pair[0] not in reserved_ids])[
+        :top_k
+    ]
+    if diagnostics is not None:
+        diagnostics.update(
+            lexical_candidates=len(lexical),
+            candidate_count=len(fused),
+            top_k=top_k,
+            visual_query=visual_request,
+            requested_time_seconds=requested_time,
+            requested_times_seconds=requested_times,
+            spreadsheet_scope={
+                "sheets": list(dict.fromkeys(sheet_scope.units.values())),
+                "explicit_sheets": sheet_scope.named,
+                "cell_ranges": [list(bounds) for bounds in sheet_scope.bounds],
+                "candidate_count": len(sheet_candidates),
+            },
+            ranking=[
+                {
+                    "chunk_id": str(identifier),
+                    "version_id": str(chunk_versions.get(identifier)),
+                    "score": round(score, 8),
+                    "rank": rank + 1,
+                    "selected": identifier in {pair[0] for pair in ranked},
+                    "lexical_rank": lexical.index(identifier) + 1
+                    if identifier in lexical
+                    else None,
+                }
+                for rank, (identifier, score) in enumerate(fused[:96])
+            ],
+            elapsed_seconds=round(time.monotonic() - started, 3),
+        )
     if (
         lexical_mode == "lexical_expanded" or semantic_used
     ) and not selected_element_id:
-        return adjacent_field_evidence(session, documents, ranked), (
-            "hybrid" if semantic_used else lexical_mode
-        )
+        evidence = [
+            source
+            for source in adjacent_field_evidence(session, documents, ranked)
+            if sheet_scope.keeps(source)
+        ]
+        for label, source in enumerate(evidence, 1):
+            source.label = label
+        return evidence, ("hybrid" if semantic_used else lexical_mode)
     result = []
     for identifier, score in ranked:
         for item in evidence_for_chunk(session, identifier, score=score):
+            if not sheet_scope.keeps(item):
+                continue
             item.label = len(result) + 1
             result.append(item)
     return result, "hybrid" if semantic_used else lexical_mode

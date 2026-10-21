@@ -3,10 +3,16 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from app.services.citations.validation import validate_citations
-from app.services.models.contracts import EmbeddingInput, ProviderError
+from app.services.citations.validation import canonicalize_citations, validate_citations
+from app.services.models.contracts import (
+    EmbeddingInput,
+    InferenceRequest,
+    MediaInput,
+    ProviderError,
+)
 from app.services.models.providers import (
     GeminiProvider,
+    NativeEmbeddingProvider,
     OllamaProvider,
     OpenAICompatibleProvider,
     normalized_vectors,
@@ -14,6 +20,19 @@ from app.services.models.providers import (
     validate_endpoint,
 )
 from app.services.rag.retrieval import reciprocal_rank_fusion
+
+
+def test_native_runtime_offline_preserves_provider_error_contract(monkeypatch):
+    provider = NativeEmbeddingProvider()
+
+    def unavailable():
+        raise httpx.ConnectError("Synthetic unavailable runtime")
+
+    monkeypatch.setattr(provider, "client", unavailable)
+    with pytest.raises(ProviderError) as error:
+        provider.discover()
+    assert error.value.code == "PROVIDER_UNAVAILABLE"
+    assert error.value.retryable
 
 
 def test_embedding_two_uses_independent_calls_and_retrieval_formats(monkeypatch):
@@ -49,8 +68,93 @@ def test_multimodal_embeddings_are_one_vector_per_independent_input(monkeypatch)
     assert len(vectors) == 2
     assert client.models.embed_content.call_count == 2
     assert (
-        len(client.models.embed_content.call_args_list[1].kwargs["contents"].parts) == 2
+        len(client.models.embed_content.call_args_list[1].kwargs["contents"].parts) == 1
     )
+
+
+@pytest.mark.parametrize("mime", ["audio/wav", "audio/mpeg", "video/mp4"])
+def test_native_media_parts_reach_gemini_analysis_and_embedding_sdk(monkeypatch, mime):
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.models.embed_content.return_value.embeddings = [
+        MagicMock(values=[1.0, 2.0, 3.0])
+    ]
+    client.models.generate_content.return_value = MagicMock(
+        text="{}", usage_metadata=None
+    )
+    client.models.generate_content_stream.side_effect = httpx.ReadError(
+        "interrupted stream"
+    )
+    provider = GeminiProvider()
+    monkeypatch.setattr(provider, "client", lambda: client)
+    media = MediaInput(data=b"synthetic-media", mime_type=mime)
+    assert list(
+        provider.stream(
+            InferenceRequest(
+                model="gemini-test", system="Analyze", prompt="Clip", media=[media]
+            )
+        )
+    ) == ["{}"]
+    assert provider.response_mode == "buffered_native"
+    client.models.generate_content_stream.assert_not_called()
+    part = client.models.generate_content.call_args.kwargs["contents"].parts[-1]
+    assert part.inline_data.mime_type == mime and part.inline_data.data == media.data
+    provider.embed_multimodal(
+        "gemini-embedding-2", [EmbeddingInput(text="segment", media=media)], 3
+    )
+    part = client.models.embed_content.call_args.kwargs["contents"].parts[-1]
+    assert part.inline_data.mime_type == mime and part.inline_data.data == media.data
+
+
+def test_reused_gemini_adapter_does_not_attribute_previous_clip_usage(monkeypatch):
+    client = MagicMock()
+    client.__enter__.return_value = client
+    provider = GeminiProvider()
+    monkeypatch.setattr(provider, "client", lambda: client)
+    request = InferenceRequest(model="gemini-test", system="Analyze", prompt="Clip")
+    client.models.generate_content_stream.return_value = [
+        MagicMock(
+            text="first",
+            usage_metadata=MagicMock(prompt_token_count=100, candidates_token_count=20),
+        )
+    ]
+    assert list(provider.stream(request)) == ["first"]
+    assert provider.last_usage.input_tokens == 100
+    client.models.generate_content_stream.return_value = [
+        MagicMock(text="second", usage_metadata=None)
+    ]
+    assert list(provider.stream(request)) == ["second"]
+    assert provider.last_usage is None
+
+
+def test_native_response_retries_one_broken_connection_without_replaying_tokens(
+    monkeypatch,
+):
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.models.generate_content.side_effect = [
+        httpx.ReadError("connection reset"),
+        MagicMock(text="Respuesta [Fuente 1]", usage_metadata=None),
+    ]
+    provider = GeminiProvider()
+    monkeypatch.setattr(provider, "client", lambda: client)
+    request = InferenceRequest(
+        model="gemini-test",
+        system="Read",
+        prompt="Question",
+        media=[MediaInput(data=b"audio", mime_type="audio/mpeg")],
+    )
+    assert list(provider.stream(request)) == ["Respuesta [Fuente 1]"]
+    assert provider.transport_attempts == 2
+    assert client.models.generate_content.call_count == 2
+    client.models.generate_content_stream.assert_not_called()
+
+    client.models.generate_content.reset_mock(side_effect=True)
+    client.models.generate_content.side_effect = httpx.ReadError("connection reset")
+    with pytest.raises(ProviderError) as failure:
+        list(provider.stream(request))
+    assert failure.value.details == {"exception": "ReadError"}
+    assert client.models.generate_content.call_count == 2
 
 
 def test_revocation_guard_stops_before_next_cloud_request(monkeypatch):
@@ -115,6 +219,31 @@ def test_error_redacts_provider_response_and_credentials():
     )
     assert error.code == "QUOTA_EXCEEDED"
     assert "SECRET-MARKER" not in error.message
+
+
+@pytest.mark.parametrize(
+    "status,expected,retryable",
+    [(400, "PROVIDER_INPUT_REJECTED", False), (503, "PROVIDER_UNAVAILABLE", True)],
+)
+def test_sdk_errors_keep_safe_status_without_provider_messages(
+    status, expected, retryable
+):
+    from google.genai.errors import APIError
+
+    failure = safe_error(
+        APIError(
+            status,
+            {
+                "error": {
+                    "message": "SECRET-MARKER private prompt",
+                    "status": "INVALID_ARGUMENT",
+                }
+            },
+        )
+    )
+    assert failure.code == expected and failure.retryable == retryable
+    assert failure.details["http_status"] == status
+    assert "SECRET-MARKER" not in str(failure.details) + failure.message
 
 
 def test_invalid_and_missing_citations_are_rejected():
@@ -188,6 +317,16 @@ def test_ollama_contract_discovers_capabilities_embeds_and_streams(monkeypatch):
     )
     assert provider.last_usage.output_tokens == 1
     assert seen == ["/api/tags", "/api/show", "/api/embed", "/api/chat"]
+
+
+def test_tex_citation_spacing_is_normalized_without_accepting_invented_sources():
+    answer = r"120 - 90 = 30 [Fuente\ 7, Fuente\\ 6]."
+    assert validate_citations(answer, {6, 7}) == {6, 7}
+    assert canonicalize_citations(answer) == "120 - 90 = 30 [Fuente 7] [Fuente 6]."
+    with pytest.raises(ProviderError):
+        validate_citations(r"Dato [Fuente\ 99].", {6, 7})
+    with pytest.raises(ProviderError):
+        validate_citations(r"Dato [Fuente\unknown 7].", {7})
 
 
 def test_openai_compatible_contract_does_not_assume_vision(monkeypatch):

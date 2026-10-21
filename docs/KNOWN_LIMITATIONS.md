@@ -57,9 +57,33 @@
 - La telemetría se registra para ejecuciones nuevas. El historial anterior no
   contiene necesariamente tokens, tiempos o política efectiva. No se reconstruyen
   esos datos como si se hubieran medido.
-- El chunk de workspace incorpora PDF.js/Markdown/KaTeX y ronda 962 KB sin comprimir.
-  Los módulos adicionales se cargan a demanda; queda pendiente reducir ese chunk.
+- PDF.js se carga sólo al abrir un PDF. El chunk de workspace ronda 351 KB y
+  PdfReader 638 KB sin comprimir; el visor mantiene una advertencia de tamaño.
 
 Estos puntos impiden afirmar que todas las capacidades del superprompt están
 completas. La matriz de aceptación distingue pruebas reales, contractuales y
 pendientes; cualquier ampliación debe mantener persistencia/consentimiento/citas.
+
+- El RAG visual adjunta como máximo dos regiones recuperadas por consulta, de
+  1024 px y 4 MB cada una. La cobertura y los descartes quedan registrados; no
+  implica que el modelo haya leído todas las figuras de un PDF en cada respuesta.
+- El proveedor histórico `llamacpp` de EmbeddingGemma 2 sigue sirviendo sus
+  perfiles de texto. El proveedor `embeddinggemma` usa los encoders oficiales
+  completos para texto, imagen, audio y video en un servicio CPU separado.
+  Gemini Embedding 2 también admite esos perfiles nativos con permiso multimodal.
+  Su rendimiento depende del hardware y del tamaño; CPU no equivale a GPU.
+- Audio y video se indexan directamente por intervalos de 10 segundos; el chat
+  lee los clips recuperados. La transcripción Gemini completa es opcional y
+  conserva su permiso independiente. Las citas indican límites de segmento,
+  no el instante de una palabra. El tamaño máximo es 50 MB y la duración por
+  defecto 30 minutos. El proveedor puede interpretar mal sonidos o imágenes;
+  las citas permiten revisar el intervalo original. El contexto nativo limita
+  cada respuesta a 6 clips/60 segundos/18 MiB y registra las omisiones. Sólo los
+  adaptadores generativos con entrada audiovisual pueden responder sobre clips
+  sin transcripción; no se cambia de proveedor automáticamente.
+- Excel admite XLSX, XLSM, XLS y CSV/TSV UTF-8, con citas por hoja y celda.
+  No ejecuta macros, fórmulas ni conexiones externas. Una fórmula sin resultado
+  guardado se muestra explícitamente como tal; abre y guarda el libro en Excel
+  para actualizar su caché. El visor es de lectura. Gráficos e imágenes incrustadas
+  en Excel todavía no se analizan; la extracción advierte su presencia. XLS
+  conserva los valores guardados, pero su lector no expone el texto de las fórmulas.

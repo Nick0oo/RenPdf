@@ -105,8 +105,9 @@ def plan_local_index(
     endpoint = {
         "llamacpp": settings.LLAMACPP_BASE_URL,
         "ollama": settings.OLLAMA_BASE_URL,
+        "embeddinggemma": settings.EMBEDDINGGEMMA_BASE_URL,
     }.get(policy.provider)
-    if policy.provider not in {"llamacpp", "ollama"}:
+    if policy.provider not in {"llamacpp", "ollama", "embeddinggemma"}:
         return LocalIndexPlan("NOT_CONFIGURED", "SELECT_LOCAL_EMBEDDING_PROVIDER")
     try:
         hostname = urlsplit(endpoint).hostname if endpoint else None
@@ -127,7 +128,9 @@ def plan_local_index(
         "provider": policy.provider,
         "model": policy.model,
         "dimensions": dimensions,
-        "modality": "text",
+        "modality": "multimodal"
+        if policy.provider == "embeddinggemma" and document.source_type == "pdf"
+        else "text",
         "auto_index_local": True,
         "timeout_seconds": policy.timeout_seconds,
     }
