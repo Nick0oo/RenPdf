@@ -46,6 +46,7 @@ export function rotateBox(box: BBox, degrees: number): BBox {
 type Props = {
   document: DocumentPublic
   citation?: EvidencePublic
+  initialPage?: number
   onAsk: (text: string, element?: ElementPublic, vision?: boolean) => void
   onBookmark: (page: number) => void
   onPage: (page: number) => void
@@ -62,13 +63,14 @@ type RenderFrame = {
 export function PdfReader({
   document,
   citation,
+  initialPage,
   onAsk,
   onBookmark,
   onPage,
   onHighlight,
 }: Props) {
   const [page, setPage] = useState(
-    Number(localStorage.getItem(`pdf-page:${document.id}`)) || 1,
+    initialPage || Number(localStorage.getItem(`pdf-page:${document.id}`)) || 1,
   )
   const [zoom, setZoom] = useState(1)
   const [rotation, setRotation] = useState(0)
@@ -139,14 +141,18 @@ export function PdfReader({
     return () => observer.disconnect()
   }, [])
   useEffect(() => {
-    setPage(Number(localStorage.getItem(`pdf-page:${document.id}`)) || 1)
+    setPage(
+      initialPage ||
+        Number(localStorage.getItem(`pdf-page:${document.id}`)) ||
+        1,
+    )
     setSelection("")
     setSelectedElement(undefined)
     setRotation(0)
     setNativeRotation(0)
     setRenderedFrame(undefined)
     setError("")
-  }, [document.id])
+  }, [document.id, initialPage])
   useEffect(() => {
     if (citation?.document_id === document.id && citation.page_number != null)
       movePage(citation.page_number)

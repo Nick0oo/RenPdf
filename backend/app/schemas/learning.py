@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.schemas.research import DTO, EvidencePublic
+from app.schemas.research import DTO, EvidencePublic, ProviderName
 
 
 class ResearchInput(BaseModel):
@@ -32,6 +32,7 @@ class SourceAnswer(BaseModel):
     provider: str | None = None
     model: str | None = None
     citations: list[EvidencePublic] = Field(default_factory=list)
+    usage: dict[str, Any] = Field(default_factory=dict)
 
 
 class ResearchPublic(DTO):
@@ -112,6 +113,7 @@ class CardPublic(DTO):
     source_title: str | None = None
     source_available: bool = False
     evidence: EvidencePublic | None = None
+    evidences: list[EvidencePublic] = Field(default_factory=list)
 
 
 class ReviewInput(BaseModel):
@@ -135,3 +137,35 @@ class ProgressPublic(BaseModel):
     reviews: int
     ratings: dict[str, int]
     assessment: Literal["self_reported"] = "self_reported"
+
+
+class LearningGenerationInput(BaseModel):
+    workspace_id: uuid.UUID
+    kind: Literal["summary", "questions", "deck"]
+    document_ids: list[uuid.UUID] = Field(min_length=1, max_length=30)
+    provider: ProviderName | None = None
+    model: str | None = Field(default=None, min_length=1, max_length=200)
+    title: str = Field(default="", max_length=200)
+    focus: str = Field(default="", max_length=2000)
+    count: int = Field(default=8, ge=3, le=20)
+    deck_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def valid_selection(self):
+        if bool(self.provider) != bool(self.model):
+            raise ValueError("Selecciona el proveedor y el modelo juntos")
+        if self.deck_id and self.kind == "summary":
+            raise ValueError("Un resumen no se añade a un mazo")
+        self.document_ids = list(dict.fromkeys(self.document_ids))
+        self.title, self.focus = self.title.strip(), self.focus.strip()
+        return self
+
+
+class LearningGenerationPublic(BaseModel):
+    kind: Literal["summary", "questions", "deck"]
+    conversation_id: uuid.UUID
+    message_id: uuid.UUID
+    research: list[ResearchPublic] = Field(default_factory=list)
+    deck: DeckPublic | None = None
+    cards: list[CardPublic] = Field(default_factory=list)
+    coverage: dict[str, Any] = Field(default_factory=dict)

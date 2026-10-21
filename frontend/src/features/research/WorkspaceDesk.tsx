@@ -66,6 +66,7 @@ export function WorkspaceDesk({
   library,
   providers,
   entryDocumentId,
+  entryPage,
   entryTime,
   entrySheet,
   entryCell,
@@ -76,6 +77,7 @@ export function WorkspaceDesk({
   library: DocumentPublic[]
   providers: ProviderConfig[]
   entryDocumentId?: string
+  entryPage?: number
   entryTime?: number
   entrySheet?: string
   entryCell?: string
@@ -630,6 +632,11 @@ export function WorkspaceDesk({
                       citation={
                         source?.document_id === activeDocument.id
                           ? source
+                          : undefined
+                      }
+                      initialPage={
+                        entryDocumentId === activeDocument.id
+                          ? entryPage
                           : undefined
                       }
                       onAsk={ask}

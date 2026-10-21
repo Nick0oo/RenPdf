@@ -1,9 +1,18 @@
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { apiRoot } from "@/features/research/api"
 import type { SourceAnswer } from "./api"
+import { LearningTrace } from "./LearningTrace"
+import { SourceReferences } from "./SourceReferences"
 
-export function SourceAnswers({ answers }: { answers: SourceAnswer[] }) {
+export function SourceAnswers({
+  answers,
+  workspaceId,
+  showTrace = true,
+}: {
+  answers: SourceAnswer[]
+  workspaceId?: string
+  showTrace?: boolean
+}) {
   return (
     <div className="space-y-6">
       {answers.map((answer) => (
@@ -46,29 +55,17 @@ export function SourceAnswers({ answers }: { answers: SourceAnswer[] }) {
                   disponibles.
                 </p>
               )}
-              <div className="mt-3 space-y-2">
-                {answer.citations.map((citation) => (
-                  <details
-                    key={`${citation.chunk_id}:${citation.element_id}`}
-                    className="rounded-lg border px-3 py-2 text-xs"
-                  >
-                    <summary className="cursor-pointer leading-5">
-                      Fuente {citation.label}: {citation.document_title}, página{" "}
-                      {citation.page_number}
-                    </summary>
-                    <blockquote className="my-3 whitespace-pre-wrap border-l-2 pl-3 leading-6 text-muted-foreground">
-                      {citation.text}
-                    </blockquote>
-                    <a
-                      className="font-medium text-primary underline underline-offset-4"
-                      target="_blank"
-                      rel="noreferrer"
-                      href={`${apiRoot}/documents/${citation.document_id}/file#page=${citation.page_number}`}
-                    >
-                      Abrir página original
-                    </a>
-                  </details>
-                ))}
+              <div className="mt-3 space-y-3">
+                <SourceReferences
+                  citations={answer.citations}
+                  workspaceId={workspaceId}
+                />
+                {showTrace && (
+                  <LearningTrace
+                    messageId={answer.message_id}
+                    usage={answer.usage}
+                  />
+                )}
               </div>
             </>
           )}

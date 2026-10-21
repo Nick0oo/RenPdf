@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from sqlmodel import col, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -12,6 +13,8 @@ from app.schemas.learning import (
     CardPublic,
     DeckInput,
     DeckPublic,
+    LearningGenerationInput,
+    LearningGenerationPublic,
     ProgressPublic,
     ResearchInput,
     ResearchPublic,
@@ -32,6 +35,42 @@ from app.services.learning.access import (
 from app.services.rag.chat import message_sources
 
 router = APIRouter(prefix="/learning", tags=["learning"])
+
+
+@router.post("/generate", response_model=LearningGenerationPublic)
+def generate_learning(
+    body: LearningGenerationInput,
+    session: SessionDep,
+    current_user: CurrentUser,
+):
+    from app.services.learning.generation import generate_material
+    from app.services.models.contracts import ProviderError
+
+    try:
+        return generate_material(session, current_user.id, body)
+    except ProviderError as error:
+        session.rollback()
+        status = (
+            409
+            if error.code in {"CONSENT_REQUIRED", "LEARNING_NO_EVIDENCE"}
+            else 422
+            if error.code
+            in {
+                "INVALID_STUDY_OUTPUT",
+                "MEDIA_CHAT_UNSUPPORTED",
+                "MODEL_UNAVAILABLE",
+                "MODEL_NOT_SELECTED",
+                "VISION_UNSUPPORTED",
+            }
+            else 429
+            if error.code == "QUOTA_EXCEEDED"
+            else 504
+            if error.code == "PROVIDER_TIMEOUT"
+            else 503
+        )
+        return JSONResponse(
+            status_code=status, content={"detail": error.message, "code": error.code}
+        )
 
 
 @router.get("/research", response_model=list[ResearchPublic])
@@ -217,11 +256,16 @@ def card_values(body: CardInput, session: SessionDep, current_user: CurrentUser)
         values.update(
             document_id=evidence.document_id,
             version_id=evidence.version_id,
-            page_number=evidence.page_number,
+            page_number=evidence.page_number or 1,
         )
     else:
         assert body.document_id is not None
         document = workspace_document(session, deck.workspace_id, body.document_id)
+        if document.source_type != "pdf":
+            raise HTTPException(
+                422,
+                "Para audio, video u hojas de cálculo utiliza una cita generada, no una página manual.",
+            )
         if not document.current_version_id:
             raise HTTPException(409, "Procesa el PDF antes de vincular una ficha")
         if body.page_number > document.page_count:

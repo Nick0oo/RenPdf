@@ -51,9 +51,10 @@
   firmas ni redacción segura. CropBox sólo cambia el área visible. Se limita a
   30 fuentes, 50 MB totales y 500 páginas de salida; no promete conservar firmas
   ni todos los metadatos/marcadores del original.
-- Laboratorio conserva respuestas separadas por fuente; no es un detector automático
-  de contradicciones. Estudio registra autoevaluación manual, sin notas inventadas
-  de un modelo ni generación automática de fichas.
+- Laboratorio genera resúmenes, preguntas y comparaciones citadas; Estudio genera
+  mazos y fichas. El material cubre la evidencia recuperada y requiere revisión:
+  citas válidas no garantizan exactitud factual. El repaso conserva autoevaluación
+  manual, sin notas inventadas de un modelo.
 - La telemetría se registra para ejecuciones nuevas. El historial anterior no
   contiene necesariamente tokens, tiempos o política efectiva. No se reconstruyen
   esos datos como si se hubieran medido.

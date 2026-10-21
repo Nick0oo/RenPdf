@@ -51,7 +51,13 @@ def native_context(session: Session, evidence: list[EvidencePublic]):
         item.label = len(selected) + 1
         selected.append(item)
         media.append(
-            MediaInput(data=data, mime_type=element.structured_content["mime_type"])
+            MediaInput(
+                data=data,
+                mime_type=element.structured_content["mime_type"],
+                source_id=item.label,
+                start_seconds=element.start_seconds,
+                end_seconds=element.end_seconds,
+            )
         )
         metadata.append(
             {

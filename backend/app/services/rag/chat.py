@@ -18,6 +18,7 @@ from app.domain import (
 )
 from app.schemas.research import EvidencePublic, QuestionInput
 from app.services.citations.validation import canonicalize_citations, validate_citations
+from app.services.learning.generation_payload import StudyGeneration
 from app.services.models.contracts import InferenceRequest, ProviderError
 from app.services.models.providers import get_provider, safe_error
 from app.services.models.routing import resolve_policy
@@ -66,6 +67,8 @@ def chat_events(
     owner_id: uuid.UUID,
     request: QuestionInput,
     document_ids: list[uuid.UUID],
+    *,
+    study: StudyGeneration | None = None,
 ) -> Iterator[str]:
     with Session(engine) as session:
         conversation = session.exec(
@@ -105,6 +108,12 @@ def chat_events(
             conversation.model,
         )
         trace, provider = ChatTrace(policy), None
+        if study:
+            trace.data["learning"] = {
+                "kind": study.kind,
+                "requested_items": study.count,
+            }
+            trace.data["prompt_template_version"] = "learning-rag-v1"
         trace.mark("request_started")
         user_message = ChatMessage(
             conversation_id=conversation.id, role="user", content=request.question
@@ -443,6 +452,8 @@ def chat_events(
                         "análisis exhaustivo de todo su contenido.\n\n"
                     )
                 )
+            if scope_notice and study and study.kind != "summary":
+                scope_notice = "Material de repaso basado en una muestra de las fuentes seleccionadas. La cobertura es parcial.\n\n"
             system = SYSTEM
             document_labels = {
                 identifier: f"Documento {index + 1}"
@@ -452,6 +463,8 @@ def chat_events(
             }
             if overview:
                 system += "\nLa evidencia contiene ventanas de líneas contiguas de una muestra de páginas. Escribe de 2 a 4 puntos breves respaldados por esas líneas. Comienza CADA punto con su cita real [Fuente N] y después su afirmación. No afirmes haber revisado todo el PDF ni identificar todos sus puntos principales."
+            if study:
+                system += study.instruction
             prompt = json.dumps(
                 {
                     "question": request.question,
@@ -514,6 +527,10 @@ def chat_events(
                     max_tokens=policy.max_tokens,
                     images=images,
                     media=media,
+                    json_schema=study.schema({item.label for item in selected})
+                    if study
+                    else None,
+                    buffered=study is not None,
                 )
             ):
                 session.refresh(assistant)
@@ -524,9 +541,16 @@ def chat_events(
                     raise ProviderError(
                         "RESPONSE_LIMIT", "Respuesta demasiado extensa."
                     )
-                yield event("token", {"text": token})
+                if not study:
+                    yield event("token", {"text": token})
             trace.data["generated_output_chars"] = len(output)
             trace.mark("inference_finished")
+            if study:
+                output = study.render(output, {item.label for item in selected})
+                trace.data["learning"]["generated_items"] = (
+                    len(study.result.items) if study.result else 0
+                )
+                trace.mark("study_material_validated")
             cited = validate_citations(output, {item.label for item in selected})
             trace.data["cited_labels"] = sorted(cited)
             trace.mark("citations_validated")

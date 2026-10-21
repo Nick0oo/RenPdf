@@ -16,6 +16,9 @@ import {
   type ResearchEntry,
   type Review,
 } from "@/features/lab/api"
+import { LearningGenerator } from "@/features/lab/LearningGenerator"
+import { SourceReferences } from "@/features/lab/SourceReferences"
+import { sourceLocation, sourceType } from "@/features/media/location"
 import { apiRoot, errorMessage } from "@/features/research/api"
 import { ChoiceSelect } from "@/features/research/ChoiceSelect"
 import { ConfirmationDialog } from "@/features/research/ConfirmationDialog"
@@ -28,9 +31,9 @@ const headings = {
 }
 const descriptions = {
   cards:
-    "Escribe lo que quieres recordar y vincula cada ficha a una página o una cita real.",
+    "Genera fichas desde tus fuentes o añade las tuyas. Cada respuesta conserva su evidencia para comprobarla.",
   decks:
-    "Organiza tus fichas por workspace y tema para retomar el estudio cuando quieras.",
+    "Prepara un mazo con IA, reúne tus fichas por tema y empieza a practicar sin volver a generar el material.",
   review:
     "Recuerda una respuesta antes de verla. Tu valoración decide cuándo volverás a repasarla.",
 }
@@ -260,12 +263,21 @@ export function StudyDesk({ section = "cards" }: { section?: StudySection }) {
   return (
     <div className="space-y-6">
       <header>
+        <p className="mb-2 text-xs font-medium text-primary">
+          ESTUDIO · RECUERDA Y PRACTICA
+        </p>
         <h1 className="text-3xl font-semibold tracking-tight">
           {headings[section]}
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           {descriptions[section]}
         </p>
+        <a
+          className="mt-3 inline-block text-sm font-medium text-primary underline underline-offset-4"
+          href={`/lab/summaries${workspace ? `?workspace=${workspace}` : ""}`}
+        >
+          Volver a Laboratorio para preparar resúmenes y preguntas →
+        </a>
       </header>
       <div className="grid max-w-3xl gap-4 sm:grid-cols-2">
         <div>
@@ -309,274 +321,325 @@ export function StudyDesk({ section = "cards" }: { section?: StudySection }) {
       )}
       {!spaces.isPending && !spaces.data?.length && (
         <p className="rounded-xl border border-dashed p-6 text-sm">
-          Crea un workspace y añade tus PDFs para vincular las fichas a sus
-          fuentes.
+          Crea un workspace y añade tus fuentes para preparar material de
+          estudio.
         </p>
       )}
-      {workspace && (section === "decks" || !decks.data?.length) && (
-        <section
-          className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]"
-          aria-label="Mazos de estudio"
-        >
-          <form
-            className="space-y-4 rounded-2xl border p-5 md:p-6"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (deckName.trim()) void saveDeck()
-            }}
-          >
-            <h2 className="text-lg font-semibold">
-              {editingDeck ? "Editar mazo" : "Crea tu primer mazo"}
-            </h2>
-            <div className="space-y-2">
-              <Label htmlFor="deck-name">Nombre del mazo</Label>
-              <Input
-                id="deck-name"
-                maxLength={120}
-                value={deckName}
-                disabled={busy}
-                onChange={(event) => setDeckName(event.target.value)}
-                placeholder="Conceptos para el examen"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="deck-description">Qué quieres estudiar</Label>
-              <textarea
-                id="deck-description"
-                rows={3}
-                maxLength={2000}
-                value={deckDescription}
-                disabled={busy}
-                onChange={(event) => setDeckDescription(event.target.value)}
-                className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={busy || !deckName.trim()}>
-                <Plus size={15} />
-                {editingDeck ? "Guardar mazo" : "Crear mazo"}
-              </Button>
-              {editingDeck && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setEditingDeck(undefined)
-                    setDeckName("")
-                    setDeckDescription("")
-                  }}
-                >
-                  Cancelar
-                </Button>
-              )}
-            </div>
-          </form>
-          <div className="divide-y">
-            {decks.data?.map((item) => (
-              <article key={item.id} className="py-5 first:pt-0">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {item.description}
-                    </p>
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      {item.cards} fichas · {item.due_cards} pendientes ·{" "}
-                      {item.reviews} repasos
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
+      {workspace && section !== "review" && (
+        <LearningGenerator
+          key={`${workspace}:${section}`}
+          workspaceId={workspace}
+          kind="deck"
+          deckId={section === "cards" ? deckId : undefined}
+          disabled={busy}
+          onBusyChange={setBusy}
+          onGenerated={(result) => {
+            if (result.deck) setDeckId(result.deck.id)
+          }}
+        />
+      )}
+      {workspace &&
+        section === "review" &&
+        !decks.isPending &&
+        !decks.data?.length && (
+          <div className="rounded-2xl border border-dashed p-6">
+            <h2 className="font-semibold">Prepara tu primer repaso</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Genera un mazo desde tus fuentes y vuelve aquí para practicar.
+            </p>
+            <Button asChild className="mt-4">
+              <a href={`/study/decks?workspace=${workspace}`}>
+                Generar un mazo con IA
+              </a>
+            </Button>
+          </div>
+        )}
+      {workspace &&
+        (section === "decks" ||
+          (section === "cards" && !decks.data?.length)) && (
+          <section className="space-y-5" aria-label="Mazos de estudio">
+            <details
+              open={!!editingDeck || undefined}
+              className="rounded-2xl border"
+            >
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium">
+                Crear o editar un mazo manualmente
+              </summary>
+              <form
+                className="space-y-4 border-t p-5 md:p-6"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (deckName.trim()) void saveDeck()
+                }}
+              >
+                <h2 className="text-lg font-semibold">
+                  {editingDeck ? "Editar mazo" : "Crea tu primer mazo"}
+                </h2>
+                <div className="space-y-2">
+                  <Label htmlFor="deck-name">Nombre del mazo</Label>
+                  <Input
+                    id="deck-name"
+                    maxLength={120}
+                    value={deckName}
+                    disabled={busy}
+                    onChange={(event) => setDeckName(event.target.value)}
+                    placeholder="Conceptos para el examen"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="deck-description">Qué quieres estudiar</Label>
+                  <textarea
+                    id="deck-description"
+                    rows={3}
+                    maxLength={2000}
+                    value={deckDescription}
+                    disabled={busy}
+                    onChange={(event) => setDeckDescription(event.target.value)}
+                    className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={busy || !deckName.trim()}>
+                    <Plus size={15} />
+                    {editingDeck ? "Guardar mazo" : "Crear mazo"}
+                  </Button>
+                  {editingDeck && (
                     <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label={`Editar mazo ${item.name}`}
+                      type="button"
+                      variant="outline"
                       onClick={() => {
-                        setEditingDeck(item)
-                        setDeckName(item.name)
-                        setDeckDescription(item.description)
+                        setEditingDeck(undefined)
+                        setDeckName("")
+                        setDeckDescription("")
                       }}
                     >
-                      <Pencil size={14} />
+                      Cancelar
                     </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label={`Eliminar mazo ${item.name}`}
-                      onClick={() =>
-                        setDeleting({
-                          kind: "decks",
-                          id: item.id,
-                          title: item.name,
-                        })
-                      }
-                    >
-                      <Trash2 size={14} />
-                    </Button>
+                  )}
+                </div>
+              </form>
+            </details>
+            <h2 className="text-lg font-semibold">Mazos guardados</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              {decks.data?.map((item) => (
+                <article key={item.id} className="rounded-xl border p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold">{item.name}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {item.description}
+                      </p>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        {item.cards} fichas · {item.due_cards} pendientes ·{" "}
+                        {item.reviews} repasos
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={`Editar mazo ${item.name}`}
+                        onClick={() => {
+                          setEditingDeck(item)
+                          setDeckName(item.name)
+                          setDeckDescription(item.description)
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={`Eliminar mazo ${item.name}`}
+                        onClick={() =>
+                          setDeleting({
+                            kind: "decks",
+                            id: item.id,
+                            title: item.name,
+                          })
+                        }
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 flex gap-4">
-                  <a
-                    className="text-sm text-primary underline underline-offset-4"
-                    href={`/study/cards?workspace=${item.workspace_id}&deck=${item.id}`}
-                  >
-                    Crear fichas
-                  </a>
-                  <a
-                    className="text-sm text-primary underline underline-offset-4"
-                    href={`/study/review?workspace=${item.workspace_id}&deck=${item.id}`}
-                  >
-                    Repasar
-                  </a>
-                </div>
-              </article>
-            ))}
-            {!decks.isPending && !decks.data?.length && (
-              <p className="pt-3 text-sm leading-6 text-muted-foreground">
-                Un mazo reúne las fichas de este workspace. Después podrás
-                añadir preguntas y repasarlas sin llamar a ningún modelo.
-              </p>
-            )}
-          </div>
-        </section>
-      )}
-      {section === "cards" && deck && (
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <form
-            className="min-w-0 space-y-5 rounded-2xl border p-5 md:p-6"
-            aria-label="Crear ficha"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void saveCard()
-            }}
-          >
-            <h2 className="text-lg font-semibold">
-              {editingCard ? "Editar ficha" : "Una idea por ficha"}
-            </h2>
-            <div className="space-y-2">
-              <Label htmlFor="card-question">Pregunta de la ficha</Label>
-              <textarea
-                id="card-question"
-                rows={3}
-                maxLength={4000}
-                value={question}
-                disabled={busy}
-                required
-                onChange={(event) => setQuestion(event.target.value)}
-                className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="¿Qué concepto quieres recordar?"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="card-answer">Respuesta de referencia</Label>
-              <textarea
-                id="card-answer"
-                rows={4}
-                maxLength={10000}
-                value={answer}
-                disabled={busy}
-                required
-                onChange={(event) => setAnswer(event.target.value)}
-                className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Escribe una respuesta que puedas comprobar en el PDF"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Vínculo con la fuente</Label>
-              <ChoiceSelect
-                label="Tipo de fuente de la ficha"
-                value={sourceMode}
-                onValueChange={setSourceMode}
-                placeholder="Elige una fuente"
-                disabled={busy}
-                options={[
-                  { value: "page", label: "Página de un PDF" },
-                  { value: "citation", label: "Cita guardada en Laboratorio" },
-                ]}
-              />
-            </div>
-            {sourceMode === "page" ? (
-              <>
-                <ChoiceSelect
-                  label="PDF de la ficha"
-                  value={documentId}
-                  onValueChange={(value) => {
-                    setDocumentId(value)
-                    setPage("1")
-                  }}
-                  placeholder="Elige un PDF procesado"
-                  disabled={busy}
-                  options={(documents.data ?? [])
-                    .filter((item) => item.current_version_id)
-                    .map((item) => ({ value: item.id, label: item.title }))}
-                />
-                <div className="space-y-2">
-                  <Label htmlFor="card-page">Página de referencia</Label>
-                  <Input
-                    id="card-page"
-                    type="number"
-                    min={1}
-                    max={document?.page_count ?? 1}
-                    value={page}
-                    onChange={(event) => setPage(event.target.value)}
-                    disabled={busy}
-                  />
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    Tu ficha es una nota manual vinculada a esta página. No se
-                    presenta como una respuesta validada por IA.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <ChoiceSelect
-                  label="Cita de la ficha"
-                  value={citationKey}
-                  onValueChange={(value) => {
-                    setCitationKey(value)
-                    const item = cited.find(([key]) => key === value)?.[1]
-                    if (item && !answer.trim()) setAnswer(item.citation.text)
-                  }}
-                  placeholder="Elige una cita real"
-                  disabled={busy}
-                  options={cited.map(([key, item]) => ({
-                    value: key,
-                    label: `${item.title}: ${item.citation.document_title}, p. ${item.citation.page_number}, fuente ${item.citation.label}`,
-                  }))}
-                />
-                {!cited.length && (
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    Guarda una respuesta citada en Laboratorio para usarla como
-                    fuente de estudio.
-                  </p>
-                )}
-              </>
-            )}
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                disabled={
-                  busy ||
-                  !question.trim() ||
-                  !answer.trim() ||
-                  (sourceMode === "page"
-                    ? !documentId ||
-                      !Number.isInteger(Number(page)) ||
-                      Number(page) < 1 ||
-                      Number(page) > (document?.page_count ?? 0)
-                    : !citationKey)
-                }
-              >
-                <Plus size={15} />
-                {editingCard ? "Guardar cambios" : "Guardar ficha"}
-              </Button>
-              {editingCard && (
-                <Button type="button" variant="outline" onClick={resetCard}>
-                  Cancelar
-                </Button>
+                  <div className="mt-4 flex gap-4">
+                    <a
+                      className="text-sm text-primary underline underline-offset-4"
+                      href={`/study/cards?workspace=${item.workspace_id}&deck=${item.id}`}
+                    >
+                      Crear fichas
+                    </a>
+                    <a
+                      className="text-sm text-primary underline underline-offset-4"
+                      href={`/study/review?workspace=${item.workspace_id}&deck=${item.id}`}
+                    >
+                      Repasar
+                    </a>
+                  </div>
+                </article>
+              ))}
+              {!decks.isPending && !decks.data?.length && (
+                <p className="pt-3 text-sm leading-6 text-muted-foreground">
+                  Un mazo reúne las fichas de este workspace. Después podrás
+                  añadir preguntas y repasarlas sin llamar a ningún modelo.
+                </p>
               )}
             </div>
-          </form>
+          </section>
+        )}
+      {section === "cards" && deck && (
+        <div className="space-y-6">
+          <details
+            open={!!editingCard || undefined}
+            className="rounded-2xl border"
+          >
+            <summary className="cursor-pointer px-5 py-4 text-sm font-medium">
+              Crear o editar una ficha manualmente
+            </summary>
+            <form
+              className="min-w-0 space-y-5 border-t p-5 md:p-6"
+              aria-label="Crear ficha"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void saveCard()
+              }}
+            >
+              <h2 className="text-lg font-semibold">
+                {editingCard ? "Editar ficha" : "Una idea por ficha"}
+              </h2>
+              <div className="space-y-2">
+                <Label htmlFor="card-question">Pregunta de la ficha</Label>
+                <textarea
+                  id="card-question"
+                  rows={3}
+                  maxLength={4000}
+                  value={question}
+                  disabled={busy}
+                  required
+                  onChange={(event) => setQuestion(event.target.value)}
+                  className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="¿Qué concepto quieres recordar?"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="card-answer">Respuesta de referencia</Label>
+                <textarea
+                  id="card-answer"
+                  rows={4}
+                  maxLength={10000}
+                  value={answer}
+                  disabled={busy}
+                  required
+                  onChange={(event) => setAnswer(event.target.value)}
+                  className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Escribe una respuesta que puedas comprobar en el PDF"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Vínculo con la fuente</Label>
+                <ChoiceSelect
+                  label="Tipo de fuente de la ficha"
+                  value={sourceMode}
+                  onValueChange={setSourceMode}
+                  placeholder="Elige una fuente"
+                  disabled={busy}
+                  options={[
+                    { value: "page", label: "Página de un PDF" },
+                    {
+                      value: "citation",
+                      label: "Cita guardada en Laboratorio",
+                    },
+                  ]}
+                />
+              </div>
+              {sourceMode === "page" ? (
+                <>
+                  <ChoiceSelect
+                    label="PDF de la ficha"
+                    value={documentId}
+                    onValueChange={(value) => {
+                      setDocumentId(value)
+                      setPage("1")
+                    }}
+                    placeholder="Elige un PDF procesado"
+                    disabled={busy}
+                    options={(documents.data ?? [])
+                      .filter(
+                        (item) =>
+                          item.current_version_id && sourceType(item) === "pdf",
+                      )
+                      .map((item) => ({ value: item.id, label: item.title }))}
+                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="card-page">Página de referencia</Label>
+                    <Input
+                      id="card-page"
+                      type="number"
+                      min={1}
+                      max={document?.page_count ?? 1}
+                      value={page}
+                      onChange={(event) => setPage(event.target.value)}
+                      disabled={busy}
+                    />
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      Tu ficha es una nota manual vinculada a esta página. No se
+                      presenta como una respuesta validada por IA.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ChoiceSelect
+                    label="Cita de la ficha"
+                    value={citationKey}
+                    onValueChange={(value) => {
+                      setCitationKey(value)
+                      const item = cited.find(([key]) => key === value)?.[1]
+                      if (item && !answer.trim()) setAnswer(item.citation.text)
+                    }}
+                    placeholder="Elige una cita real"
+                    disabled={busy}
+                    options={cited.map(([key, item]) => ({
+                      value: key,
+                      label: `${item.title}: ${item.citation.document_title}, ${sourceLocation(item.citation)}, fuente ${item.citation.label}`,
+                    }))}
+                  />
+                  {!cited.length && (
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      Guarda una respuesta citada en Laboratorio para usarla
+                      como fuente de estudio.
+                    </p>
+                  )}
+                </>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={
+                    busy ||
+                    !question.trim() ||
+                    !answer.trim() ||
+                    (sourceMode === "page"
+                      ? !documentId ||
+                        !Number.isInteger(Number(page)) ||
+                        Number(page) < 1 ||
+                        Number(page) > (document?.page_count ?? 0)
+                      : !citationKey)
+                  }
+                >
+                  <Plus size={15} />
+                  {editingCard ? "Guardar cambios" : "Guardar ficha"}
+                </Button>
+                {editingCard && (
+                  <Button type="button" variant="outline" onClick={resetCard}>
+                    Cancelar
+                  </Button>
+                )}
+              </div>
+            </form>
+          </details>
           <section className="min-w-0 space-y-4" aria-label="Fichas guardadas">
             <h2 className="text-lg font-semibold">{deck.name}</h2>
             {cards.data?.map((card) => (
@@ -627,7 +690,7 @@ export function StudyDesk({ section = "cards" }: { section?: StudySection }) {
                 <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-muted-foreground">
                   {card.answer}
                 </p>
-                <CardSource card={card} />
+                <CardSource card={card} workspaceId={workspace} />
                 <p className="mt-3 text-xs text-muted-foreground">
                   {card.review_count} repasos · próximo:{" "}
                   {new Date(card.due_at).toLocaleString()}
@@ -695,7 +758,7 @@ export function StudyDesk({ section = "cards" }: { section?: StudySection }) {
                     <p className="whitespace-pre-wrap break-words text-sm leading-7">
                       {current.answer}
                     </p>
-                    <CardSource card={current} />
+                    <CardSource card={current} workspaceId={workspace} />
                     <p className="text-sm text-muted-foreground">
                       ¿Cómo te fue? Esta valoración la eliges tú.
                     </p>
@@ -833,17 +896,30 @@ export function StudyDesk({ section = "cards" }: { section?: StudySection }) {
   )
 }
 
-function CardSource({ card }: { card: Card }) {
+function CardSource({
+  card,
+  workspaceId,
+}: {
+  card: Card
+  workspaceId: string
+}) {
+  const evidences = card.evidences?.length
+    ? card.evidences
+    : card.evidence
+      ? [card.evidence]
+      : []
   return (
     <div className="mt-4 space-y-2">
       <Badge variant="outline">
-        {card.evidence
-          ? "Cita documental"
+        {evidences.length
+          ? `${evidences.length} ${evidences.length === 1 ? "cita documental" : "citas documentales"}`
           : card.citation_label
             ? "Cita original no disponible"
             : "Referencia manual"}
       </Badge>
-      {card.source_available && card.document_id ? (
+      {evidences.length ? (
+        <SourceReferences citations={evidences} workspaceId={workspaceId} />
+      ) : card.source_available && card.document_id ? (
         <a
           className="block text-xs leading-5 text-primary underline underline-offset-4"
           href={`${apiRoot}/documents/${card.document_id}/file#page=${card.page_number}`}
@@ -857,16 +933,6 @@ function CardSource({ card }: { card: Card }) {
           La fuente original ya no está disponible. La ficha conserva tu
           contenido.
         </p>
-      )}
-      {card.evidence && (
-        <details className="text-xs">
-          <summary className="cursor-pointer text-muted-foreground">
-            Ver fragmento citado
-          </summary>
-          <blockquote className="mt-2 whitespace-pre-wrap border-l-2 pl-3 leading-6">
-            {card.evidence.text}
-          </blockquote>
-        </details>
       )}
     </div>
   )

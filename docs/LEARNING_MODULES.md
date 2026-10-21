@@ -1,50 +1,86 @@
 # Laboratorio y Estudio
 
-Laboratorio conserva preguntas e informes vinculados a respuestas reales del chat. Estudio permite preparar fichas con una fuente documental y guardar repasos manuales. Ambos módulos usan la sesión personal existente y pertenecen a un workspace; no comparten datos entre propietarios.
+Laboratorio convierte las fuentes de un workspace en material para entenderlas;
+Estudio permite practicarlo y repasar lo pendiente. Ambos conservan la sesión
+y el aislamiento por propietario del resto de la aplicación.
 
-## Laboratorio
+## Preparar material
 
-- **Comparación de fuentes** consulta el mismo tema en cada PDF seleccionado por separado. Cada respuesta conserva su modelo, fragmentos y citas. El usuario revisa las respuestas y añade observaciones; el módulo no presenta una síntesis automática de diferencias que no haya generado. Sólo se permite guardar una comparación con citas que respalden al menos dos documentos.
-- **Preguntas de investigación** guarda una pregunta pendiente sin llamar a un modelo. Puede consultarse después y actualizarse con respuestas citadas, conservando el mismo registro.
-- **Resúmenes guardados** conserva una respuesta citada generada a demanda o elegida de un chat existente. El generador de resumen general del chat informa su cobertura parcial. Un informe guardado permite inspeccionar sus fragmentos, abrir la página original y exportar Markdown.
+- **Resúmenes:** selecciona fuentes, modelo y un enfoque opcional. La IA genera
+  un resumen con citas y lo guarda automáticamente en Laboratorio.
+- **Preguntas:** la IA genera un banco de preguntas y respuestas, y un mazo
+  con las mismas fichas para empezar a practicar.
+- **Comparar fuentes:** una consulta conjunta contrasta los documentos elegidos.
+  Guardar una comparación necesita citas de al menos dos fuentes.
 
-Las llamadas nuevas usan el modelo seleccionado y el servicio de chat RAG existente. Los permisos de nube se verifican por documento; guardar una pregunta o reutilizar una respuesta no genera nuevas llamadas. Si una fuente no aporta citas, no se fabrica una respuesta para completar el informe. Los intentos quedan en el historial del workspace y pueden cancelarse.
+La selección manual de respuestas y las notas quedan como opciones secundarias.
+Cada generación conserva su conversación, respuesta y citas en el workspace,
+y su ejecución se puede consultar en Trazabilidad.
 
-## Estudio
+## Estudiar
 
-- **Fichas con evidencia** guarda una pregunta y una respuesta escrita por el usuario, vinculadas a una página válida de un PDF procesado o a una cita real guardada en Laboratorio. Las referencias manuales y las citas se identifican por separado.
-- **Mazos** organiza las fichas por tema dentro de un workspace; admite nombre, descripción, edición y eliminación. Eliminar un mazo elimina sus fichas y repasos, y conserva los PDFs.
-- **Repaso y progreso** oculta la respuesta de referencia hasta que el usuario decide verla. Guarda su respuesta escrita, valoración y próxima fecha. Otra vez programa 10 minutos; difícil, 1 día; bien, 3 días; fácil, 7 días. El progreso suma registros reales y se identifica como `self_reported`: no mide exactitud mediante IA ni asigna una calificación automática.
+**Generar mazo** crea fichas citadas o añade fichas a un mazo existente.
+La cantidad admite entre 3 y 20 preguntas. El modelo debe devolver la cantidad
+solicitada, preguntas distintas y fuentes válidas; si falla no se guarda un
+mazo incompleto. Las preguntas deben respetar el enfoque elegido.
 
-Si se elimina una fuente, la ficha conserva el contenido del usuario y marca la fuente como no disponible. Si desaparece la respuesta original de un informe, el informe informa que ya no está disponible. No se guarda un supuesto texto de IA de respaldo ni una cita inventada.
+Las citas abren la página PDF, el intervalo audiovisual o la hoja y celda.
+Una ficha puede conservar varias citas. La creación y edición manual continúan
+disponibles; una referencia manual de página sólo corresponde a PDF.
+
+En **Repasar**, recuerda o escribe la respuesta antes de revelarla. Después
+elige Otra vez (10 minutos), Difícil (1 día), Bien (3 días) o Fácil (7 días).
+El progreso conserva registros reales y `assessment=self_reported`: los
+contenidos se generan con IA, mientras la valoración del repaso es personal.
+No se presenta como una nota automática de exactitud.
 
 ## API y persistencia
 
-El router `/api/v1/learning` expone:
+`POST /api/v1/learning/generate` recibe `workspace_id`, `kind`
+(`summary`, `questions`, `deck`), `document_ids`, `provider`/`model`
+opcionales, `title`, `focus`, `count` y `deck_id` opcional. Devuelve
+la conversación/respuesta, investigaciones, mazo, fichas y cobertura.
 
-| Recurso | Operaciones |
-|---|---|
-| `/research` | GET (filtro `workspace_id`), POST |
-| `/research/{id}` | PATCH, DELETE |
-| `/decks` | GET (filtro `workspace_id`), POST |
-| `/decks/{id}` | PATCH, DELETE |
-| `/decks/{id}/cards` | GET |
-| `/cards` | POST |
-| `/cards/{id}` | PATCH, DELETE |
-| `/cards/{id}/reviews` | POST |
-| `/decks/{id}/reviews` | GET, hasta 500 registros recientes |
-| `/decks/{id}/progress` | GET, conteos de todos los repasos del mazo |
+Reutiliza el RAG del chat: búsqueda equilibrada, regiones PDF y clips nativos
+recuperados. El texto extraído puede consultarse durante la construcción del
+primer índice denso. Una fuente sin versión preparada debe procesarse primero.
 
-La migración `b531d1e3a920`, hija de `a421c9f2b810`, crea `researchentry`, `studydeck`, `studycard` y `studyreview`. Las respuestas citadas se resuelven desde el chat persistido; se rechazan mensajes incompletos, sin citas o de otro workspace. Las fichas conservan la versión documental usada al crearse.
+Las fichas salen de un esquema estructurado. El servidor valida cantidad,
+preguntas únicas e identificadores de evidencia, añade las citas y guarda
+banco/mazo/fichas en una transacción. Un fallo queda en la trazabilidad y no
+crea material parcial. IDs válidos prueban procedencia, no verdad factual.
 
-El frontend exporta `LabDesk({section: 'compare' | 'questions' | 'summaries'})` y `StudyDesk({section: 'cards' | 'decks' | 'review'})`. Estudio acepta enlaces con `workspace` y `deck` para abrir el mazo correcto.
+Los permisos cloud se verifican antes del envío. Si faltan, la interfaz abre
+Privacidad y conserva las opciones; no concede permisos automáticamente.
+Gemini espera la respuesta completa y admite un único reintento de conexión
+dentro del timeout, sin cambiar de proveedor. Cada generación utiliza una
+muestra recuperada, no todos los archivos completos.
+
+La traza incluye `learning.kind`, `requested_items`, `generated_items`,
+`research_ids`, `deck_id`, `storage_state`, modelos, tiempos y contexto.
+Los endpoints manuales `/research`, `/decks`, `/cards`, `/reviews` y
+`/progress` continúan disponibles. No se agrega una migración.
 
 ## Verificación
 
-`backend/tests/test_learning.py`: seis integraciones verifican conservación de citas de dos PDFs sintéticos, actualización de preguntas, rechazo de evidencias ausentes, páginas válidas, eliminación de fuentes, calendario y progreso persistidos, cascadas e independencia entre usuarios/workspaces. Pasaron en la base dedicada terminada en `_test`.
+`test_learning_generation.py` cubre generación, persistencia, repaso, referencias
+temporales/celdas, aislamiento, consentimiento y rechazo atómico de fuentes
+falsas, preguntas duplicadas, cantidades incompletas y cortes del proveedor.
+`test_learning.py` conserva las comprobaciones manuales y de progreso.
+`frontend/tests/learning.spec.ts` prueba generación, estados pendientes, guardado,
+preguntas/mazos, permisos, trazabilidad y el flujo manual.
 
-`frontend/tests/learning.spec.ts`: flujos de preguntas, creación de mazos/fichas, recarga del progreso y vista móvil; la prueba de comparación/resumen usa generación real sólo con `RUN_CLOUD_E2E=1` y permisos limitados a PDFs sintéticos de prueba.
+```powershell
+uv run --project backend python scripts/evaluate_learning.py --cloud
+uv run --project backend python scripts/evaluate_learning.py --cloud --native
+```
 
-Ambos flujos Chromium pasaron contra la imagen final: persistencia de fichas y
-autoevaluación en móvil, y comparación/resumen con citas generadas realmente
-para dos PDFs inventados. No se usaron documentos privados para las llamadas cloud.
+La aceptación real usa sólo los PDFs inventados de
+`docs/workspace-rag-results.json`, creados previamente con
+`scripts/evaluate_workspace_rag.py --cloud`. Guarda el resultado y el material
+generado en `docs/learning-ai-results.json`.
+
+La opción `--native` comprueba además las fuentes audiovisuales inventadas de
+`docs/native-media-results.json`: genera fichas y verifica que el presupuesto
+del audio cite su intervalo original a partir de 01:00. Deben existir primero
+los fixtures creados por `scripts/evaluate_native_media.py --cloud`.

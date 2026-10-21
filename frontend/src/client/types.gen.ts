@@ -219,6 +219,10 @@ export type CardPublic = {
      */
     source_available?: boolean;
     evidence?: EvidencePublic | null;
+    /**
+     * Evidences
+     */
+    evidences?: Array<EvidencePublic>;
 };
 
 /**
@@ -730,6 +734,81 @@ export type JobPublic = {
 };
 
 /**
+ * LearningGenerationInput
+ */
+export type LearningGenerationInput = {
+    /**
+     * Workspace Id
+     */
+    workspace_id: string;
+    /**
+     * Kind
+     */
+    kind: 'summary' | 'questions' | 'deck';
+    /**
+     * Document Ids
+     */
+    document_ids: Array<string>;
+    /**
+     * Provider
+     */
+    provider?: 'gemini' | 'ollama' | 'llamacpp' | 'openai-compatible' | 'embeddinggemma' | null;
+    /**
+     * Model
+     */
+    model?: string | null;
+    /**
+     * Title
+     */
+    title?: string;
+    /**
+     * Focus
+     */
+    focus?: string;
+    /**
+     * Count
+     */
+    count?: number;
+    /**
+     * Deck Id
+     */
+    deck_id?: string | null;
+};
+
+/**
+ * LearningGenerationPublic
+ */
+export type LearningGenerationPublic = {
+    /**
+     * Kind
+     */
+    kind: 'summary' | 'questions' | 'deck';
+    /**
+     * Conversation Id
+     */
+    conversation_id: string;
+    /**
+     * Message Id
+     */
+    message_id: string;
+    /**
+     * Research
+     */
+    research?: Array<ResearchPublic>;
+    deck?: DeckPublic | null;
+    /**
+     * Cards
+     */
+    cards?: Array<CardPublic>;
+    /**
+     * Coverage
+     */
+    coverage?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
  * LocalIndexPreparationPublic
  */
 export type LocalIndexPreparationPublic = {
@@ -1201,6 +1280,12 @@ export type SourceAnswer = {
      * Citations
      */
     citations?: Array<EvidencePublic>;
+    /**
+     * Usage
+     */
+    usage?: {
+        [key: string]: unknown;
+    };
 };
 
 /**
@@ -4015,6 +4100,31 @@ export type tracePermissionsResponses = {
      */
     200: unknown;
 };
+
+export type learningGenerateLearningData = {
+    body: LearningGenerationInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/learning/generate';
+};
+
+export type learningGenerateLearningErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type learningGenerateLearningError = learningGenerateLearningErrors[keyof learningGenerateLearningErrors];
+
+export type learningGenerateLearningResponses = {
+    /**
+     * Successful Response
+     */
+    200: LearningGenerationPublic;
+};
+
+export type learningGenerateLearningResponse = learningGenerateLearningResponses[keyof learningGenerateLearningResponses];
 
 export type learningListResearchData = {
     body?: never;

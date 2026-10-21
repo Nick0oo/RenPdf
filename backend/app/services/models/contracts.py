@@ -44,6 +44,9 @@ class TokenUsage(BaseModel):
 class MediaInput(BaseModel):
     data: bytes
     mime_type: Literal["audio/wav", "audio/mpeg", "video/mp4"]
+    source_id: int | None = Field(default=None, ge=1)
+    start_seconds: float | None = Field(default=None, ge=0)
+    end_seconds: float | None = Field(default=None, ge=0)
 
 
 class InferenceRequest(BaseModel):
@@ -54,6 +57,7 @@ class InferenceRequest(BaseModel):
     images: list[bytes] = Field(default_factory=list)
     media: list[MediaInput] = Field(default_factory=list)
     json_schema: dict[str, Any] | None = None
+    buffered: bool = False
 
 
 class InferenceResponse(BaseModel):

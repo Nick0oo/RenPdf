@@ -156,13 +156,25 @@ export function ExecutionTrace({
             Modo de respuesta:{" "}
             {trace.response_mode === "buffered_native"
               ? "Audiovisual completa"
-              : trace.response_mode === "stream"
-                ? "Por fragmentos"
-                : text(trace.response_mode)}{" "}
+              : trace.response_mode === "buffered"
+                ? "Completa"
+                : trace.response_mode === "stream"
+                  ? "Por fragmentos"
+                  : text(trace.response_mode)}{" "}
             · Intentos de transporte: {text(trace.transport_attempts)}
           </p>
         )}
       </div>
+      {Object.keys(object(trace.learning)).length > 0 && (
+        <div className="rounded-lg border bg-primary/5 p-4 text-sm">
+          <h4 className="font-medium">Material de estudio guardado</h4>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            Tipo: {text(object(trace.learning).kind)} · Elementos generados:{" "}
+            {text(object(trace.learning).generated_items)} · Guardado:{" "}
+            {text(object(trace.learning).storage_state)}
+          </p>
+        </div>
+      )}
       {pendingIndexes.length > 0 && (
         <p className="rounded-lg bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
           Búsqueda textual disponible mientras se preparan índices semánticos:{" "}

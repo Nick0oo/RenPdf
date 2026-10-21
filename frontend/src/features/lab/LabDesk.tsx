@@ -30,6 +30,7 @@ import {
   type ResearchEntry,
   type SourceAnswer,
 } from "./api"
+import { LearningGenerator } from "./LearningGenerator"
 import { SourceAnswers } from "./SourceAnswers"
 
 export type LabSection = "compare" | "questions" | "summaries"
@@ -40,16 +41,19 @@ const labels = {
 }
 const descriptions = {
   compare:
-    "Consulta el mismo tema en varios PDFs y revisa lo que respalda cada fuente.",
+    "Contrasta un mismo tema entre tus fuentes y conserva lo que respalda cada respuesta.",
   questions:
-    "Guarda tus dudas, trabaja con evidencia y conserva las respuestas que quieras investigar.",
+    "La IA prepara preguntas con respuestas y citas. El banco queda aquí y su mazo se repasa en Estudio.",
   summaries:
-    "Convierte una respuesta citada en un informe que puedes volver a leer y exportar.",
+    "Prepara resúmenes con IA a partir de tus fuentes, revisa sus citas y guarda lo esencial para estudiar.",
 }
 
 export function LabDesk({ section = "compare" }: { section?: LabSection }) {
   const cache = useQueryClient()
-  const [workspace, setWorkspace] = useState("")
+  const [workspace, setWorkspace] = useState(
+    () => new URLSearchParams(window.location.search).get("workspace") ?? "",
+  )
+  const [manualOpen, setManualOpen] = useState(section === "compare")
   const [ids, setIds] = useState<string[]>([])
   const [title, setTitle] = useState("")
   const [question, setQuestion] = useState("")
@@ -190,10 +194,7 @@ export function LabDesk({ section = "compare" }: { section?: LabSection }) {
         },
       })
       setConversationId(conversation.id)
-      const groups =
-        section === "compare"
-          ? selected.map((document) => [document.id])
-          : [ids]
+      const groups = [ids]
       for (const group of groups) {
         if (controller.signal.aborted) break
         setPartial("")
@@ -205,8 +206,10 @@ export function LabDesk({ section = "compare" }: { section?: LabSection }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               question:
-                question.trim() ||
-                "Resume los puntos principales con sus fuentes.",
+                section === "compare"
+                  ? `Compara las fuentes seleccionadas y presenta una síntesis conjunta con diferencias, coincidencias y citas de cada documento. Tema: ${question.trim() || "puntos principales"}`
+                  : question.trim() ||
+                    "Resume los puntos principales con sus fuentes.",
               document_ids: group,
             }),
             signal: controller.signal,
@@ -338,12 +341,21 @@ export function LabDesk({ section = "compare" }: { section?: LabSection }) {
   return (
     <div className="space-y-6">
       <header>
+        <p className="mb-2 text-xs font-medium text-primary">
+          LABORATORIO · PREPARA TU MATERIAL
+        </p>
         <h1 className="text-3xl font-semibold tracking-tight">
           {labels[section]}
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           {descriptions[section]}
         </p>
+        <a
+          className="mt-3 inline-block text-sm font-medium text-primary underline underline-offset-4"
+          href={`/study/decks${workspace ? `?workspace=${workspace}` : ""}`}
+        >
+          Ir a Estudio para repasar tus mazos →
+        </a>
       </header>
       <div className="max-w-md">
         <Label className="mb-2 block">Workspace</Label>
@@ -361,7 +373,7 @@ export function LabDesk({ section = "compare" }: { section?: LabSection }) {
       </div>
       {!spaces.isPending && !spaces.data?.length && (
         <p className="rounded-xl border border-dashed p-6 text-sm">
-          Crea un workspace y añade PDFs desde tus espacios para empezar.
+          Crea un workspace y añade tus fuentes para empezar.
         </p>
       )}
       {(error || queryError) && (
@@ -372,256 +384,285 @@ export function LabDesk({ section = "compare" }: { section?: LabSection }) {
           {error || errorMessage(queryError)}
         </p>
       )}
+      {workspace && section !== "compare" && (
+        <LearningGenerator
+          key={`${workspace}:${section}`}
+          workspaceId={workspace}
+          kind={section === "summaries" ? "summary" : "questions"}
+          disabled={busy}
+          onBusyChange={setBusy}
+        />
+      )}
       {workspace && (
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-          <section
-            className="min-w-0 space-y-5 rounded-2xl border p-5 md:p-6"
-            aria-label="Nueva investigación"
+        <div
+          className={
+            manualOpen
+              ? "grid items-start gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
+              : "grid gap-6"
+          }
+        >
+          <details
+            open={manualOpen}
+            onToggle={(event) => setManualOpen(event.currentTarget.open)}
+            className="min-w-0 rounded-2xl border"
           >
-            <h2 className="text-lg font-semibold">
-              {editingEntry
-                ? "Editar investigación"
-                : section === "questions"
-                  ? "Una pregunta para investigar"
-                  : "Prepara tu consulta"}
-            </h2>
-            <div className="space-y-2">
-              <Label htmlFor="research-title">Título</Label>
-              <Input
-                id="research-title"
-                value={title}
-                maxLength={200}
-                disabled={busy}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Un nombre para volver a encontrarlo"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="research-question">
-                {section === "compare"
-                  ? "Tema o pregunta para ambas fuentes"
-                  : "Pregunta"}
-              </Label>
-              <textarea
-                id="research-question"
-                value={question}
-                maxLength={4000}
-                rows={3}
-                disabled={busy}
-                onChange={(event) => {
-                  setQuestion(event.target.value)
-                  setAnswers([])
-                  setSelectedMessage("")
-                }}
-                className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder={
-                  section === "summaries"
-                    ? "Resume los puntos principales con sus fuentes."
-                    : "¿Qué quieres comprobar en los documentos?"
-                }
-              />
-            </div>
-            <fieldset className="space-y-3">
-              <legend className="mb-3 text-sm font-medium">
-                Fuentes a consultar
-              </legend>
-              {(documents.data ?? []).map((document) => (
-                <label
-                  key={document.id}
-                  htmlFor={`lab-source-${document.id}`}
-                  className="flex items-start gap-3 text-sm"
-                >
-                  <Checkbox
-                    id={`lab-source-${document.id}`}
-                    checked={ids.includes(document.id)}
-                    disabled={busy || !document.current_version_id}
-                    onCheckedChange={(checked) => {
-                      setAnswers([])
-                      setIds(
-                        checked
-                          ? [...ids, document.id]
-                          : ids.filter((id) => id !== document.id),
-                      )
-                    }}
-                  />
-                  <span className="min-w-0 break-words">
-                    {document.title}
-                    {!document.current_version_id && (
-                      <span className="block text-xs text-muted-foreground">
-                        Procesa el PDF desde el workspace
-                      </span>
-                    )}
-                  </span>
-                </label>
-              ))}
-              {!documents.isPending && !documents.data?.length && (
-                <p className="text-sm text-muted-foreground">
-                  Añade PDFs a este workspace para consultar sus fuentes.
-                </p>
-              )}
-            </fieldset>
-            <div className="space-y-2">
-              <Label>Modelo de consulta</Label>
-              <ProviderModelSelect
-                providers={providers.data ?? []}
-                task="chat"
-                value={effectiveModel}
-                onValueChange={setModel}
-                label="Modelo de laboratorio"
-                disabled={busy}
-              />
-              <p className="text-xs leading-5 text-muted-foreground">
-                La consulta usa el permiso de chat de cada PDF. Una comparación
-                consulta cada fuente por separado; puedes revisar sus respuestas
-                antes de guardar.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={
-                  busy ||
-                  !effectiveModel ||
-                  (section === "compare"
-                    ? selected.length < 2 || !question.trim()
-                    : !selected.length ||
-                      (section === "questions" && !question.trim()))
-                }
-                onClick={() => void generate()}
-              >
-                {busy ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <FlaskConical size={15} />
-                )}
-                {section === "compare"
-                  ? "Consultar las fuentes"
-                  : "Consultar con citas"}
-              </Button>
-              {generating && (
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      if (pending.current)
-                        await ChatService.cancelGeneration({
-                          path: {
-                            conversation_id: pending.current.conversation,
-                            message_id: pending.current.message,
-                          },
-                        })
-                      abort.current?.abort()
-                    } catch (failure) {
-                      setError(errorMessage(failure))
-                    }
-                  }}
-                >
-                  Cancelar consulta
-                </Button>
-              )}
-            </div>
-            {conversationId && (
-              <a
-                className="block text-xs text-primary underline underline-offset-4"
-                href={`/workspaces/${workspace}`}
-              >
-                La consulta también queda en el historial del workspace
-              </a>
-            )}
-            {partial && (
-              <p
-                role="status"
-                className="whitespace-pre-wrap break-words text-sm leading-7"
-              >
-                {partial}
-              </p>
-            )}
-            <SourceAnswers answers={answers} />
-            <details className="border-t pt-4">
-              <summary className="cursor-pointer text-sm font-medium">
-                Usar una respuesta que ya existe
-              </summary>
-              <div className="mt-3 space-y-3">
-                <ChoiceSelect
-                  label="Chat de la investigación"
-                  placeholder="Elige un chat"
-                  value={existingConversation}
-                  onValueChange={(value) => {
-                    setExistingConversation(value)
+            <summary className="cursor-pointer px-5 py-4 text-sm font-medium">
+              {section === "compare"
+                ? "Consulta y comparación guiada"
+                : "Crear manualmente o usar un chat guardado"}
+            </summary>
+            <section
+              className="min-w-0 space-y-5 border-t p-5 md:p-6"
+              aria-label="Nueva investigación"
+            >
+              <h2 className="text-lg font-semibold">
+                {editingEntry
+                  ? "Editar investigación"
+                  : section === "questions"
+                    ? "Una pregunta para investigar"
+                    : "Prepara tu consulta"}
+              </h2>
+              <div className="space-y-2">
+                <Label htmlFor="research-title">Título</Label>
+                <Input
+                  id="research-title"
+                  value={title}
+                  maxLength={200}
+                  disabled={busy}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Un nombre para volver a encontrarlo"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="research-question">
+                  {section === "compare"
+                    ? "Tema o pregunta para ambas fuentes"
+                    : "Pregunta"}
+                </Label>
+                <textarea
+                  id="research-question"
+                  value={question}
+                  maxLength={4000}
+                  rows={3}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setQuestion(event.target.value)
+                    setAnswers([])
                     setSelectedMessage("")
                   }}
-                  disabled={busy}
-                  options={(conversations.data ?? []).map((conversation) => ({
-                    value: conversation.id,
-                    label: conversation.title,
-                  }))}
+                  className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder={
+                    section === "summaries"
+                      ? "Resume los puntos principales con sus fuentes."
+                      : "¿Qué quieres comprobar en los documentos?"
+                  }
                 />
-                <ChoiceSelect
-                  label="Respuesta con citas"
-                  placeholder="Elige una respuesta citada"
-                  value={selectedMessage}
-                  onValueChange={setSelectedMessage}
-                  disabled={busy}
-                  options={eligibleMessages.map((message) => ({
-                    value: message.id,
-                    label: message.content.slice(0, 100),
-                  }))}
-                />
-                {existingConversation &&
-                  !messages.isPending &&
-                  !eligibleMessages.length && (
-                    <p className="text-xs text-muted-foreground">
-                      Este chat aún no tiene respuestas terminadas con citas.
-                    </p>
-                  )}
-                <SourceAnswers answers={adopted ? [toSource(adopted)] : []} />
               </div>
-            </details>
-            <div className="space-y-2">
-              <Label htmlFor="research-notes">Notas de investigación</Label>
-              <textarea
-                id="research-notes"
-                value={notes}
-                rows={3}
-                maxLength={10000}
-                disabled={busy}
-                onChange={(event) => setNotes(event.target.value)}
-                className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Tus observaciones, diferencias o próximos pasos"
-              />
-            </div>
-            <Button
-              variant="outline"
-              disabled={
-                busy ||
-                (section === "questions" ? !question.trim() : !sources.length)
-              }
-              onClick={() => void save()}
-            >
-              <Plus size={15} />
-              {editingEntry
-                ? "Guardar cambios"
-                : section === "questions" && !sources.length
-                  ? "Guardar pregunta pendiente"
-                  : "Guardar investigación"}
-            </Button>
-            {editingEntry && (
+              <fieldset className="space-y-3">
+                <legend className="mb-3 text-sm font-medium">
+                  Fuentes a consultar
+                </legend>
+                {(documents.data ?? []).map((document) => (
+                  <label
+                    key={document.id}
+                    htmlFor={`lab-source-${document.id}`}
+                    className="flex items-start gap-3 text-sm"
+                  >
+                    <Checkbox
+                      id={`lab-source-${document.id}`}
+                      checked={ids.includes(document.id)}
+                      disabled={busy || !document.current_version_id}
+                      onCheckedChange={(checked) => {
+                        setAnswers([])
+                        setIds(
+                          checked
+                            ? [...ids, document.id]
+                            : ids.filter((id) => id !== document.id),
+                        )
+                      }}
+                    />
+                    <span className="min-w-0 break-words">
+                      {document.title}
+                      {!document.current_version_id && (
+                        <span className="block text-xs text-muted-foreground">
+                          Procesa el PDF desde el workspace
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                ))}
+                {!documents.isPending && !documents.data?.length && (
+                  <p className="text-sm text-muted-foreground">
+                    Añade PDFs a este workspace para consultar sus fuentes.
+                  </p>
+                )}
+              </fieldset>
+              <div className="space-y-2">
+                <Label>Modelo de consulta</Label>
+                <ProviderModelSelect
+                  providers={providers.data ?? []}
+                  task="chat"
+                  value={effectiveModel}
+                  onValueChange={setModel}
+                  label="Modelo de laboratorio"
+                  disabled={busy}
+                />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  La consulta usa el permiso de chat de cada PDF. Una
+                  comparación consulta cada fuente por separado; puedes revisar
+                  sus respuestas antes de guardar.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={
+                    busy ||
+                    !effectiveModel ||
+                    (section === "compare"
+                      ? selected.length < 2 || !question.trim()
+                      : !selected.length ||
+                        (section === "questions" && !question.trim()))
+                  }
+                  onClick={() => void generate()}
+                >
+                  {busy ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <FlaskConical size={15} />
+                  )}
+                  {section === "compare"
+                    ? "Consultar las fuentes"
+                    : "Consultar con citas"}
+                </Button>
+                {generating && (
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        if (pending.current)
+                          await ChatService.cancelGeneration({
+                            path: {
+                              conversation_id: pending.current.conversation,
+                              message_id: pending.current.message,
+                            },
+                          })
+                        abort.current?.abort()
+                      } catch (failure) {
+                        setError(errorMessage(failure))
+                      }
+                    }}
+                  >
+                    Cancelar consulta
+                  </Button>
+                )}
+              </div>
+              {conversationId && (
+                <a
+                  className="block text-xs text-primary underline underline-offset-4"
+                  href={`/workspaces/${workspace}`}
+                >
+                  La consulta también queda en el historial del workspace
+                </a>
+              )}
+              {partial && (
+                <p
+                  role="status"
+                  className="whitespace-pre-wrap break-words text-sm leading-7"
+                >
+                  {partial}
+                </p>
+              )}
+              <SourceAnswers answers={answers} workspaceId={workspace} />
+              <details className="border-t pt-4">
+                <summary className="cursor-pointer text-sm font-medium">
+                  Usar una respuesta que ya existe
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <ChoiceSelect
+                    label="Chat de la investigación"
+                    placeholder="Elige un chat"
+                    value={existingConversation}
+                    onValueChange={(value) => {
+                      setExistingConversation(value)
+                      setSelectedMessage("")
+                    }}
+                    disabled={busy}
+                    options={(conversations.data ?? []).map((conversation) => ({
+                      value: conversation.id,
+                      label: conversation.title,
+                    }))}
+                  />
+                  <ChoiceSelect
+                    label="Respuesta con citas"
+                    placeholder="Elige una respuesta citada"
+                    value={selectedMessage}
+                    onValueChange={setSelectedMessage}
+                    disabled={busy}
+                    options={eligibleMessages.map((message) => ({
+                      value: message.id,
+                      label: message.content.slice(0, 100),
+                    }))}
+                  />
+                  {existingConversation &&
+                    !messages.isPending &&
+                    !eligibleMessages.length && (
+                      <p className="text-xs text-muted-foreground">
+                        Este chat aún no tiene respuestas terminadas con citas.
+                      </p>
+                    )}
+                  <SourceAnswers
+                    answers={adopted ? [toSource(adopted)] : []}
+                    workspaceId={workspace}
+                  />
+                </div>
+              </details>
+              <div className="space-y-2">
+                <Label htmlFor="research-notes">Notas de investigación</Label>
+                <textarea
+                  id="research-notes"
+                  value={notes}
+                  rows={3}
+                  maxLength={10000}
+                  disabled={busy}
+                  onChange={(event) => setNotes(event.target.value)}
+                  className="w-full rounded-lg border bg-background p-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Tus observaciones, diferencias o próximos pasos"
+                />
+              </div>
               <Button
-                variant="ghost"
-                disabled={busy}
-                onClick={() => {
-                  setEditingEntry(undefined)
-                  setTitle("")
-                  setQuestion("")
-                  setNotes("")
-                  setAnswers([])
-                  setSelectedMessage("")
-                  setError("")
-                }}
+                variant="outline"
+                disabled={
+                  busy ||
+                  (section === "questions" ? !question.trim() : !sources.length)
+                }
+                onClick={() => void save()}
               >
-                Cancelar edición
+                <Plus size={15} />
+                {editingEntry
+                  ? "Guardar cambios"
+                  : section === "questions" && !sources.length
+                    ? "Guardar pregunta pendiente"
+                    : "Guardar investigación"}
               </Button>
-            )}
-          </section>
+              {editingEntry && (
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    setEditingEntry(undefined)
+                    setTitle("")
+                    setQuestion("")
+                    setNotes("")
+                    setAnswers([])
+                    setSelectedMessage("")
+                    setError("")
+                  }}
+                >
+                  Cancelar edición
+                </Button>
+              )}
+            </section>
+          </details>
           <section
             className="min-w-0 space-y-4"
             aria-label="Investigaciones guardadas"
@@ -664,6 +705,7 @@ export function LabDesk({ section = "compare" }: { section?: LabSection }) {
                         aria-label={`Editar ${entry.title}`}
                         disabled={busy}
                         onClick={() => {
+                          setManualOpen(true)
                           setEditingEntry(entry)
                           setTitle(entry.title)
                           setQuestion(entry.question)
@@ -712,7 +754,10 @@ export function LabDesk({ section = "compare" }: { section?: LabSection }) {
                       Revisar evidencia y respuestas
                     </summary>
                     <div className="mt-4">
-                      <SourceAnswers answers={entry.answers} />
+                      <SourceAnswers
+                        answers={entry.answers}
+                        workspaceId={workspace}
+                      />
                       {!entry.answers.length && (
                         <Button
                           variant="outline"
@@ -723,6 +768,7 @@ export function LabDesk({ section = "compare" }: { section?: LabSection }) {
                             setNotes(entry.notes)
                             setIds(entry.document_ids)
                             setAnswers([])
+                            setManualOpen(true)
                             setEditingEntry(entry)
                           }}
                         >
@@ -782,5 +828,6 @@ function toSource(message: MessagePublic): SourceAnswer {
     provider: message.provider,
     model: message.model,
     citations: message.citations ?? [],
+    usage: message.usage ?? undefined,
   }
 }

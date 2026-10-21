@@ -1,5 +1,6 @@
 import axios from "axios"
 import type { EvidencePublic } from "@/client"
+import { sourceLocation } from "@/features/media/location"
 import { apiRoot } from "@/features/research/api"
 
 export async function learningRequest<T>(
@@ -12,7 +13,7 @@ export async function learningRequest<T>(
     method,
     data: body,
     withCredentials: true,
-    timeout: 30000,
+    timeout: path === "/generate" ? 180000 : 30000,
   })
   if (
     !String(response.headers["content-type"] ?? "").includes(
@@ -37,6 +38,7 @@ export type SourceAnswer = {
   provider: string | null
   model: string | null
   citations: EvidencePublic[]
+  usage?: Record<string, unknown>
 }
 export type ResearchEntry = {
   id: string
@@ -75,6 +77,17 @@ export type Card = {
   source_title: string | null
   source_available: boolean
   evidence: EvidencePublic | null
+  evidences?: EvidencePublic[]
+}
+export type GenerationKind = "summary" | "questions" | "deck"
+export type Generation = {
+  kind: GenerationKind
+  conversation_id: string
+  message_id: string
+  research: ResearchEntry[]
+  deck: Deck | null
+  cards: Card[]
+  coverage: Record<string, unknown>
 }
 export type Review = {
   id: string
@@ -100,7 +113,7 @@ export function downloadResearch(entry: ResearchEntry) {
     entry.notes,
     ...entry.answers.map((answer) =>
       answer.available
-        ? `${answer.content}\n\n${answer.citations.map((cite) => `- Fuente ${cite.label}: ${cite.document_title}, p. ${cite.page_number}\n  ${cite.text}`).join("\n")}\n\nModelo: ${answer.provider ?? "no reportado"} / ${answer.model ?? "no reportado"}`
+        ? `${answer.content}\n\n${answer.citations.map((cite) => `- Fuente ${cite.label}: ${cite.document_title}, ${sourceLocation(cite)}\n  ${cite.text}`).join("\n")}\n\nModelo: ${answer.provider ?? "no reportado"} / ${answer.model ?? "no reportado"}`
         : "La respuesta original ya no está disponible.",
     ),
   ]
