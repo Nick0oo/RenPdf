@@ -22,8 +22,14 @@ from app.domain import (
     Job,
     now,
 )
-from app.services.models.contracts import EmbeddingInput, ProviderError
-from app.services.models.providers import GeminiProvider, get_provider, safe_error
+from app.services.documents.automatic_index import plan_local_index, restored_text_state
+from app.services.models.contracts import EmbeddingInput, MediaInput, ProviderError
+from app.services.models.providers import (
+    GeminiProvider,
+    NativeEmbeddingProvider,
+    get_provider,
+    safe_error,
+)
 from app.services.parsing.isolated import PageParser
 from app.services.parsing.pdf import element_data, structural_chunks
 from app.services.privacy.consent import require_consent
@@ -35,7 +41,19 @@ TERMINAL_STATES = {"SUCCEEDED", "FAILED", "CANCELLED"}
 
 def enqueue(job: Job) -> None:
     try:
-        process_task.apply_async(args=[str(job.id)], retry=False)
+        with Session(engine) as session:
+            document = session.get(Document, job.document_id)
+            queue = (
+                "index"
+                if job.kind == "index"
+                else "media"
+                if job.kind == "media_analysis"
+                or (document and document.source_type in {"audio", "video"})
+                else "extract"
+                if job.kind == "extract"
+                else "celery"
+            )
+        process_task.apply_async(args=[str(job.id)], queue=queue, retry=False)
     except Exception:
         # PostgreSQL is the durable outbox. Beat/startup dispatches this job later.
         pass
@@ -55,7 +73,7 @@ def check_cancel(session: Session, job: Job) -> None:
         raise ProviderError("CANCELLED", "Procesamiento cancelado por el usuario.")
 
 
-def extract_document(session: Session, job: Job, document: Document) -> None:
+def extract_document(session: Session, job: Job, document: Document) -> Job | None:
     storage = LocalStorage()
     if job.version_id:
         version = session.get(DocumentVersion, job.version_id)
@@ -149,6 +167,15 @@ def extract_document(session: Session, job: Job, document: Document) -> None:
                             span_end=len(element.text),
                         )
                     )
+            from app.services.vision.regions import visual_evidence
+
+            for figure in session.exec(
+                select(DocumentElement).where(
+                    col(DocumentElement.page_id) == page.id,
+                    col(DocumentElement.element_type) == "figure",
+                )
+            ).all():
+                visual_evidence(session, document, page, figure)
             if page.extraction_status in {"OCR_REQUIRED", "OCR_UNAVAILABLE"}:
                 degraded_pages.append(number)
             job.checkpoint = number
@@ -190,13 +217,36 @@ def extract_document(session: Session, job: Job, document: Document) -> None:
         )
     )
     session.add_all([version, document])
+    preparation = plan_local_index(session, document, extraction_job=job)
+    version.artifact_manifest = {
+        **version.artifact_manifest,
+        "local_index_preparation": {
+            "state": preparation.state,
+            "reason": preparation.reason,
+            "job_id": str(preparation.job.id) if preparation.job else None,
+        },
+    }
+    session.add(version)
+    # The extraction result and its next outbox job commit atomically.
     update_job(session, job, state="SUCCEEDED", stage="extracted", progress=100)
+    return preparation.job if preparation.created else None
 
 
 def index_document(session: Session, job: Job, document: Document) -> None:
-    if not document.current_version_id:
+    target_version = job.version_id or document.current_version_id
+    native_preparation = bool(job.parameters.get("native_preparation"))
+    version = session.get(DocumentVersion, target_version) if target_version else None
+    if not version or version.document_id != document.id:
         raise ProviderError(
             "NO_VERSION", "Primero completa la extracción del documento."
+        )
+    target_version = version.id
+    if target_version != document.current_version_id and not (
+        native_preparation
+        and version.artifact_manifest.get("analysis_mode") == "native_embeddings"
+    ):
+        raise ProviderError(
+            "VERSION_CHANGED", "La versión cambió; prepara su nuevo índice."
         )
     parameters = job.parameters
     provider_name, model, dimensions = (
@@ -205,28 +255,43 @@ def index_document(session: Session, job: Job, document: Document) -> None:
         parameters["dimensions"],
     )
     require_consent(session, [document.id], provider_name, "embeddings")
-    provider = get_provider(provider_name)
+    provider = (
+        get_provider(provider_name, timeout=int(parameters["timeout_seconds"]))
+        if parameters.get("auto_index_local")
+        else get_provider(provider_name)
+    )
     modality = parameters.get("modality", "text")
+    if (
+        version.artifact_manifest.get("analysis_mode") == "native_embeddings"
+        and modality != "multimodal"
+    ):
+        raise ProviderError(
+            "MULTIMODAL_REQUIRED",
+            "Las referencias nativas requieren embeddings de sus clips, no de sus etiquetas.",
+        )
     if modality == "multimodal":
         require_consent(session, [document.id], provider_name, "multimodal_embeddings")
-        if not isinstance(provider, GeminiProvider) or "embedding-2" not in model:
+        if not isinstance(provider, NativeEmbeddingProvider) and (
+            not isinstance(provider, GeminiProvider) or "embedding-2" not in model
+        ):
             raise ProviderError(
                 "MULTIMODAL_UNSUPPORTED",
-                "Selecciona Gemini Embedding 2 para este perfil.",
+                "Selecciona EmbeddingGemma 2 nativo o Gemini Embedding 2 para este perfil.",
             )
-        from app.services.vision.regions import visual_evidence
+    from app.services.vision.regions import visual_evidence
 
-        figures = session.exec(
-            select(DocumentElement, DocumentPage)
-            .select_from(DocumentElement)
-            .join(DocumentPage, col(DocumentPage.id) == col(DocumentElement.page_id))
-            .where(
-                col(DocumentPage.version_id) == document.current_version_id,
-                col(DocumentElement.element_type) == "figure",
-            )
-        ).all()
-        for element, page in figures:
-            visual_evidence(session, document, page, element)
+    # Backfill visual provenance for previously extracted documents as well.
+    figures = session.exec(
+        select(DocumentElement, DocumentPage)
+        .select_from(DocumentElement)
+        .join(DocumentPage, col(DocumentPage.id) == col(DocumentElement.page_id))
+        .where(
+            col(DocumentPage.version_id) == target_version,
+            col(DocumentElement.element_type) == "figure",
+        )
+    ).all()
+    for element, page in figures:
+        visual_evidence(session, document, page, element)
     models = provider.discover()
     descriptor = next((item for item in models if item.id == model), None)
     if not descriptor or descriptor.capabilities.embeddings == "unsupported":
@@ -261,17 +326,31 @@ def index_document(session: Session, job: Job, document: Document) -> None:
         session.flush()
     if parameters.get("index_id"):
         index = session.get(DocumentIndex, uuid.UUID(parameters["index_id"]))
-        if not index or index.profile_id != profile.id:
+        if (
+            not index
+            or index.profile_id != profile.id
+            or index.version_id != target_version
+        ):
             raise ProviderError(
                 "PROFILE_CHANGED", "El modelo cambió. Inicia una nueva reindexación."
             )
     else:
-        index = DocumentIndex(
-            version_id=document.current_version_id, profile_id=profile.id
-        )
+        index = session.exec(
+            select(DocumentIndex).where(
+                col(DocumentIndex.version_id) == target_version,
+                col(DocumentIndex.profile_id) == profile.id,
+                col(DocumentIndex.status) == "READY",
+            )
+        ).first()
+        reused_index = bool(index)
+        index = index or DocumentIndex(version_id=target_version, profile_id=profile.id)
         session.add(index)
         session.flush()
-        job.parameters = {**parameters, "index_id": str(index.id)}
+        job.parameters = {
+            **parameters,
+            "index_id": str(index.id),
+            "reused_existing_index": reused_index,
+        }
         session.add(job)
         session.commit()
     total_chunks = session.exec(
@@ -296,7 +375,16 @@ def index_document(session: Session, job: Job, document: Document) -> None:
         statement = select(Chunk).where(col(Chunk.version_id) == index.version_id)
         if cursor:
             statement = statement.where(col(Chunk.id) > cursor)
-        chunks = session.exec(statement.order_by(col(Chunk.id)).limit(4)).all()
+        batch_size = (
+            1
+            if document.source_type in {"audio", "video"}
+            or (
+                modality == "multimodal"
+                and isinstance(provider, NativeEmbeddingProvider)
+            )
+            else 4
+        )
+        chunks = session.exec(statement.order_by(col(Chunk.id)).limit(batch_size)).all()
         if not chunks:
             break
         cursor = chunks[-1].id
@@ -307,9 +395,59 @@ def index_document(session: Session, job: Job, document: Document) -> None:
             for chunk in chunks
             if not session.get(ChunkEmbedding, (chunk.id, index.id))
         ]
+        # Exact native clip hashes + immutable model profile permit vector reuse
+        # across versions. No transcript, decoder or model request is repeated.
+        uncached = []
+        reused_vectors = 0
+        for chunk in batch:
+            cached = (
+                session.exec(
+                    select(ChunkEmbedding)
+                    .join(Chunk, col(Chunk.id) == col(ChunkEmbedding.chunk_id))
+                    .join(
+                        DocumentIndex,
+                        col(DocumentIndex.id) == col(ChunkEmbedding.index_id),
+                    )
+                    .join(
+                        DocumentVersion,
+                        col(DocumentVersion.id) == col(Chunk.version_id),
+                    )
+                    .join(
+                        Document, col(Document.id) == col(DocumentVersion.document_id)
+                    )
+                    .where(
+                        col(Document.owner_id) == document.owner_id,
+                        col(DocumentIndex.profile_id) == profile.id,
+                        col(DocumentIndex.status) == "READY",
+                        col(Chunk.content_hash) == chunk.content_hash,
+                        col(Chunk.chunking_profile) == "native-media-v1",
+                    )
+                    .limit(1)
+                ).first()
+                if chunk.chunking_profile == "native-media-v1"
+                else None
+            )
+            if cached:
+                session.add(
+                    ChunkEmbedding(
+                        chunk_id=chunk.id, index_id=index.id, embedding=cached.embedding
+                    )
+                )
+                reused_vectors += 1
+            else:
+                uncached.append(chunk)
+        batch = uncached
+        if reused_vectors:
+            job.parameters = {
+                **job.parameters,
+                "vectors_reused": job.parameters.get("vectors_reused", 0)
+                + reused_vectors,
+            }
         if batch:
             require_consent(session, [document.id], provider_name, "embeddings")
-            if modality == "multimodal" and isinstance(provider, GeminiProvider):
+            if modality == "multimodal" and isinstance(
+                provider, (GeminiProvider, NativeEmbeddingProvider)
+            ):
                 from app.services.vision.regions import region_image
 
                 require_consent(
@@ -336,7 +474,21 @@ def index_document(session: Session, job: Job, document: Document) -> None:
                         else None
                     )
                     inputs.append(
-                        EmbeddingInput(text=chunk.contextualized_text, image=image)
+                        EmbeddingInput(
+                            text=""
+                            if element
+                            and element.structured_content.get("native_reference")
+                            else chunk.contextualized_text,
+                            image=image,
+                            media=MediaInput(
+                                data=LocalStorage()
+                                .path(element.structured_content["media_key"])
+                                .read_bytes(),
+                                mime_type=element.structured_content["mime_type"],
+                            )
+                            if element and element.start_seconds is not None
+                            else None,
+                        )
                     )
                 vectors = provider.embed_multimodal(
                     model, inputs, dimensions, before_send=authorize_send
@@ -359,6 +511,7 @@ def index_document(session: Session, job: Job, document: Document) -> None:
                     )
                 )
         job.progress = min(95, int(processed / total_chunks * 95))
+        job.checkpoint = processed
         job.stage, job.updated_at = "embedding", now()
         session.add(job)
         session.commit()
@@ -373,14 +526,22 @@ def index_document(session: Session, job: Job, document: Document) -> None:
         .select_from(Chunk)
         .where(col(Chunk.version_id) == index.version_id)
     ).one()
-    if count != current_chunk_count or index.version_id != document.current_version_id:
+    session.refresh(document)
+    previous_version = parameters.get("previous_version_id")
+    version_unchanged = index.version_id == document.current_version_id or (
+        native_preparation
+        and (str(document.current_version_id) if document.current_version_id else None)
+        == previous_version
+    )
+    if count != current_chunk_count or not version_unchanged:
         raise ProviderError(
             "INDEX_VALIDATION",
             "El índice no coincide con la versión y los fragmentos actuales.",
         )
     index.status = "READY"
+    document.current_version_id = target_version
     document.active_index_id = index.id
-    version = session.get(DocumentVersion, document.current_version_id)
+    version = session.get(DocumentVersion, target_version)
     degraded = bool(version and version.artifact_manifest.get("ocr_pending_pages"))
     document.status = "DEGRADED" if degraded else "READY"
     session.add_all([index, document])
@@ -404,12 +565,40 @@ def process_job(job_id: str) -> None:
             ).scalar()
             if not acquired:
                 return
+            next_job = None
             try:
                 update_job(
                     session, job, state="RUNNING", error_code=None, error_message=None
                 )
                 if job.kind == "extract":
-                    extract_document(session, job, document)
+                    if document.source_type == "pdf":
+                        next_job = extract_document(session, job, document)
+                    elif document.source_type == "spreadsheet":
+                        from app.services.parsing.spreadsheet_extraction import (
+                            extract_spreadsheet,
+                        )
+
+                        next_job = extract_spreadsheet(session, job, document)
+                    else:
+                        from app.services.parsing.media_analysis import prepare_media
+
+                        next_job = prepare_media(session, job, document)
+                elif job.kind == "media_analysis":
+                    from app.services.parsing.media_analysis import analyze_media
+
+                    if not document.current_version_id:
+                        document.status, document.warning = "ANALYZING", None
+                        session.add(document)
+                        session.commit()
+                    next_job = analyze_media(session, job, document)
+                elif job.kind == "native_prepare":
+                    from app.services.parsing.native_media import prepare_native_media
+
+                    if not document.active_index_id:
+                        document.status = "NATIVE_PREPARING"
+                        session.add(document)
+                        session.commit()
+                    next_job = prepare_native_media(session, job, document)
                 elif job.kind == "index":
                     index_document(session, job, document)
                 elif job.kind in {"questions", "summary"}:
@@ -430,8 +619,33 @@ def process_job(job_id: str) -> None:
                 if isinstance(error, ValueError):
                     failure = ProviderError(
                         "PARSING_FAILED",
-                        "No fue posible procesar el PDF con el motor configurado.",
+                        "No fue posible procesar la fuente con el motor configurado.",
                     )
+                if (
+                    job.kind == "index"
+                    and job.parameters.get("auto_index_local")
+                    and not document.active_index_id
+                ):
+                    document.status = restored_text_state(session, document)
+                    session.add(document)
+                if (
+                    job.kind == "index"
+                    and job.parameters.get("native_preparation")
+                    and not document.active_index_id
+                ):
+                    document.status, document.warning = "MEDIA_READY", failure.message
+                    session.add(document)
+                if (
+                    job.kind in {"media_analysis", "native_prepare"}
+                    and not document.current_version_id
+                ):
+                    document.status = (
+                        "MEDIA_READY"
+                        if failure.code == "CANCELLED" or job.kind == "native_prepare"
+                        else "ANALYSIS_FAILED"
+                    )
+                    document.warning = failure.message
+                    session.add(document)
                 update_job(
                     session,
                     job,
@@ -441,6 +655,8 @@ def process_job(job_id: str) -> None:
                 )
             finally:
                 lock.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": lock_key})
+            if next_job:
+                enqueue(next_job)
 
 
 @celery_app.task(name="research.process")

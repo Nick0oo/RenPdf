@@ -8,6 +8,7 @@ import {
   FileText,
   LoaderCircle,
   MessageSquare,
+  MoreHorizontal,
   Shield,
   Sparkles,
   Square,
@@ -27,14 +28,25 @@ import type {
 } from "@/client"
 import { ChatService, DocumentsService } from "@/client"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { sourceLocation } from "@/features/media/location"
 import { apiRoot, errorMessage } from "@/features/research/api"
 import { chatDate } from "@/features/research/presentation"
+import { ExecutionTrace } from "@/features/trace/ExecutionTrace"
+import { RagInspector } from "@/features/trace/RagInspector"
 
 type Props = {
   conversation: ConversationPublic
   documents: DocumentPublic[]
   draft?: { text: string; elementId?: string; vision?: boolean; nonce: number }
   onCitation: (source: EvidencePublic) => void
+  embedded?: boolean
+  modelPending?: boolean
   onManageSources: (reason?: string) => void
 }
 
@@ -44,6 +56,8 @@ export function ChatPanel({
   draft,
   onCitation,
   onManageSources,
+  embedded = false,
+  modelPending = false,
 }: Props) {
   const cache = useQueryClient()
   const [question, setQuestion] = useState("")
@@ -84,7 +98,7 @@ export function ChatPanel({
           path: { document_id: documents[0]?.id ?? "" },
         })
       ).data,
-    enabled: !!documents[0],
+    enabled: !!documents[0]?.current_version_id,
     refetchInterval: 5000,
   })
   useEffect(() => {
@@ -109,7 +123,7 @@ export function ChatPanel({
   useEffect(() => () => abort.current?.abort(), [])
 
   const send = async () => {
-    if (!question.trim() || generating || !searchable) return
+    if (!question.trim() || generating || !searchable || modelPending) return
     const submitted = question.trim()
     setError("")
     setErrorCode("")
@@ -141,10 +155,18 @@ export function ChatPanel({
       )
       if (!response.ok || !response.body) {
         const detail = await response.json().catch(() => null)
+        const failure = detail?.detail ?? detail
+        if (failure?.code === "CONSENT_REQUIRED") {
+          setErrorCode("CONSENT_REQUIRED")
+          setQuestion((current) => current || submitted)
+          onManageSources("CONSENT_REQUIRED")
+        }
         throw new Error(
           typeof detail?.detail === "string"
             ? detail.detail
-            : "No se pudo iniciar la respuesta. Verifica tu sesión.",
+            : typeof failure?.message === "string"
+              ? failure.message
+              : "No se pudo iniciar la respuesta. Verifica tu sesión.",
         )
       }
       const reader = response.body.getReader(),
@@ -172,6 +194,10 @@ export function ChatPanel({
             setError(data.message)
             setErrorCode(data.code ?? "")
             setPartial("")
+            if (data.code === "CONSENT_REQUIRED") {
+              setQuestion((current) => current || submitted)
+              onManageSources("CONSENT_REQUIRED")
+            }
           }
           boundary = buffer.indexOf("\n\n")
         }
@@ -216,6 +242,12 @@ export function ChatPanel({
   const searchable =
     documents.length > 0 &&
     documents.every((document) => !!document.current_version_id)
+  const indexing = documents.filter(
+    (document) =>
+      !!document.current_version_id &&
+      document.status === "INDEXING" &&
+      !document.active_index_id,
+  )
   const processing = documents.filter(
     (document) => !document.current_version_id,
   )
@@ -238,77 +270,99 @@ export function ChatPanel({
   return (
     <section
       aria-label="Chat con tus documentos"
-      className="relative flex h-full min-h-[360px] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm"
+      className={
+        embedded
+          ? "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
+          : "relative flex h-full min-h-[360px] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm"
+      }
     >
-      <header className="flex shrink-0 items-center gap-3 border-b px-4 py-4">
-        <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <MessageSquare size={18} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2
-            className="truncate text-sm font-semibold"
-            title={conversation.title}
+      {!embedded && (
+        <header className="flex shrink-0 items-center gap-3 border-b px-4 py-4">
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <MessageSquare size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2
+              className="truncate text-sm font-semibold"
+              title={conversation.title}
+            >
+              {conversation.title}
+            </h2>
+            <p className="mt-1 truncate text-[11px] text-muted-foreground">
+              {documents.length}{" "}
+              {documents.length === 1
+                ? "fuente en esta conversación"
+                : "fuentes en esta conversación"}{" "}
+              · {conversation.provider}
+            </p>
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Exportar Markdown"
+            title="Exportar conversación en Markdown"
+            onClick={() => void exportChat("markdown")}
           >
-            {conversation.title}
-          </h2>
-          <p className="mt-1 truncate text-[11px] text-muted-foreground">
-            {documents.length}{" "}
-            {documents.length === 1
-              ? "PDF en esta conversación"
-              : "PDFs en esta conversación"}{" "}
-            · {conversation.provider}
+            <Download size={16} />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="Exportar JSON"
+            className="px-2 text-xs"
+            onClick={() => void exportChat("json")}
+          >
+            JSON
+          </Button>
+        </header>
+      )}
+      {!embedded && (
+        <div className="flex shrink-0 items-center gap-2 border-b bg-muted/20 px-4 py-2.5">
+          <FileText size={13} className="shrink-0 text-primary" />
+          <p
+            className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
+            title={documents.map((document) => document.title).join(", ")}
+          >
+            {documents.map((document) => document.title).join(" · ") ||
+              "Añade una fuente para preguntar"}
           </p>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-medium text-primary hover:underline"
+            onClick={() => onManageSources()}
+          >
+            Gestionar fuentes
+          </button>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label="Exportar Markdown"
-          title="Exportar conversación en Markdown"
-          onClick={() => void exportChat("markdown")}
-        >
-          <Download size={16} />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label="Exportar JSON"
-          className="px-2 text-xs"
-          onClick={() => void exportChat("json")}
-        >
-          JSON
-        </Button>
-      </header>
-      <div className="flex shrink-0 items-center gap-2 border-b bg-muted/20 px-4 py-2.5">
-        <FileText size={13} className="shrink-0 text-primary" />
-        <p
-          className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
-          title={documents.map((document) => document.title).join(", ")}
-        >
-          {documents.map((document) => document.title).join(" · ") ||
-            "Añade un PDF para preguntar"}
-        </p>
-        <button
-          type="button"
-          className="shrink-0 text-xs font-medium text-primary hover:underline"
-          onClick={() => onManageSources()}
-        >
-          Gestionar fuentes
-        </button>
-      </div>
+      )}
       {processing.length > 0 && (
         <div
           role="status"
           className="flex shrink-0 items-start gap-2 bg-amber-500/5 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground"
         >
           <LoaderCircle size={14} className="mt-0.5 shrink-0" />
-          <span>
-            {`${processing.length} ${processing.length === 1 ? "PDF todavía no tiene" : "PDFs todavía no tienen"} texto disponible. Espera a que termine la extracción o elige las fuentes ya extraídas en Fuentes y permisos.`}
+          <span className="line-clamp-2 sm:line-clamp-none">
+            {`${processing.length} ${processing.length === 1 ? "fuente todavía no tiene" : "fuentes todavía no tienen"} evidencia disponible. Espera al procesamiento; abre los audios o videos para preparar su índice nativo, o desmárcalos para consultar las fuentes listas.`}
+          </span>
+        </div>
+      )}
+      {indexing.length > 0 && (
+        <div
+          role="status"
+          className="flex shrink-0 items-start gap-2 bg-primary/5 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground"
+        >
+          <LoaderCircle size={14} className="mt-0.5 shrink-0 animate-spin" />
+          <span className="line-clamp-2 sm:line-clamp-none">
+            Búsqueda textual disponible en {indexing.length}{" "}
+            {indexing.length === 1 ? "fuente extraída" : "fuentes extraídas"}.
+            Estamos preparando su índice semántico en segundo plano.
+            {processing.length === 0 && " Puedes preguntar mientras termina."}
           </span>
         </div>
       )}
       <div
         ref={viewport}
-        className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 py-6 sm:px-5"
+        className="min-h-0 flex-1 space-y-7 overflow-y-auto overscroll-contain px-4 py-3 md:px-6 md:py-7"
         data-testid="chat-messages"
         onScroll={(event) => {
           const area = event.currentTarget
@@ -345,11 +399,11 @@ export function ChatPanel({
         {!messages.isPending && !messages.data?.length && !streaming && (
           <div className="mx-auto max-w-md py-2">
             <h3 className="text-lg font-semibold tracking-tight">
-              ¿Qué quieres saber del PDF?
+              ¿Qué quieres saber de tus fuentes?
             </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Pregunta por un dato o una idea. Las citas te llevan a la página
-              original.
+              Pregunta por un dato o una idea. Las citas abren la página, celda
+              o minuto que respalda cada respuesta.
             </p>
             <div className="mt-4 grid gap-2 text-left sm:grid-cols-2">
               {[
@@ -380,8 +434,8 @@ export function ChatPanel({
             key={message.id}
             className={
               message.role === "user"
-                ? "ml-auto max-w-[94%] rounded-2xl rounded-tr-sm border border-primary/10 bg-primary/[0.07] px-4 py-3"
-                : "min-w-0"
+                ? "ml-auto max-w-[70ch] rounded-2xl rounded-tr-sm border border-primary/10 bg-primary/[0.07] px-4 py-3"
+                : "mx-auto w-full max-w-[70ch] min-w-0"
             }
           >
             <div className="mb-2 flex items-center gap-2">
@@ -456,7 +510,7 @@ export function ChatPanel({
                       <span className="block font-semibold text-primary">
                         Fuente {source.label}{" "}
                         <span className="font-normal">
-                          · p. {source.page_number}
+                          · {sourceLocation(source)}
                         </span>
                       </span>
                       <span className="mt-1 block max-w-40 truncate text-[11px] text-muted-foreground">
@@ -536,7 +590,7 @@ export function ChatPanel({
                 {message.model && (
                   <details className="w-full">
                     <summary className="cursor-pointer text-[10px]">
-                      Detalles de respuesta
+                      Detalles de respuesta y RAG
                     </summary>
                     <p className="mt-1 text-[10px]">
                       {message.model} ·{" "}
@@ -544,6 +598,11 @@ export function ChatPanel({
                         ? "Búsqueda semántica y en texto"
                         : "Búsqueda en texto"}
                     </p>
+                    <ExecutionTrace
+                      value={message.usage?.trace}
+                      documents={documents}
+                    />
+                    <RagInspector messageId={message.id} />
                   </details>
                 )}
               </div>
@@ -620,7 +679,7 @@ export function ChatPanel({
           event.preventDefault()
           void send()
         }}
-        className="shrink-0 border-t bg-muted/10 p-3 sm:p-4"
+        className="mx-auto w-full max-w-[min(100%,54rem)] shrink-0 bg-background px-3 pb-2 pt-2 md:px-6 md:pb-5 md:pt-3"
       >
         {!!suggestions.data?.questions?.length && !messages.data?.length && (
           <div className="mb-3 max-h-24 space-y-1 overflow-y-auto">
@@ -661,8 +720,8 @@ export function ChatPanel({
             aria-label="Pregunta sobre tus documentos"
             placeholder={
               searchable
-                ? "Escribe tu pregunta sobre el PDF…"
-                : "Tu pregunta, cuando el PDF tenga texto disponible…"
+                ? "Escribe tu pregunta sobre las fuentes…"
+                : "Escribe mientras preparamos tus fuentes…"
             }
             value={question}
             rows={2}
@@ -678,7 +737,7 @@ export function ChatPanel({
                 if (searchable) void send()
               }
             }}
-            className="max-h-36 min-h-16 w-full resize-none bg-transparent px-2 py-1.5 text-sm leading-6 outline-none"
+            className="max-h-36 min-h-12 w-full resize-none bg-transparent px-2 py-1.5 text-sm leading-6 outline-none md:min-h-16"
           />
           <div className="flex items-center justify-between gap-2 px-1">
             <span className="text-[10px] text-muted-foreground">
@@ -698,22 +757,46 @@ export function ChatPanel({
               <Button
                 size="sm"
                 className="rounded-lg"
-                disabled={!question.trim() || !searchable}
+                disabled={!question.trim() || !searchable || modelPending}
               >
                 <ArrowUp size={15} /> Preguntar
               </Button>
             )}
           </div>
         </div>
-        <p className="mt-2 text-center text-[10px] leading-4 text-muted-foreground">
-          {searchable &&
-          documents.some(
-            (document) =>
-              !document.active_index_id && document.current_version_id,
-          )
-            ? "Puedes consultar el texto extraído. Un índice mejora la búsqueda por significado."
-            : "Abre las citas para comprobar cada respuesta en tu PDF."}
-        </p>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="flex-1 text-center text-[10px] leading-4 text-muted-foreground">
+            {searchable &&
+            documents.some(
+              (document) =>
+                !document.active_index_id && document.current_version_id,
+            )
+              ? "Puedes consultar el texto extraído. Un índice mejora la búsqueda por significado."
+              : "Abre las citas para comprobar la página, celda o minuto original."}
+          </p>
+          {embedded && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Acciones de la conversación"
+                >
+                  <MoreHorizontal size={15} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => void exportChat("markdown")}>
+                  <Download size={14} /> Exportar Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void exportChat("json")}>
+                  <Download size={14} /> Exportar JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </form>
     </section>
   )

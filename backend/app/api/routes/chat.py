@@ -156,8 +156,15 @@ def export_conversation(
     for row in rows:
         parts.append(f"## {row.role}\n\n{row.content}\n")
         for source in row.citations:
+            location = (
+                f"hoja {source.sheet_name}, celda {source.cell_range}"
+                if source.sheet_name and source.cell_range
+                else f"{source.start_seconds:.3f}–{source.end_seconds:.3f} segundos"
+                if source.start_seconds is not None and source.end_seconds is not None
+                else f"página {source.page_number}"
+            )
             parts.append(
-                f"- Fuente {source.label}: {source.document_title}, página {source.page_number}, versión {source.version_id}, elemento {source.element_id}\n"
+                f"- Fuente {source.label}: {source.document_title}, {location}, versión {source.version_id}, elemento {source.element_id}\n"
             )
     return Response(
         "\n".join(parts),

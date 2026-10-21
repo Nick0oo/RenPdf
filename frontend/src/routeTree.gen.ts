@@ -16,8 +16,15 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutConfigurationRouteImport } from './routes/_layout/configuration'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
+import { Route as LayoutLibraryRouteImport } from './routes/_layout/library'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutLabSectionRouteImport } from './routes/_layout/lab.$section'
+import { Route as LayoutStudioSectionRouteImport } from './routes/_layout/studio.$section'
+import { Route as LayoutStudySectionRouteImport } from './routes/_layout/study.$section'
+import { Route as LayoutTraceSectionRouteImport } from './routes/_layout/trace.$section'
+import { Route as LayoutWorkspacesWorkspaceIdRouteImport } from './routes/_layout/workspaces.$workspaceId'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -53,9 +60,19 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutConfigurationRoute = LayoutConfigurationRouteImport.update({
+  id: '/configuration',
+  path: '/configuration',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutItemsRoute = LayoutItemsRouteImport.update({
   id: '/items',
   path: '/items',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutLibraryRoute = LayoutLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
@@ -63,6 +80,32 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutLabSectionRoute = LayoutLabSectionRouteImport.update({
+  id: '/lab/$section',
+  path: '/lab/$section',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutStudioSectionRoute = LayoutStudioSectionRouteImport.update({
+  id: '/studio/$section',
+  path: '/studio/$section',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutStudySectionRoute = LayoutStudySectionRouteImport.update({
+  id: '/study/$section',
+  path: '/study/$section',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutTraceSectionRoute = LayoutTraceSectionRouteImport.update({
+  id: '/trace/$section',
+  path: '/trace/$section',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWorkspacesWorkspaceIdRoute =
+  LayoutWorkspacesWorkspaceIdRouteImport.update({
+    id: '/workspaces/$workspaceId',
+    path: '/workspaces/$workspaceId',
+    getParentRoute: () => LayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -71,8 +114,15 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
+  '/configuration': typeof LayoutConfigurationRoute
   '/items': typeof LayoutItemsRoute
+  '/library': typeof LayoutLibraryRoute
   '/settings': typeof LayoutSettingsRoute
+  '/lab/$section': typeof LayoutLabSectionRoute
+  '/studio/$section': typeof LayoutStudioSectionRoute
+  '/study/$section': typeof LayoutStudySectionRoute
+  '/trace/$section': typeof LayoutTraceSectionRoute
+  '/workspaces/$workspaceId': typeof LayoutWorkspacesWorkspaceIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -80,9 +130,16 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
+  '/configuration': typeof LayoutConfigurationRoute
   '/items': typeof LayoutItemsRoute
+  '/library': typeof LayoutLibraryRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/lab/$section': typeof LayoutLabSectionRoute
+  '/studio/$section': typeof LayoutStudioSectionRoute
+  '/study/$section': typeof LayoutStudySectionRoute
+  '/trace/$section': typeof LayoutTraceSectionRoute
+  '/workspaces/$workspaceId': typeof LayoutWorkspacesWorkspaceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -92,9 +149,16 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
+  '/_layout/configuration': typeof LayoutConfigurationRoute
   '/_layout/items': typeof LayoutItemsRoute
+  '/_layout/library': typeof LayoutLibraryRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/lab/$section': typeof LayoutLabSectionRoute
+  '/_layout/studio/$section': typeof LayoutStudioSectionRoute
+  '/_layout/study/$section': typeof LayoutStudySectionRoute
+  '/_layout/trace/$section': typeof LayoutTraceSectionRoute
+  '/_layout/workspaces/$workspaceId': typeof LayoutWorkspacesWorkspaceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,8 +169,15 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
+    | '/configuration'
     | '/items'
+    | '/library'
     | '/settings'
+    | '/lab/$section'
+    | '/studio/$section'
+    | '/study/$section'
+    | '/trace/$section'
+    | '/workspaces/$workspaceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -114,9 +185,16 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
+    | '/configuration'
     | '/items'
+    | '/library'
     | '/settings'
     | '/'
+    | '/lab/$section'
+    | '/studio/$section'
+    | '/study/$section'
+    | '/trace/$section'
+    | '/workspaces/$workspaceId'
   id:
     | '__root__'
     | '/_layout'
@@ -125,9 +203,16 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_layout/admin'
+    | '/_layout/configuration'
     | '/_layout/items'
+    | '/_layout/library'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/lab/$section'
+    | '/_layout/studio/$section'
+    | '/_layout/study/$section'
+    | '/_layout/trace/$section'
+    | '/_layout/workspaces/$workspaceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -189,11 +274,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/configuration': {
+      id: '/_layout/configuration'
+      path: '/configuration'
+      fullPath: '/configuration'
+      preLoaderRoute: typeof LayoutConfigurationRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/items': {
       id: '/_layout/items'
       path: '/items'
       fullPath: '/items'
       preLoaderRoute: typeof LayoutItemsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/library': {
+      id: '/_layout/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LayoutLibraryRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/settings': {
@@ -203,21 +302,70 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/lab/$section': {
+      id: '/_layout/lab/$section'
+      path: '/lab/$section'
+      fullPath: '/lab/$section'
+      preLoaderRoute: typeof LayoutLabSectionRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/studio/$section': {
+      id: '/_layout/studio/$section'
+      path: '/studio/$section'
+      fullPath: '/studio/$section'
+      preLoaderRoute: typeof LayoutStudioSectionRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/study/$section': {
+      id: '/_layout/study/$section'
+      path: '/study/$section'
+      fullPath: '/study/$section'
+      preLoaderRoute: typeof LayoutStudySectionRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/trace/$section': {
+      id: '/_layout/trace/$section'
+      path: '/trace/$section'
+      fullPath: '/trace/$section'
+      preLoaderRoute: typeof LayoutTraceSectionRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/workspaces/$workspaceId': {
+      id: '/_layout/workspaces/$workspaceId'
+      path: '/workspaces/$workspaceId'
+      fullPath: '/workspaces/$workspaceId'
+      preLoaderRoute: typeof LayoutWorkspacesWorkspaceIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
+  LayoutConfigurationRoute: typeof LayoutConfigurationRoute
   LayoutItemsRoute: typeof LayoutItemsRoute
+  LayoutLibraryRoute: typeof LayoutLibraryRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutLabSectionRoute: typeof LayoutLabSectionRoute
+  LayoutStudioSectionRoute: typeof LayoutStudioSectionRoute
+  LayoutStudySectionRoute: typeof LayoutStudySectionRoute
+  LayoutTraceSectionRoute: typeof LayoutTraceSectionRoute
+  LayoutWorkspacesWorkspaceIdRoute: typeof LayoutWorkspacesWorkspaceIdRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
+  LayoutConfigurationRoute: LayoutConfigurationRoute,
   LayoutItemsRoute: LayoutItemsRoute,
+  LayoutLibraryRoute: LayoutLibraryRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutLabSectionRoute: LayoutLabSectionRoute,
+  LayoutStudioSectionRoute: LayoutStudioSectionRoute,
+  LayoutStudySectionRoute: LayoutStudySectionRoute,
+  LayoutTraceSectionRoute: LayoutTraceSectionRoute,
+  LayoutWorkspacesWorkspaceIdRoute: LayoutWorkspacesWorkspaceIdRoute,
 }
 
 const LayoutRouteWithChildren =

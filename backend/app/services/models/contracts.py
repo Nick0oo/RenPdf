@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 class ModelCapabilities(BaseModel):
     text: Literal["declared", "verified", "unknown", "unsupported"] = "unknown"
     vision: Literal["declared", "verified", "unknown", "unsupported"] = "unknown"
+    audio: Literal["declared", "verified", "unknown", "unsupported"] = "unknown"
+    video: Literal["declared", "verified", "unknown", "unsupported"] = "unknown"
     embeddings: Literal["declared", "verified", "unknown", "unsupported"] = "unknown"
     streaming: Literal["declared", "verified", "unknown", "unsupported"] = "unknown"
     reranking: Literal["declared", "verified", "unknown", "unsupported"] = "unknown"
@@ -39,12 +41,18 @@ class TokenUsage(BaseModel):
     output_tokens: int = 0
 
 
+class MediaInput(BaseModel):
+    data: bytes
+    mime_type: Literal["audio/wav", "audio/mpeg", "video/mp4"]
+
+
 class InferenceRequest(BaseModel):
     model: str
     system: str
     prompt: str
     max_tokens: int = 2048
     images: list[bytes] = Field(default_factory=list)
+    media: list[MediaInput] = Field(default_factory=list)
     json_schema: dict[str, Any] | None = None
 
 
@@ -56,6 +64,7 @@ class InferenceResponse(BaseModel):
 class EmbeddingInput(BaseModel):
     text: str = ""
     image: bytes | None = None
+    media: MediaInput | None = None
 
 
 class ModelRoutingPolicy(BaseModel):
@@ -69,11 +78,19 @@ class ModelRoutingPolicy(BaseModel):
 
 
 class ProviderError(Exception):
-    def __init__(self, code: str, message: str, retryable: bool = False):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        retryable: bool = False,
+        *,
+        details: dict[str, Any] | None = None,
+    ):
         super().__init__(message)
         self.code = code
         self.message = message
         self.retryable = retryable
+        self.details = details or {}
 
 
 class ChatProvider(Protocol):

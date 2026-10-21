@@ -14,7 +14,7 @@ const ErrorComponent = () => {
         </h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Recarga la aplicación para volver a intentarlo. También puedes abrir
-          la biblioteca y elegir otra colección.
+          la biblioteca y elegir otro documento.
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-3">
@@ -29,7 +29,7 @@ const ErrorComponent = () => {
             } catch {
               // Navigation still works when the browser disables local storage.
             }
-            window.location.assign("/")
+            window.location.assign("/library")
           }}
         >
           <BookOpen size={16} /> Abrir biblioteca

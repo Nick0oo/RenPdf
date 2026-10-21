@@ -1,6 +1,3 @@
-import { Library, SlidersHorizontal } from "lucide-react"
-
-import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
 import {
   Sidebar,
@@ -9,33 +6,26 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
-import { type Item, Main } from "./Main"
+import { Main } from "./Main"
+import { navigationGroups } from "./navigation"
 import { User } from "./User"
-
-const baseItems: Item[] = [
-  { icon: Library, title: "Biblioteca", path: "/" },
-  { icon: SlidersHorizontal, title: "Cuenta", path: "/settings" },
-]
-
 export function AppSidebar() {
-  const { user: currentUser } = useAuth()
-
-  const items = baseItems
-
+  const { user } = useAuth()
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="px-4 py-6 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:items-center">
+    <Sidebar collapsible="icon" className="border-r">
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
         <Logo variant="responsive" />
+        <p className="mt-1 text-[11px] text-muted-foreground group-data-[collapsible=icon]:hidden">
+          Tus fuentes, conectadas
+        </p>
       </SidebarHeader>
       <SidebarContent>
-        <Main items={items} />
+        <Main groups={navigationGroups} />
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarAppearance />
-        <User user={currentUser} />
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <User user={user} />
       </SidebarFooter>
     </Sidebar>
   )
 }
-
 export default AppSidebar

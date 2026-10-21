@@ -12,6 +12,10 @@ frontend/dist
 frontend/node_modules
 frontend/playwright-report
 frontend/test-results
+frontend/test-results*
+frontend/tests
+frontend/playwright
+frontend/playwright-report*
 node_modules
 storage
 tmp

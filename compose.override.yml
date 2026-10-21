@@ -5,15 +5,3 @@ services:
   redis:
     ports:
       - "127.0.0.1:6380:6379"
-  backend:
-    command: ["fastapi", "dev", "--host", "0.0.0.0"]
-    environment:
-      FASTAPI_ENV: development
-    develop:
-      watch:
-        - path: ./backend/app
-          action: sync
-          target: /app/backend/app
-          ignore: ["frontend", "__pycache__"]
-        - path: ./backend/pyproject.toml
-          action: rebuild

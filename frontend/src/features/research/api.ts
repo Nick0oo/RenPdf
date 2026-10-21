@@ -7,6 +7,11 @@ export type ProviderName = ModelSelection["provider"]
 export function errorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     const detail = error.response?.data?.detail
+    if (
+      error.response?.status === 404 &&
+      (!detail || detail === "Not Found" || detail === "NotFound")
+    )
+      return "El servidor no tiene disponible este recurso. Comprueba que la API y la aplicación estén actualizadas."
     return typeof detail === "string"
       ? detail
       : "No se pudo completar la solicitud."

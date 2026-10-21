@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:5173"
+    FRONTEND_EXTRA_ORIGINS: list[str] = []
     FASTAPI_ENV: Literal["development"] | None = None
 
     PROJECT_NAME: str = "RenPdf"
@@ -46,6 +47,7 @@ class Settings(BaseSettings):
     OLLAMA_NUM_THREADS: int = Field(default=2, ge=1, le=16)
     OLLAMA_NUM_GPU: int = Field(default=0, ge=-1)
     LLAMACPP_BASE_URL: str | None = None
+    EMBEDDINGGEMMA_BASE_URL: str | None = None
     LLAMACPP_MODE: Literal["unknown", "chat", "embeddings"] = "unknown"
     LLAMACPP_MODEL_VERSION: str | None = None
     LLAMACPP_EMBEDDING_DIMENSIONS: int = Field(default=768, ge=1, le=2000)
@@ -62,8 +64,19 @@ class Settings(BaseSettings):
     DEFAULT_EMBEDDING_PROVIDER: str = "gemini"
     DEFAULT_EMBEDDING_MODEL: str = "gemini-embedding-2"
     EMBEDDING_DIMENSIONS: int = 768
+    AUTO_INDEX_LOCAL: bool = True
     MAX_UPLOAD_SIZE_MB: int = 50
     MAX_DOCUMENT_PAGES: int = 500
+    MAX_MEDIA_DURATION_SECONDS: int = Field(default=1800, ge=1, le=7200)
+    MEDIA_SEGMENT_SECONDS: int = Field(default=10, ge=5, le=30)
+    FFMPEG_PATH: str = "ffmpeg"
+    FFPROBE_PATH: str = "ffprobe"
+    MAX_SPREADSHEET_SHEETS: int = Field(default=50, ge=1, le=100)
+    MAX_SPREADSHEET_CELLS: int = Field(default=200000, ge=100, le=500000)
+    MAX_SPREADSHEET_GRID_CELLS: int = Field(default=1000000, ge=1000, le=5000000)
+    MAX_SPREADSHEET_ROWS: int = Field(default=50000, ge=1, le=100000)
+    MAX_SPREADSHEET_COLUMNS: int = Field(default=512, ge=1, le=16384)
+    MAX_SPREADSHEET_EXPANDED_MB: int = Field(default=100, ge=1, le=200)
     MAX_CONCURRENT_DOCUMENT_JOBS: int = 1
     ENABLE_OCR: bool = True
     ENABLE_VISION: bool = False

@@ -23,11 +23,11 @@ import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 
 const formSchema = z.object({
-  username: z.email({ message: "Invalid email address" }),
+  username: z.email({ message: "Introduce un correo válido" }),
   password: z
     .string()
-    .min(1, { message: "Password is required" })
-    .min(8, { message: "Password must be at least 8 characters" }),
+    .min(1, { message: "Escribe tu contraseña" })
+    .min(8, { message: "La contraseña necesita al menos 8 caracteres" }),
 }) satisfies z.ZodType<AccessToken>
 
 type FormData = z.infer<typeof formSchema>
@@ -74,8 +74,13 @@ function Login() {
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-col gap-6"
         >
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Login to your account</h1>
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Vuelve a tu investigación
+            </h1>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Entra con la cuenta configurada en tu servidor.
+            </p>
           </div>
 
           <div className="grid gap-4">
@@ -104,18 +109,18 @@ function Login() {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center">
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Contraseña</FormLabel>
                     <RouterLink
                       to="/recover-password"
                       className="ml-auto text-sm underline-offset-4 hover:underline"
                     >
-                      Forgot your password?
+                      Recuperar acceso
                     </RouterLink>
                   </div>
                   <FormControl>
                     <PasswordInput
                       data-testid="password-input"
-                      placeholder="Password"
+                      placeholder="Tu contraseña"
                       {...field}
                     />
                   </FormControl>
@@ -124,8 +129,12 @@ function Login() {
               )}
             />
 
-            <LoadingButton type="submit" loading={loginMutation.isPending}>
-              Log In
+            <LoadingButton
+              type="submit"
+              aria-label="Entrar"
+              loading={loginMutation.isPending}
+            >
+              Entrar
             </LoadingButton>
           </div>
 

@@ -1,0 +1,1592 @@
+{
+  "synthetic_data_only": true,
+  "started_at": "2026-10-20T23:26:52.695019+00:00",
+  "providers": {
+    "embeddinggemma": {
+      "model": "embeddinggemma-2-native",
+      "elapsed_seconds": 0.37,
+      "coverage": [
+        {
+          "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+          "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+          "source_type": "audio",
+          "duration_seconds": 64.097868,
+          "segments_total": 7,
+          "segments_analyzed": 0,
+          "segments_prepared": 7,
+          "analysis_mode": "native_embeddings",
+          "segments_indexed": 7,
+          "analysis_status": "NATIVE_INDEXED",
+          "analysis_complete": false,
+          "active_index_ready": true,
+          "processing": null,
+          "analysis_provider": "embeddinggemma",
+          "analysis_model": "embeddinggemma-2-native",
+          "temporal_precision_seconds": 10,
+          "pages_total": 0,
+          "pages_extracted": 0,
+          "ocr_pending_pages": [],
+          "figures_total": 0,
+          "figures_with_chunks": 0,
+          "figures_multimodal_indexed": 0,
+          "visual_status": "MEDIA_SEGMENTS",
+          "index_modality": "multimodal"
+        },
+        {
+          "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+          "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+          "source_type": "video",
+          "duration_seconds": 12.0,
+          "segments_total": 2,
+          "segments_analyzed": 0,
+          "segments_prepared": 2,
+          "analysis_mode": "native_embeddings",
+          "segments_indexed": 2,
+          "analysis_status": "NATIVE_INDEXED",
+          "analysis_complete": false,
+          "active_index_ready": true,
+          "processing": null,
+          "analysis_provider": "embeddinggemma",
+          "analysis_model": "embeddinggemma-2-native",
+          "temporal_precision_seconds": 10,
+          "pages_total": 0,
+          "pages_extracted": 0,
+          "ocr_pending_pages": [],
+          "figures_total": 0,
+          "figures_with_chunks": 0,
+          "figures_multimodal_indexed": 0,
+          "visual_status": "MEDIA_SEGMENTS",
+          "index_modality": "multimodal"
+        }
+      ]
+    },
+    "gemini": {
+      "model": "gemini-embedding-2",
+      "elapsed_seconds": 91.36,
+      "coverage": [
+        {
+          "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+          "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+          "source_type": "audio",
+          "duration_seconds": 64.097868,
+          "segments_total": 7,
+          "segments_analyzed": 0,
+          "segments_prepared": 7,
+          "analysis_mode": "native_embeddings",
+          "segments_indexed": 7,
+          "analysis_status": "NATIVE_INDEXED",
+          "analysis_complete": false,
+          "active_index_ready": true,
+          "processing": null,
+          "analysis_provider": "gemini",
+          "analysis_model": "gemini-embedding-2",
+          "temporal_precision_seconds": 10,
+          "pages_total": 0,
+          "pages_extracted": 0,
+          "ocr_pending_pages": [],
+          "figures_total": 0,
+          "figures_with_chunks": 0,
+          "figures_multimodal_indexed": 0,
+          "visual_status": "MEDIA_SEGMENTS",
+          "index_modality": "multimodal"
+        },
+        {
+          "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+          "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+          "source_type": "video",
+          "duration_seconds": 12.0,
+          "segments_total": 2,
+          "segments_analyzed": 0,
+          "segments_prepared": 2,
+          "analysis_mode": "native_embeddings",
+          "segments_indexed": 2,
+          "analysis_status": "NATIVE_INDEXED",
+          "analysis_complete": false,
+          "active_index_ready": true,
+          "processing": null,
+          "analysis_provider": "gemini",
+          "analysis_model": "gemini-embedding-2",
+          "temporal_precision_seconds": 10,
+          "pages_total": 0,
+          "pages_extracted": 0,
+          "ocr_pending_pages": [],
+          "figures_total": 0,
+          "figures_with_chunks": 0,
+          "figures_multimodal_indexed": 0,
+          "visual_status": "MEDIA_SEGMENTS",
+          "index_modality": "multimodal"
+        }
+      ]
+    }
+  },
+  "answers": [
+    {
+      "provider": "embeddinggemma",
+      "question": "¿Qué presupuesto menciona Aurora en el audio en 01:02?",
+      "answer": "En el audio se menciona que el Proyecto Aurora tiene un presupuesto de 731 dólares (*731 dollars*) [Fuente 1].\n\n*(Nota: El documento seleccionado con ID `2d62a1ae-506f-44b0-ba03-e28bfed41ad8` no aportó evidencia).*",
+      "citations": [
+        {
+          "chunk_id": "4ac3ff15-a227-412e-ae61-3bd5f088ad37",
+          "element_id": "39128a89-ea96-4a3e-baa0-4befc8208360",
+          "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+          "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+          "document_title": "Aurora-minute.wav",
+          "page_number": null,
+          "source_type": "audio",
+          "start_seconds": 60.0,
+          "end_seconds": 64.097868,
+          "sheet_name": null,
+          "cell_range": null,
+          "text": "Segmento 60.000–64.098 s. Contenido nativo adjunto; sin transcripción.",
+          "bbox": null,
+          "rotation": 0,
+          "precision": "time_range",
+          "label": 1,
+          "score": 0.0
+        }
+      ],
+      "trace": {
+        "schema_version": 1,
+        "started_at": "2026-10-20T23:26:57.818610+00:00",
+        "prompt_template_version": "rag-native-media-v4",
+        "policy": {
+          "provider": "gemini",
+          "model": "gemini-3.8-flash",
+          "timeout_seconds": 90,
+          "max_tokens": 2048,
+          "retries": 0
+        },
+        "stages": [
+          {
+            "stage": "request_started",
+            "elapsed_seconds": 0.0
+          },
+          {
+            "stage": "retrieval_finished",
+            "elapsed_seconds": 29.443
+          },
+          {
+            "stage": "native_clips_prepared",
+            "elapsed_seconds": 29.485
+          },
+          {
+            "stage": "inference_started",
+            "elapsed_seconds": 30.692
+          },
+          {
+            "stage": "inference_finished",
+            "elapsed_seconds": 34.967
+          },
+          {
+            "stage": "citations_validated",
+            "elapsed_seconds": 34.968
+          },
+          {
+            "stage": "finished",
+            "elapsed_seconds": 34.97
+          }
+        ],
+        "inference_attempted": true,
+        "consent_verified": true,
+        "query_message_id": "79d4bc77-45d0-4815-89ad-ca85f964d3e5",
+        "document_snapshots": [
+          {
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "source_type": "video",
+            "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+            "active_index_id": "4de12ea7-0f92-4053-89fe-d62c7962380e"
+          },
+          {
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "source_type": "audio",
+            "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+            "active_index_id": "a627c516-41e0-474b-a9c8-1216d648eb6b"
+          }
+        ],
+        "extraction_coverage": [
+          {
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+            "source_type": "video",
+            "duration_seconds": 12.0,
+            "segments_total": 2,
+            "segments_analyzed": 0,
+            "segments_prepared": 2,
+            "analysis_mode": "native_embeddings",
+            "segments_indexed": 2,
+            "analysis_status": "NATIVE_INDEXED",
+            "analysis_complete": false,
+            "active_index_ready": true,
+            "processing": null,
+            "analysis_provider": "embeddinggemma",
+            "analysis_model": "embeddinggemma-2-native",
+            "temporal_precision_seconds": 10,
+            "pages_total": 0,
+            "pages_extracted": 0,
+            "ocr_pending_pages": [],
+            "figures_total": 0,
+            "figures_with_chunks": 0,
+            "figures_multimodal_indexed": 0,
+            "visual_status": "MEDIA_SEGMENTS",
+            "index_modality": "multimodal"
+          },
+          {
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+            "source_type": "audio",
+            "duration_seconds": 64.097868,
+            "segments_total": 7,
+            "segments_analyzed": 0,
+            "segments_prepared": 7,
+            "analysis_mode": "native_embeddings",
+            "segments_indexed": 7,
+            "analysis_status": "NATIVE_INDEXED",
+            "analysis_complete": false,
+            "active_index_ready": true,
+            "processing": null,
+            "analysis_provider": "embeddinggemma",
+            "analysis_model": "embeddinggemma-2-native",
+            "temporal_precision_seconds": 10,
+            "pages_total": 0,
+            "pages_extracted": 0,
+            "ocr_pending_pages": [],
+            "figures_total": 0,
+            "figures_with_chunks": 0,
+            "figures_multimodal_indexed": 0,
+            "visual_status": "MEDIA_SEGMENTS",
+            "index_modality": "multimodal"
+          }
+        ],
+        "retrieval": {
+          "used_profiles": [
+            {
+              "profile_id": "2d089a9c-c6bb-4106-8d9e-9af4619108b9",
+              "provider": "embeddinggemma",
+              "model": "embeddinggemma-2-native",
+              "model_version": "914f7f89142e33e77833254d9c9b90c3cef7303b:float32:av-1fps-image280-v1",
+              "dimensions": 768,
+              "modality": "multimodal",
+              "index_ids": [
+                "a627c516-41e0-474b-a9c8-1216d648eb6b",
+                "4de12ea7-0f92-4053-89fe-d62c7962380e"
+              ]
+            }
+          ],
+          "semantic_failures": [],
+          "strategy": "hybrid-document-balanced-v2",
+          "lexical_candidates": 2,
+          "candidate_count": 1,
+          "top_k": 8,
+          "visual_query": false,
+          "requested_time_seconds": 62,
+          "requested_times_seconds": [
+            62
+          ],
+          "spreadsheet_scope": {
+            "sheets": [],
+            "explicit_sheets": false,
+            "cell_ranges": [],
+            "candidate_count": 0
+          },
+          "ranking": [
+            {
+              "chunk_id": "4ac3ff15-a227-412e-ae61-3bd5f088ad37",
+              "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+              "score": 0.03278689,
+              "rank": 1,
+              "selected": true,
+              "lexical_rank": null
+            }
+          ],
+          "elapsed_seconds": 29.356,
+          "mode": "hybrid"
+        },
+        "native_media": {
+          "clips": [
+            {
+              "media": 1,
+              "source_id": 1,
+              "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+              "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+              "element_id": "39128a89-ea96-4a3e-baa0-4befc8208360",
+              "start_seconds": 60.0,
+              "end_seconds": 64.097868,
+              "clip_sha256": "ed3863d26b13ef4c5dee0f0f48aae2da148a5563c4c34032a5f5019a5654125f",
+              "bytes": 33452,
+              "mime_type": "audio/mpeg"
+            }
+          ],
+          "omitted": 0,
+          "bytes": 33452,
+          "duration_seconds": 4.097868000000005
+        },
+        "evidence_count": 1,
+        "context_chars": 70,
+        "input_modality": "native_media",
+        "context_windows": 1,
+        "sources": [
+          {
+            "label": 1,
+            "chunk_id": "4ac3ff15-a227-412e-ae61-3bd5f088ad37",
+            "element_id": "39128a89-ea96-4a3e-baa0-4befc8208360",
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+            "page_number": null,
+            "source_type": "audio",
+            "start_seconds": 60.0,
+            "end_seconds": 64.097868,
+            "sheet_name": null,
+            "cell_range": null,
+            "chars": 70,
+            "score": 0.03278688524590164,
+            "document_title": "Aurora-minute.wav"
+          }
+        ],
+        "model_version": "3.0",
+        "is_cloud": true,
+        "document_coverage": {
+          "selected": 2,
+          "with_evidence": 1,
+          "without_evidence": [
+            "2d62a1ae-506f-44b0-ba03-e28bfed41ad8"
+          ]
+        },
+        "visual_coverage": {
+          "retrieved": 0,
+          "sent": 0,
+          "omitted": 0
+        },
+        "generated_output_chars": 214,
+        "cited_labels": [
+          1
+        ],
+        "finished_at": "2026-10-20T23:27:32.786574+00:00",
+        "elapsed_seconds": 34.97,
+        "outcome": "complete",
+        "error_code": null,
+        "finish_reason": null
+      }
+    },
+    {
+      "provider": "embeddinggemma",
+      "question": "Compara lo que dice el audio en 01:02 con el color que aparece en el video en 00:11. Cita ambas fuentes.",
+      "answer": "- **Audio en 01:02:** En el segmento de 60.000 a 64.098 segundos, una voz indica en inglés: *«Project Aurora has a budget of 731 dollars»* («El Proyecto Aurora tiene un presupuesto de 731 dólares») [Fuente 2].\n- **Video en 00:11:** En el segmento de 10.000 a 12.000 segundos, la imagen muestra un color rojo uniforme [Fuente 3].\n\n*(El segmento de audio de 10.0 a 20.0 segundos [Fuente 1] no aportó evidencia para responder a esta pregunta).*",
+      "citations": [
+        {
+          "chunk_id": "658eaaca-cbed-4d39-9201-e68c6dbf9027",
+          "element_id": "dbc68309-ca87-4400-96c3-44ceed95245b",
+          "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+          "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+          "document_title": "Aurora-minute.wav",
+          "page_number": null,
+          "source_type": "audio",
+          "start_seconds": 10.0,
+          "end_seconds": 20.0,
+          "sheet_name": null,
+          "cell_range": null,
+          "text": "Segmento 10.000–20.000 s. Contenido nativo adjunto; sin transcripción.",
+          "bbox": null,
+          "rotation": 0,
+          "precision": "time_range",
+          "label": 1,
+          "score": 0.0
+        },
+        {
+          "chunk_id": "4ac3ff15-a227-412e-ae61-3bd5f088ad37",
+          "element_id": "39128a89-ea96-4a3e-baa0-4befc8208360",
+          "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+          "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+          "document_title": "Aurora-minute.wav",
+          "page_number": null,
+          "source_type": "audio",
+          "start_seconds": 60.0,
+          "end_seconds": 64.097868,
+          "sheet_name": null,
+          "cell_range": null,
+          "text": "Segmento 60.000–64.098 s. Contenido nativo adjunto; sin transcripción.",
+          "bbox": null,
+          "rotation": 0,
+          "precision": "time_range",
+          "label": 2,
+          "score": 0.0
+        },
+        {
+          "chunk_id": "091dc1e1-fd2c-4458-a7b5-4a14f7a8fd75",
+          "element_id": "0f29f7fd-2b67-4d17-9e09-6b9a54785646",
+          "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+          "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+          "document_title": "Aurora-colors.mp4",
+          "page_number": null,
+          "source_type": "video",
+          "start_seconds": 10.0,
+          "end_seconds": 12.0,
+          "sheet_name": null,
+          "cell_range": null,
+          "text": "Segmento 10.000–12.000 s. Contenido nativo adjunto; sin transcripción.",
+          "bbox": null,
+          "rotation": 0,
+          "precision": "time_range",
+          "label": 3,
+          "score": 0.0
+        }
+      ],
+      "trace": {
+        "schema_version": 1,
+        "started_at": "2026-10-20T23:27:32.906368+00:00",
+        "prompt_template_version": "rag-native-media-v4",
+        "policy": {
+          "provider": "gemini",
+          "model": "gemini-3.8-flash",
+          "timeout_seconds": 90,
+          "max_tokens": 2048,
+          "retries": 0
+        },
+        "stages": [
+          {
+            "stage": "request_started",
+            "elapsed_seconds": 0.0
+          },
+          {
+            "stage": "retrieval_finished",
+            "elapsed_seconds": 37.144
+          },
+          {
+            "stage": "native_clips_prepared",
+            "elapsed_seconds": 37.28
+          },
+          {
+            "stage": "inference_started",
+            "elapsed_seconds": 38.38
+          },
+          {
+            "stage": "inference_finished",
+            "elapsed_seconds": 47.166
+          },
+          {
+            "stage": "citations_validated",
+            "elapsed_seconds": 47.167
+          },
+          {
+            "stage": "finished",
+            "elapsed_seconds": 47.169
+          }
+        ],
+        "inference_attempted": true,
+        "consent_verified": true,
+        "query_message_id": "c2913415-129e-4005-90ad-be3b021245a8",
+        "document_snapshots": [
+          {
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "source_type": "video",
+            "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+            "active_index_id": "4de12ea7-0f92-4053-89fe-d62c7962380e"
+          },
+          {
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "source_type": "audio",
+            "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+            "active_index_id": "a627c516-41e0-474b-a9c8-1216d648eb6b"
+          }
+        ],
+        "extraction_coverage": [
+          {
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+            "source_type": "video",
+            "duration_seconds": 12.0,
+            "segments_total": 2,
+            "segments_analyzed": 0,
+            "segments_prepared": 2,
+            "analysis_mode": "native_embeddings",
+            "segments_indexed": 2,
+            "analysis_status": "NATIVE_INDEXED",
+            "analysis_complete": false,
+            "active_index_ready": true,
+            "processing": null,
+            "analysis_provider": "embeddinggemma",
+            "analysis_model": "embeddinggemma-2-native",
+            "temporal_precision_seconds": 10,
+            "pages_total": 0,
+            "pages_extracted": 0,
+            "ocr_pending_pages": [],
+            "figures_total": 0,
+            "figures_with_chunks": 0,
+            "figures_multimodal_indexed": 0,
+            "visual_status": "MEDIA_SEGMENTS",
+            "index_modality": "multimodal"
+          },
+          {
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+            "source_type": "audio",
+            "duration_seconds": 64.097868,
+            "segments_total": 7,
+            "segments_analyzed": 0,
+            "segments_prepared": 7,
+            "analysis_mode": "native_embeddings",
+            "segments_indexed": 7,
+            "analysis_status": "NATIVE_INDEXED",
+            "analysis_complete": false,
+            "active_index_ready": true,
+            "processing": null,
+            "analysis_provider": "embeddinggemma",
+            "analysis_model": "embeddinggemma-2-native",
+            "temporal_precision_seconds": 10,
+            "pages_total": 0,
+            "pages_extracted": 0,
+            "ocr_pending_pages": [],
+            "figures_total": 0,
+            "figures_with_chunks": 0,
+            "figures_multimodal_indexed": 0,
+            "visual_status": "MEDIA_SEGMENTS",
+            "index_modality": "multimodal"
+          }
+        ],
+        "retrieval": {
+          "used_profiles": [
+            {
+              "profile_id": "2d089a9c-c6bb-4106-8d9e-9af4619108b9",
+              "provider": "embeddinggemma",
+              "model": "embeddinggemma-2-native",
+              "model_version": "914f7f89142e33e77833254d9c9b90c3cef7303b:float32:av-1fps-image280-v1",
+              "dimensions": 768,
+              "modality": "multimodal",
+              "index_ids": [
+                "a627c516-41e0-474b-a9c8-1216d648eb6b",
+                "4de12ea7-0f92-4053-89fe-d62c7962380e"
+              ]
+            }
+          ],
+          "semantic_failures": [],
+          "strategy": "hybrid-document-balanced-v2",
+          "lexical_candidates": 2,
+          "candidate_count": 3,
+          "top_k": 8,
+          "visual_query": false,
+          "requested_time_seconds": 62,
+          "requested_times_seconds": [
+            62,
+            11
+          ],
+          "spreadsheet_scope": {
+            "sheets": [],
+            "explicit_sheets": false,
+            "cell_ranges": [],
+            "candidate_count": 0
+          },
+          "ranking": [
+            {
+              "chunk_id": "091dc1e1-fd2c-4458-a7b5-4a14f7a8fd75",
+              "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+              "score": 0.04891592,
+              "rank": 1,
+              "selected": true,
+              "lexical_rank": 1
+            },
+            {
+              "chunk_id": "658eaaca-cbed-4d39-9201-e68c6dbf9027",
+              "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+              "score": 0.03079839,
+              "rank": 2,
+              "selected": true,
+              "lexical_rank": null
+            },
+            {
+              "chunk_id": "4ac3ff15-a227-412e-ae61-3bd5f088ad37",
+              "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+              "score": 0.03062179,
+              "rank": 3,
+              "selected": true,
+              "lexical_rank": null
+            }
+          ],
+          "elapsed_seconds": 37.049,
+          "mode": "hybrid"
+        },
+        "native_media": {
+          "clips": [
+            {
+              "media": 1,
+              "source_id": 1,
+              "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+              "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+              "element_id": "dbc68309-ca87-4400-96c3-44ceed95245b",
+              "start_seconds": 10.0,
+              "end_seconds": 20.0,
+              "clip_sha256": "f9f2e04c16ddef9dd92d97eb7e8be216e97cce8f325192396738fb90eb6cbe27",
+              "bytes": 80684,
+              "mime_type": "audio/mpeg"
+            },
+            {
+              "media": 2,
+              "source_id": 2,
+              "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+              "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+              "element_id": "39128a89-ea96-4a3e-baa0-4befc8208360",
+              "start_seconds": 60.0,
+              "end_seconds": 64.097868,
+              "clip_sha256": "ed3863d26b13ef4c5dee0f0f48aae2da148a5563c4c34032a5f5019a5654125f",
+              "bytes": 33452,
+              "mime_type": "audio/mpeg"
+            },
+            {
+              "media": 3,
+              "source_id": 3,
+              "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+              "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+              "element_id": "0f29f7fd-2b67-4d17-9e09-6b9a54785646",
+              "start_seconds": 10.0,
+              "end_seconds": 12.0,
+              "clip_sha256": "be2dc17425ed661599c9509e7ed8ad122439a1c31339b5c8ad39419d486c7d1c",
+              "bytes": 3481,
+              "mime_type": "video/mp4"
+            }
+          ],
+          "omitted": 0,
+          "bytes": 117617,
+          "duration_seconds": 16.097868000000005
+        },
+        "evidence_count": 3,
+        "context_chars": 210,
+        "input_modality": "native_media",
+        "context_windows": 2,
+        "sources": [
+          {
+            "label": 1,
+            "chunk_id": "658eaaca-cbed-4d39-9201-e68c6dbf9027",
+            "element_id": "dbc68309-ca87-4400-96c3-44ceed95245b",
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+            "page_number": null,
+            "source_type": "audio",
+            "start_seconds": 10.0,
+            "end_seconds": 20.0,
+            "sheet_name": null,
+            "cell_range": null,
+            "chars": 70,
+            "score": 0.030798389007344232,
+            "document_title": "Aurora-minute.wav"
+          },
+          {
+            "label": 2,
+            "chunk_id": "4ac3ff15-a227-412e-ae61-3bd5f088ad37",
+            "element_id": "39128a89-ea96-4a3e-baa0-4befc8208360",
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "b688b823-b016-425b-a831-163b0d14f4b5",
+            "page_number": null,
+            "source_type": "audio",
+            "start_seconds": 60.0,
+            "end_seconds": 64.097868,
+            "sheet_name": null,
+            "cell_range": null,
+            "chars": 70,
+            "score": 0.030621785881252923,
+            "document_title": "Aurora-minute.wav"
+          },
+          {
+            "label": 3,
+            "chunk_id": "091dc1e1-fd2c-4458-a7b5-4a14f7a8fd75",
+            "element_id": "0f29f7fd-2b67-4d17-9e09-6b9a54785646",
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "version_id": "e089358d-a273-4503-8da6-777bada95b25",
+            "page_number": null,
+            "source_type": "video",
+            "start_seconds": 10.0,
+            "end_seconds": 12.0,
+            "sheet_name": null,
+            "cell_range": null,
+            "chars": 70,
+            "score": 0.04891591750396616,
+            "document_title": "Aurora-colors.mp4"
+          }
+        ],
+        "model_version": "3.0",
+        "is_cloud": true,
+        "document_coverage": {
+          "selected": 2,
+          "with_evidence": 2,
+          "without_evidence": []
+        },
+        "visual_coverage": {
+          "retrieved": 0,
+          "sent": 0,
+          "omitted": 0
+        },
+        "generated_output_chars": 441,
+        "cited_labels": [
+          1,
+          2,
+          3
+        ],
+        "finished_at": "2026-10-20T23:28:20.070831+00:00",
+        "elapsed_seconds": 47.169,
+        "outcome": "complete",
+        "error_code": null,
+        "finish_reason": null
+      }
+    },
+    {
+      "provider": "gemini",
+      "question": "¿Qué presupuesto menciona Aurora en el audio en 01:02?",
+      "answer": "En el audio, se menciona que el Proyecto Aurora tiene un presupuesto de 731 dólares («*seven hundred thirty-one dollars*») [Fuente 1].",
+      "citations": [
+        {
+          "chunk_id": "4576bda6-a00e-4b31-bb0b-39a0cd9a3859",
+          "element_id": "908dc142-04d3-4e3b-9f55-2f076058e1a6",
+          "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+          "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+          "document_title": "Aurora-minute.wav",
+          "page_number": null,
+          "source_type": "audio",
+          "start_seconds": 60.0,
+          "end_seconds": 64.097868,
+          "sheet_name": null,
+          "cell_range": null,
+          "text": "Segmento 60.000–64.098 s. Contenido nativo adjunto; sin transcripción.",
+          "bbox": null,
+          "rotation": 0,
+          "precision": "time_range",
+          "label": 1,
+          "score": 0.0
+        }
+      ],
+      "trace": {
+        "schema_version": 1,
+        "started_at": "2026-10-20T23:29:51.582320+00:00",
+        "prompt_template_version": "rag-native-media-v4",
+        "policy": {
+          "provider": "gemini",
+          "model": "gemini-3.8-flash",
+          "timeout_seconds": 90,
+          "max_tokens": 2048,
+          "retries": 0
+        },
+        "stages": [
+          {
+            "stage": "request_started",
+            "elapsed_seconds": 0.0
+          },
+          {
+            "stage": "retrieval_finished",
+            "elapsed_seconds": 4.856
+          },
+          {
+            "stage": "native_clips_prepared",
+            "elapsed_seconds": 4.901
+          },
+          {
+            "stage": "inference_started",
+            "elapsed_seconds": 5.643
+          },
+          {
+            "stage": "inference_finished",
+            "elapsed_seconds": 9.719
+          },
+          {
+            "stage": "citations_validated",
+            "elapsed_seconds": 9.72
+          },
+          {
+            "stage": "finished",
+            "elapsed_seconds": 9.721
+          }
+        ],
+        "inference_attempted": true,
+        "consent_verified": true,
+        "query_message_id": "f04e8f6f-1e79-44f7-bbbd-04f61d97a932",
+        "document_snapshots": [
+          {
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "source_type": "video",
+            "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+            "active_index_id": "27348b01-2210-414f-842a-f957577ec9d3"
+          },
+          {
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "source_type": "audio",
+            "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+            "active_index_id": "08987612-7851-4b33-9caa-33f624e23f7a"
+          }
+        ],
+        "extraction_coverage": [
+          {
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+            "source_type": "video",
+            "duration_seconds": 12.0,
+            "segments_total": 2,
+            "segments_analyzed": 0,
+            "segments_prepared": 2,
+            "analysis_mode": "native_embeddings",
+            "segments_indexed": 2,
+            "analysis_status": "NATIVE_INDEXED",
+            "analysis_complete": false,
+            "active_index_ready": true,
+            "processing": null,
+            "analysis_provider": "gemini",
+            "analysis_model": "gemini-embedding-2",
+            "temporal_precision_seconds": 10,
+            "pages_total": 0,
+            "pages_extracted": 0,
+            "ocr_pending_pages": [],
+            "figures_total": 0,
+            "figures_with_chunks": 0,
+            "figures_multimodal_indexed": 0,
+            "visual_status": "MEDIA_SEGMENTS",
+            "index_modality": "multimodal"
+          },
+          {
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+            "source_type": "audio",
+            "duration_seconds": 64.097868,
+            "segments_total": 7,
+            "segments_analyzed": 0,
+            "segments_prepared": 7,
+            "analysis_mode": "native_embeddings",
+            "segments_indexed": 7,
+            "analysis_status": "NATIVE_INDEXED",
+            "analysis_complete": false,
+            "active_index_ready": true,
+            "processing": null,
+            "analysis_provider": "gemini",
+            "analysis_model": "gemini-embedding-2",
+            "temporal_precision_seconds": 10,
+            "pages_total": 0,
+            "pages_extracted": 0,
+            "ocr_pending_pages": [],
+            "figures_total": 0,
+            "figures_with_chunks": 0,
+            "figures_multimodal_indexed": 0,
+            "visual_status": "MEDIA_SEGMENTS",
+            "index_modality": "multimodal"
+          }
+        ],
+        "retrieval": {
+          "used_profiles": [
+            {
+              "profile_id": "999ef49d-a5f2-48fd-aea7-f87b41ae2767",
+              "provider": "gemini",
+              "model": "gemini-embedding-2",
+              "model_version": "2",
+              "dimensions": 768,
+              "modality": "multimodal",
+              "index_ids": [
+                "08987612-7851-4b33-9caa-33f624e23f7a",
+                "27348b01-2210-414f-842a-f957577ec9d3"
+              ]
+            }
+          ],
+          "semantic_failures": [],
+          "strategy": "hybrid-document-balanced-v2",
+          "lexical_candidates": 2,
+          "candidate_count": 1,
+          "top_k": 8,
+          "visual_query": false,
+          "requested_time_seconds": 62,
+          "requested_times_seconds": [
+            62
+          ],
+          "spreadsheet_scope": {
+            "sheets": [],
+            "explicit_sheets": false,
+            "cell_ranges": [],
+            "candidate_count": 0
+          },
+          "ranking": [
+            {
+              "chunk_id": "4576bda6-a00e-4b31-bb0b-39a0cd9a3859",
+              "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+              "score": 0.03278689,
+              "rank": 1,
+              "selected": true,
+              "lexical_rank": null
+            }
+          ],
+          "elapsed_seconds": 1.454,
+          "mode": "hybrid"
+        },
+        "native_media": {
+          "clips": [
+            {
+              "media": 1,
+              "source_id": 1,
+              "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+              "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+              "element_id": "908dc142-04d3-4e3b-9f55-2f076058e1a6",
+              "start_seconds": 60.0,
+              "end_seconds": 64.097868,
+              "clip_sha256": "ed3863d26b13ef4c5dee0f0f48aae2da148a5563c4c34032a5f5019a5654125f",
+              "bytes": 33452,
+              "mime_type": "audio/mpeg"
+            }
+          ],
+          "omitted": 0,
+          "bytes": 33452,
+          "duration_seconds": 4.097868000000005
+        },
+        "evidence_count": 1,
+        "context_chars": 70,
+        "input_modality": "native_media",
+        "context_windows": 1,
+        "sources": [
+          {
+            "label": 1,
+            "chunk_id": "4576bda6-a00e-4b31-bb0b-39a0cd9a3859",
+            "element_id": "908dc142-04d3-4e3b-9f55-2f076058e1a6",
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+            "page_number": null,
+            "source_type": "audio",
+            "start_seconds": 60.0,
+            "end_seconds": 64.097868,
+            "sheet_name": null,
+            "cell_range": null,
+            "chars": 70,
+            "score": 0.03278688524590164,
+            "document_title": "Aurora-minute.wav"
+          }
+        ],
+        "model_version": "3.0",
+        "is_cloud": true,
+        "document_coverage": {
+          "selected": 2,
+          "with_evidence": 1,
+          "without_evidence": [
+            "2d62a1ae-506f-44b0-ba03-e28bfed41ad8"
+          ]
+        },
+        "visual_coverage": {
+          "retrieved": 0,
+          "sent": 0,
+          "omitted": 0
+        },
+        "generated_output_chars": 134,
+        "cited_labels": [
+          1
+        ],
+        "finished_at": "2026-10-20T23:30:01.303019+00:00",
+        "elapsed_seconds": 9.721,
+        "outcome": "complete",
+        "error_code": null,
+        "finish_reason": null
+      }
+    },
+    {
+      "provider": "gemini",
+      "question": "Compara lo que dice el audio en 01:02 con el color que aparece en el video en 00:11. Cita ambas fuentes.",
+      "answer": "En el audio, en torno al minuto 01:02 (segmento 60.000–64.098 s), se indica: *«Project Aurora has a budget of 731 dollars»* («El Proyecto Aurora tiene un presupuesto de 731 dólares») [Fuente 2].\n\nPor su parte, en el video, alrededor del segundo 00:11 (segmento 10.000–12.000 s), se observa una pantalla completa de color **rojo** [Fuente 3].\n\nAl contrastar ambos elementos, el audio transmite información verbal de carácter financiero referente al presupuesto de un proyecto [Fuente 2], mientras que el video muestra únicamente una señal visual uniforme de color rojo, sin texto ni relación conceptual explícita en las evidencias recuperadas [Fuente 3].",
+      "citations": [
+        {
+          "chunk_id": "4576bda6-a00e-4b31-bb0b-39a0cd9a3859",
+          "element_id": "908dc142-04d3-4e3b-9f55-2f076058e1a6",
+          "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+          "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+          "document_title": "Aurora-minute.wav",
+          "page_number": null,
+          "source_type": "audio",
+          "start_seconds": 60.0,
+          "end_seconds": 64.097868,
+          "sheet_name": null,
+          "cell_range": null,
+          "text": "Segmento 60.000–64.098 s. Contenido nativo adjunto; sin transcripción.",
+          "bbox": null,
+          "rotation": 0,
+          "precision": "time_range",
+          "label": 2,
+          "score": 0.0
+        },
+        {
+          "chunk_id": "b5be4794-f651-4c6c-854d-29760e491e60",
+          "element_id": "5f047dc0-3db0-4364-ab87-b285caf6557f",
+          "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+          "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+          "document_title": "Aurora-colors.mp4",
+          "page_number": null,
+          "source_type": "video",
+          "start_seconds": 10.0,
+          "end_seconds": 12.0,
+          "sheet_name": null,
+          "cell_range": null,
+          "text": "Segmento 10.000–12.000 s. Contenido nativo adjunto; sin transcripción.",
+          "bbox": null,
+          "rotation": 0,
+          "precision": "time_range",
+          "label": 3,
+          "score": 0.0
+        }
+      ],
+      "trace": {
+        "schema_version": 1,
+        "started_at": "2026-10-20T23:30:01.405242+00:00",
+        "prompt_template_version": "rag-native-media-v4",
+        "policy": {
+          "provider": "gemini",
+          "model": "gemini-3.8-flash",
+          "timeout_seconds": 90,
+          "max_tokens": 2048,
+          "retries": 0
+        },
+        "stages": [
+          {
+            "stage": "request_started",
+            "elapsed_seconds": 0.0
+          },
+          {
+            "stage": "retrieval_finished",
+            "elapsed_seconds": 1.865
+          },
+          {
+            "stage": "native_clips_prepared",
+            "elapsed_seconds": 2.014
+          },
+          {
+            "stage": "inference_started",
+            "elapsed_seconds": 2.84
+          },
+          {
+            "stage": "inference_finished",
+            "elapsed_seconds": 8.952
+          },
+          {
+            "stage": "citations_validated",
+            "elapsed_seconds": 8.953
+          },
+          {
+            "stage": "finished",
+            "elapsed_seconds": 8.954
+          }
+        ],
+        "inference_attempted": true,
+        "consent_verified": true,
+        "query_message_id": "db80e173-c1bb-428d-a74c-8a3c6c7f947e",
+        "document_snapshots": [
+          {
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "source_type": "video",
+            "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+            "active_index_id": "27348b01-2210-414f-842a-f957577ec9d3"
+          },
+          {
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "source_type": "audio",
+            "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+            "active_index_id": "08987612-7851-4b33-9caa-33f624e23f7a"
+          }
+        ],
+        "extraction_coverage": [
+          {
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+            "source_type": "video",
+            "duration_seconds": 12.0,
+            "segments_total": 2,
+            "segments_analyzed": 0,
+            "segments_prepared": 2,
+            "analysis_mode": "native_embeddings",
+            "segments_indexed": 2,
+            "analysis_status": "NATIVE_INDEXED",
+            "analysis_complete": false,
+            "active_index_ready": true,
+            "processing": null,
+            "analysis_provider": "gemini",
+            "analysis_model": "gemini-embedding-2",
+            "temporal_precision_seconds": 10,
+            "pages_total": 0,
+            "pages_extracted": 0,
+            "ocr_pending_pages": [],
+            "figures_total": 0,
+            "figures_with_chunks": 0,
+            "figures_multimodal_indexed": 0,
+            "visual_status": "MEDIA_SEGMENTS",
+            "index_modality": "multimodal"
+          },
+          {
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+            "source_type": "audio",
+            "duration_seconds": 64.097868,
+            "segments_total": 7,
+            "segments_analyzed": 0,
+            "segments_prepared": 7,
+            "analysis_mode": "native_embeddings",
+            "segments_indexed": 7,
+            "analysis_status": "NATIVE_INDEXED",
+            "analysis_complete": false,
+            "active_index_ready": true,
+            "processing": null,
+            "analysis_provider": "gemini",
+            "analysis_model": "gemini-embedding-2",
+            "temporal_precision_seconds": 10,
+            "pages_total": 0,
+            "pages_extracted": 0,
+            "ocr_pending_pages": [],
+            "figures_total": 0,
+            "figures_with_chunks": 0,
+            "figures_multimodal_indexed": 0,
+            "visual_status": "MEDIA_SEGMENTS",
+            "index_modality": "multimodal"
+          }
+        ],
+        "retrieval": {
+          "used_profiles": [
+            {
+              "profile_id": "999ef49d-a5f2-48fd-aea7-f87b41ae2767",
+              "provider": "gemini",
+              "model": "gemini-embedding-2",
+              "model_version": "2",
+              "dimensions": 768,
+              "modality": "multimodal",
+              "index_ids": [
+                "08987612-7851-4b33-9caa-33f624e23f7a",
+                "27348b01-2210-414f-842a-f957577ec9d3"
+              ]
+            }
+          ],
+          "semantic_failures": [],
+          "strategy": "hybrid-document-balanced-v2",
+          "lexical_candidates": 2,
+          "candidate_count": 3,
+          "top_k": 8,
+          "visual_query": false,
+          "requested_time_seconds": 62,
+          "requested_times_seconds": [
+            62,
+            11
+          ],
+          "spreadsheet_scope": {
+            "sheets": [],
+            "explicit_sheets": false,
+            "cell_ranges": [],
+            "candidate_count": 0
+          },
+          "ranking": [
+            {
+              "chunk_id": "b5be4794-f651-4c6c-854d-29760e491e60",
+              "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+              "score": 0.04788306,
+              "rank": 1,
+              "selected": true,
+              "lexical_rank": 2
+            },
+            {
+              "chunk_id": "ff54a956-4448-48e7-b71a-540ec99ba90e",
+              "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+              "score": 0.03226646,
+              "rank": 2,
+              "selected": true,
+              "lexical_rank": null
+            },
+            {
+              "chunk_id": "4576bda6-a00e-4b31-bb0b-39a0cd9a3859",
+              "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+              "score": 0.0308862,
+              "rank": 3,
+              "selected": true,
+              "lexical_rank": null
+            }
+          ],
+          "elapsed_seconds": 1.757,
+          "mode": "hybrid"
+        },
+        "native_media": {
+          "clips": [
+            {
+              "media": 1,
+              "source_id": 1,
+              "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+              "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+              "element_id": "43a00f58-db28-47ee-ba48-022c03d0ece1",
+              "start_seconds": 10.0,
+              "end_seconds": 20.0,
+              "clip_sha256": "f9f2e04c16ddef9dd92d97eb7e8be216e97cce8f325192396738fb90eb6cbe27",
+              "bytes": 80684,
+              "mime_type": "audio/mpeg"
+            },
+            {
+              "media": 2,
+              "source_id": 2,
+              "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+              "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+              "element_id": "908dc142-04d3-4e3b-9f55-2f076058e1a6",
+              "start_seconds": 60.0,
+              "end_seconds": 64.097868,
+              "clip_sha256": "ed3863d26b13ef4c5dee0f0f48aae2da148a5563c4c34032a5f5019a5654125f",
+              "bytes": 33452,
+              "mime_type": "audio/mpeg"
+            },
+            {
+              "media": 3,
+              "source_id": 3,
+              "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+              "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+              "element_id": "5f047dc0-3db0-4364-ab87-b285caf6557f",
+              "start_seconds": 10.0,
+              "end_seconds": 12.0,
+              "clip_sha256": "be2dc17425ed661599c9509e7ed8ad122439a1c31339b5c8ad39419d486c7d1c",
+              "bytes": 3481,
+              "mime_type": "video/mp4"
+            }
+          ],
+          "omitted": 0,
+          "bytes": 117617,
+          "duration_seconds": 16.097868000000005
+        },
+        "evidence_count": 3,
+        "context_chars": 210,
+        "input_modality": "native_media",
+        "context_windows": 2,
+        "sources": [
+          {
+            "label": 1,
+            "chunk_id": "ff54a956-4448-48e7-b71a-540ec99ba90e",
+            "element_id": "43a00f58-db28-47ee-ba48-022c03d0ece1",
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+            "page_number": null,
+            "source_type": "audio",
+            "start_seconds": 10.0,
+            "end_seconds": 20.0,
+            "sheet_name": null,
+            "cell_range": null,
+            "chars": 70,
+            "score": 0.032266458495966696,
+            "document_title": "Aurora-minute.wav"
+          },
+          {
+            "label": 2,
+            "chunk_id": "4576bda6-a00e-4b31-bb0b-39a0cd9a3859",
+            "element_id": "908dc142-04d3-4e3b-9f55-2f076058e1a6",
+            "document_id": "d5602151-60ec-412e-ba0f-b71608b8fce1",
+            "version_id": "01ef3450-e0ad-420b-bd1a-1d339a842d17",
+            "page_number": null,
+            "source_type": "audio",
+            "start_seconds": 60.0,
+            "end_seconds": 64.097868,
+            "sheet_name": null,
+            "cell_range": null,
+            "chars": 70,
+            "score": 0.030886196246139225,
+            "document_title": "Aurora-minute.wav"
+          },
+          {
+            "label": 3,
+            "chunk_id": "b5be4794-f651-4c6c-854d-29760e491e60",
+            "element_id": "5f047dc0-3db0-4364-ab87-b285caf6557f",
+            "document_id": "2d62a1ae-506f-44b0-ba03-e28bfed41ad8",
+            "version_id": "61dd6cc7-956f-425c-becb-06004ea4af27",
+            "page_number": null,
+            "source_type": "video",
+            "start_seconds": 10.0,
+            "end_seconds": 12.0,
+            "sheet_name": null,
+            "cell_range": null,
+            "chars": 70,
+            "score": 0.04788306451612903,
+            "document_title": "Aurora-colors.mp4"
+          }
+        ],
+        "model_version": "3.0",
+        "is_cloud": true,
+        "document_coverage": {
+          "selected": 2,
+          "with_evidence": 2,
+          "without_evidence": []
+        },
+        "visual_coverage": {
+          "retrieved": 0,
+          "sent": 0,
+          "omitted": 0
+        },
+        "generated_output_chars": 653,
+        "cited_labels": [
+          2,
+          3
+        ],
+        "finished_at": "2026-10-20T23:30:10.356984+00:00",
+        "elapsed_seconds": 8.954,
+        "outcome": "complete",
+        "error_code": null,
+        "finish_reason": null
+      }
+    }
+  ],
+  "workspace_id": "29bde3cd-12c6-4949-907c-044059015814",
+  "cached_local_reindex_seconds": 4.27,
+  "passed": true,
+  "finished_at": "2026-10-20T23:41:14.836505+00:00",
+  "native_pdf": {
+    "passed": true,
+    "document_id": "7bae20f3-b5cb-4e2d-96ce-49f59bf52e18",
+    "coverage": {
+      "source_type": "pdf",
+      "document_id": "7bae20f3-b5cb-4e2d-96ce-49f59bf52e18",
+      "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+      "pages_total": 1,
+      "pages_extracted": 1,
+      "ocr_pending_pages": [],
+      "figures_total": 1,
+      "figures_with_chunks": 1,
+      "figures_multimodal_indexed": 1,
+      "visual_status": "MULTIMODAL_INDEXED",
+      "index_modality": "multimodal"
+    },
+    "answer": "La figura del documento es de color rojo [Fuente 2].",
+    "citations": [
+      {
+        "chunk_id": "74d6047a-f28d-47a2-8750-a632c41b2073",
+        "element_id": "f655f5ce-2794-448c-a849-569eae52aefe",
+        "document_id": "7bae20f3-b5cb-4e2d-96ce-49f59bf52e18",
+        "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+        "document_title": "Native-image-proof.pdf",
+        "page_number": 1,
+        "source_type": "pdf",
+        "start_seconds": null,
+        "end_seconds": null,
+        "sheet_name": null,
+        "cell_range": null,
+        "text": "Región visual de tipo figure; interpretación aún no verificada.",
+        "bbox": {
+          "x": 0.075,
+          "y": 0.19230769230769232,
+          "width": 0.8,
+          "height": 0.6923076923076923
+        },
+        "rotation": 0,
+        "precision": "region",
+        "label": 2,
+        "score": 0.0
+      }
+    ],
+    "trace": {
+      "schema_version": 1,
+      "started_at": "2026-10-20T23:37:21.675388+00:00",
+      "prompt_template_version": "rag-native-media-v4",
+      "policy": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "timeout_seconds": 90,
+        "max_tokens": 2048,
+        "retries": 0
+      },
+      "stages": [
+        {
+          "stage": "request_started",
+          "elapsed_seconds": 0.0
+        },
+        {
+          "stage": "retrieval_finished",
+          "elapsed_seconds": 1.209
+        },
+        {
+          "stage": "image_regions_prepared",
+          "elapsed_seconds": 2.908
+        },
+        {
+          "stage": "inference_started",
+          "elapsed_seconds": 2.922
+        },
+        {
+          "stage": "inference_finished",
+          "elapsed_seconds": 6.468
+        },
+        {
+          "stage": "citations_validated",
+          "elapsed_seconds": 6.469
+        },
+        {
+          "stage": "finished",
+          "elapsed_seconds": 6.471
+        }
+      ],
+      "inference_attempted": true,
+      "consent_verified": true,
+      "query_message_id": "70065e73-7773-41fa-8af4-55c5128e463c",
+      "document_snapshots": [
+        {
+          "document_id": "7bae20f3-b5cb-4e2d-96ce-49f59bf52e18",
+          "source_type": "pdf",
+          "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+          "active_index_id": "fbbb1d46-a842-4045-871a-eb4334d424f1"
+        }
+      ],
+      "extraction_coverage": [
+        {
+          "source_type": "pdf",
+          "document_id": "7bae20f3-b5cb-4e2d-96ce-49f59bf52e18",
+          "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+          "pages_total": 1,
+          "pages_extracted": 1,
+          "ocr_pending_pages": [],
+          "figures_total": 1,
+          "figures_with_chunks": 1,
+          "figures_multimodal_indexed": 1,
+          "visual_status": "MULTIMODAL_INDEXED",
+          "index_modality": "multimodal"
+        }
+      ],
+      "retrieval": {
+        "used_profiles": [
+          {
+            "profile_id": "2d089a9c-c6bb-4106-8d9e-9af4619108b9",
+            "provider": "embeddinggemma",
+            "model": "embeddinggemma-2-native",
+            "model_version": "914f7f89142e33e77833254d9c9b90c3cef7303b:float32:av-1fps-image280-v1",
+            "dimensions": 768,
+            "modality": "multimodal",
+            "index_ids": [
+              "fbbb1d46-a842-4045-871a-eb4334d424f1"
+            ]
+          }
+        ],
+        "semantic_failures": [],
+        "strategy": "hybrid-document-balanced-v2",
+        "lexical_candidates": 2,
+        "candidate_count": 2,
+        "top_k": 8,
+        "visual_query": true,
+        "requested_time_seconds": null,
+        "requested_times_seconds": [],
+        "spreadsheet_scope": {
+          "sheets": [],
+          "explicit_sheets": false,
+          "cell_ranges": [],
+          "candidate_count": 0
+        },
+        "ranking": [
+          {
+            "chunk_id": "74d6047a-f28d-47a2-8750-a632c41b2073",
+            "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+            "score": 0.04918033,
+            "rank": 1,
+            "selected": true,
+            "lexical_rank": 1
+          },
+          {
+            "chunk_id": "51938f31-158e-4ac0-a02d-7550ff915a13",
+            "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+            "score": 0.03225806,
+            "rank": 2,
+            "selected": true,
+            "lexical_rank": 2
+          }
+        ],
+        "elapsed_seconds": 1.015,
+        "mode": "hybrid"
+      },
+      "evidence_count": 2,
+      "context_chars": 79,
+      "input_modality": "image_region",
+      "context_windows": 1,
+      "sources": [
+        {
+          "label": 1,
+          "chunk_id": "51938f31-158e-4ac0-a02d-7550ff915a13",
+          "element_id": "3a59612e-d14d-4685-b69e-b28ec970a5e1",
+          "document_id": "7bae20f3-b5cb-4e2d-96ce-49f59bf52e18",
+          "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+          "page_number": 1,
+          "source_type": "pdf",
+          "start_seconds": null,
+          "end_seconds": null,
+          "sheet_name": null,
+          "cell_range": null,
+          "chars": 16,
+          "score": 0.03225806451612903,
+          "document_title": "Native-image-proof.pdf"
+        },
+        {
+          "label": 2,
+          "chunk_id": "74d6047a-f28d-47a2-8750-a632c41b2073",
+          "element_id": "f655f5ce-2794-448c-a849-569eae52aefe",
+          "document_id": "7bae20f3-b5cb-4e2d-96ce-49f59bf52e18",
+          "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+          "page_number": 1,
+          "source_type": "pdf",
+          "start_seconds": null,
+          "end_seconds": null,
+          "sheet_name": null,
+          "cell_range": null,
+          "chars": 63,
+          "score": 0.04918032786885246,
+          "document_title": "Native-image-proof.pdf"
+        }
+      ],
+      "model_version": "3.0",
+      "is_cloud": true,
+      "vision": {
+        "selection": "retrieved_multimodal",
+        "image_count": 1,
+        "regions": [
+          {
+            "source_label": 2,
+            "element_id": "f655f5ce-2794-448c-a849-569eae52aefe",
+            "document_id": "7bae20f3-b5cb-4e2d-96ce-49f59bf52e18",
+            "version_id": "83cad80c-101e-482c-8ce8-8d3e83fb60be",
+            "page_number": 1,
+            "width": 490,
+            "height": 276,
+            "bytes": 1052,
+            "region_sha256": "d620854b17ba5957b7b4608088533c9fcab9bc9be55a07686fed607a7bbb1a8c"
+          }
+        ]
+      },
+      "document_coverage": {
+        "selected": 1,
+        "with_evidence": 1,
+        "without_evidence": []
+      },
+      "visual_coverage": {
+        "retrieved": 1,
+        "sent": 1,
+        "omitted": 0
+      },
+      "generated_output_chars": 52,
+      "cited_labels": [
+        2
+      ],
+      "finished_at": "2026-10-20T23:37:28.146337+00:00",
+      "elapsed_seconds": 6.471,
+      "outcome": "complete",
+      "error_code": null,
+      "finish_reason": null
+    }
+  },
+  "runtime_probe": [
+    {
+      "modality": "text",
+      "status": 200,
+      "elapsed": 0.53,
+      "dimensions": 768,
+      "error": null
+    },
+    {
+      "modality": "audio",
+      "status": 200,
+      "elapsed": 4.77,
+      "dimensions": 768,
+      "error": null
+    },
+    {
+      "modality": "image",
+      "status": 200,
+      "elapsed": 23.91,
+      "dimensions": 768,
+      "error": null
+    },
+    {
+      "modality": "video",
+      "status": 200,
+      "elapsed": 50.25,
+      "dimensions": 768,
+      "error": null
+    }
+  ],
+  "combined_audio_video_probe": {
+    "synthetic_data_only": true,
+    "status": 200,
+    "dimensions": 768,
+    "elapsed_seconds": 19.98,
+    "error": null
+  }
+}

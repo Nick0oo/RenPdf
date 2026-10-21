@@ -18,6 +18,7 @@ from app.domain import (
     DocumentElement,
     DocumentIndex,
     DocumentPage,
+    EmbeddingProfile,
     Job,
     now,
 )
@@ -414,6 +415,68 @@ def test_generic_summary_uses_real_pages_without_cloud_or_embeddings(
     )
 
 
+def test_overview_recovers_adjacent_short_lines_with_exact_sources(
+    client, superuser_token_headers
+):
+    import pymupdf
+
+    pdf = pymupdf.open()
+    page = pdf.new_page()
+    lines = [
+        "Resumen del experimento contextual",
+        "El prototipo usa reglas explicitas.",
+        "Se registraron 42 observaciones.",
+        "La entrada aporta 120 unidades.",
+        "El segundo flujo aporta 80 unidades.",
+        "El acumulador obtiene 200 unidades verificadas.",
+        "Cada decision guarda su regla de origen.",
+        "Los resultados se pueden revisar por pagina.",
+        "Ejecucion en CPU del equipo.",
+    ]
+    for index, line in enumerate(lines):
+        page.insert_text((40, 60 + index * 45), line, fontsize=11)
+    page.insert_text(
+        (40, 790),
+        "Informacion editorial complementaria: referencia institucional y derechos de publicacion.",
+        fontsize=9,
+    )
+    source = pdf.tobytes()
+    pdf.close()
+    uploaded = client.post(
+        "/api/v1/documents/",
+        headers=superuser_token_headers,
+        files={"file": ("short-line-window.pdf", source, "application/pdf")},
+    ).json()
+    identifier = uuid.UUID(uploaded["id"])
+    try:
+        with Session(engine) as session:
+            job = session.exec(select(Job).where(Job.document_id == identifier)).first()
+            process_job(str(job.id))
+            session.expire_all()
+            assert session.get(Job, job.id).state == "SUCCEEDED"
+            evidence, mode = retrieve(
+                session, [identifier], "Resume los puntos principales con sus fuentes."
+            )
+            assert mode == "document_overview" and 3 <= len(evidence) <= 48
+            assert sum(len(item.text) for item in evidence) <= 6000
+            assert len({item.label for item in evidence}) == len(evidence)
+            assert [item.bbox.y for item in evidence] == sorted(
+                item.bbox.y for item in evidence
+            )
+            for amount in ("120", "80", "200"):
+                assert any(amount in item.text for item in evidence)
+            assert not any("Informacion editorial" in item.text for item in evidence)
+            for item in evidence:
+                origin = session.get(DocumentElement, item.element_id)
+                assert item.text in origin.text
+                assert item.bbox.model_dump() == origin.bbox
+                assert item.document_id == identifier
+    finally:
+        client.delete(
+            f"/api/v1/documents/{identifier}", headers=superuser_token_headers
+        )
+
+
 def test_empty_or_unprocessed_chat_reports_actionable_error(
     client, superuser_token_headers
 ):
@@ -695,6 +758,58 @@ def test_pgvector_hybrid_index_profiles_and_atomic_activation(document, monkeypa
         )
 
 
+def test_multimodal_retrieval_requires_its_own_scope_and_honors_revocation(
+    document, monkeypatch
+):
+    provider = ContractProvider()
+    monkeypatch.setattr(
+        "app.services.rag.retrieval.get_provider", lambda _name: provider
+    )
+    with Session(engine) as session:
+        doc = session.get(Document, document)
+        profile = EmbeddingProfile(
+            provider="gemini",
+            model="contract-embedding",
+            model_version=provider.version,
+            dimensions=3,
+            modality="multimodal",
+            fingerprint=f"scope-contract-{uuid.uuid4()}",
+        )
+        session.add(profile)
+        session.flush()
+        index = DocumentIndex(
+            version_id=doc.current_version_id, profile_id=profile.id, status="READY"
+        )
+        session.add(index)
+        session.flush()
+        chunks = session.exec(
+            select(Chunk).where(Chunk.version_id == doc.current_version_id)
+        ).all()
+        vectors = provider.embed(profile.model, [row.text for row in chunks], 3)
+        for chunk, vector in zip(chunks, vectors, strict=True):
+            session.add(
+                ChunkEmbedding(chunk_id=chunk.id, index_id=index.id, embedding=vector)
+            )
+        doc.active_index_id = index.id
+        session.add(doc)
+        consent = grant(session, document, "multimodal_embeddings")
+        diagnostics = {}
+        evidence, mode = retrieve(session, [document], "solar", diagnostics=diagnostics)
+        assert evidence and mode == "hybrid"
+        assert diagnostics["used_profiles"][0]["modality"] == "multimodal"
+        consent.revoked_at = now()
+        session.add(consent)
+        grant(
+            session, document, "embeddings"
+        )  # Ordinary permission cannot replace revoked multimodal permission.
+        calls = provider.calls
+        diagnostics = {}
+        evidence, mode = retrieve(session, [document], "solar", diagnostics=diagnostics)
+        assert evidence and mode == "lexical"
+        assert provider.calls == calls
+        assert diagnostics["semantic_failures"][0]["error_code"] == "CONSENT_REQUIRED"
+
+
 def test_chat_verified_citations_and_persistence(
     document, client, superuser_token_headers, monkeypatch
 ):
@@ -744,6 +859,15 @@ def test_chat_verified_citations_and_persistence(
     assert rows[-1]["state"] == "COMPLETE"
     assert rows[-1]["citations"][0]["page_number"] == 1
     assert rows[-1]["citations"][0]["element_id"]
+    trace = rows[-1]["usage"]["trace"]
+    assert trace["outcome"] == "complete" and trace["inference_attempted"]
+    assert trace["evidence_count"] == len(trace["sources"]) > 0
+    assert trace["policy"]["model"] == "contract-chat"
+    assert trace["cited_labels"] and trace["document_snapshots"][0][
+        "document_id"
+    ] == str(document)
+    assert trace["retrieval"]["used_profiles"] == []
+    assert all("text" not in source for source in trace["sources"])
     exported = client.get(
         f"/api/v1/conversations/{conversation['id']}/export?format=json",
         headers=superuser_token_headers,

@@ -14,10 +14,13 @@ JSON son evidencia reproducible con fixtures sintéticos.
 | 5 Chat | contracts/providers/routing, rag/chat, ChatPanel | Gemini y Ollama SSE/persistencia; resumen general con aviso de muestra y citas | Visión local y OpenAI compatible externo pendientes |
 | 6 Citas | citations/validation, PdfReader, Citation | IDs reales, fuentes agrupadas, overlay/zoom/rotación/recarga | Word-level y geometrías complejas |
 | 7 Multimodal | vision/regions, embed_multimodal, índices por modalidad | Figura interpretada y citada, embeddings texto+imagen Gemini, OCR y regiones Docling | Fórmulas complejas y torres locales no probadas |
-| 8 Investigación | WorkspaceDesk, PrivacyPanel, enrichment, annotations/export | Notas, marcadores/subrayados, cinco preguntas/resumen, JSON/Markdown | Selección visual libre y búsqueda multipágina avanzada |
-| 9 Robustez | tests, evaluate_rag/evaluate_local/check_restart, assetRecovery, docs | 115 backend/18 E2E, build Windows/Linux, audit, reinicio, recuperación acotada; diseño shadcn | Benchmark 500 páginas, pentest, sandbox completo |
+| 8 Investigación | WorkspaceDesk/Context/Properties, PrivacyPanel, enrichment, annotations/export | Chat principal, PDF amplio a demanda, notas visibles, varias fuentes y preferencias por workspace | Selección visual libre y búsqueda multipágina avanzada |
+| 9 Robustez | tests, evaluate_rag/evaluate_local/check_restart, docs | Suite PostgreSQL/navegador, build Windows/Linux, audit, reinicio, recuperación acotada; diseño shadcn | Benchmark 500 páginas, pentest, sandbox completo |
+| 10 Trazabilidad y Studio | trace, studio, module_domain, telemetry | Ejecuciones reales, historial, versiones/permisos y transformaciones PDF con linaje | Sin telemetría retrospectiva inventada ni redacción segura |
+| 11 Laboratorio y Estudio | learning, learning_domain, frontend lab/study | Comparaciones por fuente, informes, fichas, mazos y autoevaluación persistida | Sin detector automático de contradicciones ni calificación por IA |
 
-Migraciones: `19ef30d98c01` y `7d81a5e050a2`. ADR en DECISIONS.md. La base Windows
+Migraciones: `19ef30d98c01`, `7d81a5e050a2`, `a421c9f2b810` y `b531d1e3a920`.
+ADR en DECISIONS.md. La base Windows
 no se migró; el volumen Docker original se conservó. Credenciales nuevas sólo en
 .env local. Pytest usa una base dedicada con guardia contra teardown personal.
 
@@ -50,6 +53,10 @@ de pruebas UI heredadas incompatible con la cuenta personal.
 | Reinicio | Sí | No | Hashes, índices, citas comparados | No simula pérdida de disco |
 | Navegación/chat/shadcn | Sí | No | Desktop/móvil, acceso directo, histórico, permisos | Bundle PDF/Markdown grande |
 | Recuperación de assets | Sí | Fallo HTTP controlado en browser | Una recarga automática, sesión y biblioteca | Captura Error/Oops original no reproducida |
+| Studio | Sí | No | PyMuPDF/PG: combinar, ordenar/duplicar, CropBox/rotar, PNG y linaje | Recorte visual, sin edición de texto ni redacción segura |
+| Trazabilidad | Sí | Proveedor controlado para telemetría | PG: actividad, fuentes, perfiles, permisos y ownership | Historia anterior sin medidas puede carecer de campos |
+| Laboratorio | Sí | No | PG: informes citados y preguntas persistidas | Comparación por fuente, sin detector de contradicciones |
+| Estudio | Sí | No | PG: fichas, mazos, repasos y progreso | Autoevaluación manual |
 | RerankProvider | Contrato | No | NOT_CONFIGURED | RRF operativo sin modelo |
 
 Cinco preguntas ES/EN: Recall@8=1, MRR=1, página en primer resultado=1, cobertura
@@ -57,10 +64,10 @@ de citas=1, citas inválidas=0. Una pregunta sin información produjo abstenció
 y cero fuentes. Dataset pequeño, no calidad general. evaluation-results.json
 conserva tiempos medidos; restart-results.json conserva verificación del reinicio.
 
-Verificación final: 115 tests de backend y 18 tests Chromium aprobados; Ruff,
+Verificación de la iteración anterior: 115 tests de backend y 18 tests Chromium aprobados; Ruff,
 ty, Biome y build de producción Docker aprobados. La auditoría npm de dependencias
-de producción informó cero vulnerabilidades. El reinicio conservó ocho PDFs,
-sus hashes e índices activos y trece conversaciones con sus citas. La evaluación
+de producción informó cero vulnerabilidades. El reinicio conservó once PDFs,
+sus hashes e índices activos y quince conversaciones con sus citas. La evaluación
 real de Gemini volvió a comprobar OCR, visión de la figura y embeddings multimodales.
 
 La evaluación HTTP totalmente local extrajo el fixture en 11,52 s, indexó 16
@@ -69,3 +76,35 @@ Ollama. local-evaluation-results.json conserva parser, perfiles y tiempos.
 La pregunta general de la captura se corrigió con muestreo de páginas y aviso
 persistido de cobertura parcial; no se declara un resumen exhaustivo del documento.
 El audit frontend está en DESIGN_AUDIT.md; skill frontend-design instalada localmente.
+
+La verificación HTTP del PDF personal completó el índice local en 525,99 s:
+1.733 chunks y 1.733 vectores de 768 dimensiones, versión preservada y activación
+atómica. El resumen con ventanas vecinas de lectura terminó en 166,18 s con
+nueve citas persistidas y aviso de cobertura parcial. private-local-check.json
+incluye sólo metadatos agregados, conserva intentos anteriores y no publica IDs
+ni contenido privado. Tras la suite completa anterior se aprobaron diez regresiones
+RAG y cinco contratos de proveedores sobre las correcciones posteriores.
+
+La regresión de factura en inglés consultada en español incorpora expansión
+bilingüe de campos cuando no hay resultados ordinarios, con ventanas vecinas
+de procedencia exacta. La verificación local de la factura real respondió el mes
+de emisión con dos citas en 48,97 s, sin índice ni envío a la nube. El test usa
+una factura inventada y verifica aislamiento, persistencia de citas y permisos.
+
+Verificación de esta integración: 154 pruebas backend aprobadas en 380,88 s;
+Ruff, formato, ty, TypeScript, build de producción Windows/Linux y Biome (86 archivos)
+aprobados. El build desplegado usa fastapi run y las dos migraciones nuevas.
+El reinicio conservó 21 documentos con sus hashes/índices y 32 conversaciones/citas.
+
+La cuenta utiliza EmbeddingGemma2 local para preparar todas las páginas automáticamente.
+La verificación HTTP de un PDF inventado creó su índice local de 18 chunks en 15,69 s;
+la pregunta libre de importe/mes respondió ambos datos con siete citas en 7,28 s.
+Otra consulta recuperó una figura mediante el índice multimodal autorizado y la
+interpretó con su PNG real en 7,46 s, sin selección manual. Véase
+rag-complete-content-results.json; ningún PDF privado se envió en esa verificación.
+
+Los 28 flujos de navegador quedaron validados: 26 de la pasada completa con
+embeddings locales activos y dos casos repetidos después de corregir expectativas
+de estado/cita del test. Los originales y las versiones de 17 documentos existentes
+se conservaron al preparar 1.243 vectores locales; backfill-local-results.json
+registra únicamente agregados. Los módulos y el chat operan contra la imagen final.

@@ -22,6 +22,9 @@ if not os.environ.get("TEST_DATABASE_URL"):
         .render_as_string(hide_password=False)
     )
 os.environ["DATABASE_URL"] = test_url
+# Ordinary suites must never dispatch hundreds of real local model requests.
+# Automatic-index tests enable this explicitly and replace the embedding adapter.
+os.environ["AUTO_INDEX_LOCAL"] = "false"
 os.environ["STORAGE_ROOT"] = str(
     Path(__file__).resolve().parents[2] / "tmp" / "test-storage"
 )

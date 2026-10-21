@@ -1,0 +1,60 @@
+{
+  "skills": [
+    {
+      "name": "shadcn",
+      "repository": "https://github.com/shadcn-ui/ui",
+      "commit": "c2477f311c19982ef6e246085438e6cfec3e35ea",
+      "path": "skills/shadcn",
+      "source": "https://github.com/shadcn-ui/ui/tree/c2477f311c19982ef6e246085438e6cfec3e35ea/skills/shadcn",
+      "license": "MIT",
+      "license_source": "LICENSE.md"
+    },
+    {
+      "name": "vercel-react-best-practices",
+      "repository": "https://github.com/vercel-labs/agent-skills",
+      "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+      "path": "skills/react-best-practices",
+      "source": "https://github.com/vercel-labs/agent-skills/tree/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices",
+      "license": "MIT",
+      "license_source": "SKILL.md frontmatter (upstream does not include a separate license file)"
+    },
+    {
+      "name": "fastapi",
+      "repository": "https://github.com/fastapi/fastapi",
+      "commit": "0b919816378eaa773df7ce4204414c712c9fdbea",
+      "path": "fastapi/.agents/skills/fastapi",
+      "source": "https://github.com/fastapi/fastapi/tree/0b919816378eaa773df7ce4204414c712c9fdbea/fastapi/.agents/skills/fastapi",
+      "license": "MIT",
+      "license_source": "LICENSE"
+    },
+    {
+      "name": "domain-modeling",
+      "repository": "https://github.com/mattpocock/skills",
+      "commit": "49dd158d1076134a641b33efb035946536778336",
+      "path": "skills/engineering/domain-modeling",
+      "source": "https://github.com/mattpocock/skills/tree/49dd158d1076134a641b33efb035946536778336/skills/engineering/domain-modeling",
+      "license": "MIT",
+      "license_source": "LICENSE"
+    },
+    {
+      "name": "architecture-patterns",
+      "repository": "https://github.com/wshobson/agents",
+      "commit": "044b4b21f083948e69ec878a7b07c8d0951a6ffa",
+      "path": "plugins/backend-development/skills/architecture-patterns",
+      "source": "https://github.com/wshobson/agents/tree/044b4b21f083948e69ec878a7b07c8d0951a6ffa/plugins/backend-development/skills/architecture-patterns",
+      "license": "MIT",
+      "license_source": "LICENSE"
+    },
+    {
+      "name": "frontend-design",
+      "origin": "local-installation",
+      "source": "Existing personal frontend-design installation; preserved without changes",
+      "license": "Apache-2.0",
+      "license_source": "LICENSE.txt",
+      "files_sha256": {
+        "LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3"
+      }
+    }
+  ]
+}

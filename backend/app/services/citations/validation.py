@@ -2,8 +2,11 @@ import re
 
 from app.services.models.contracts import ProviderError
 
+# Models sometimes emit TeX escaped spaces inside an otherwise exact marker.
+# Accept only whitespace escapes; identifiers still pass the same allowlist.
+SOURCE_SPACE = r"(?:\s|\\{1,2}[ \t])*"
 SOURCE_PATTERN = re.compile(
-    r"\[\s*(?:(?:Fuente|Source|S)\s*)?\d+(?:\s*[,;]\s*(?:(?:Fuente|Source|S)\s*)?\d+)*\s*\]",
+    rf"\[{SOURCE_SPACE}(?:(?:Fuente|Source|S){SOURCE_SPACE})?\d+(?:{SOURCE_SPACE}[,;]{SOURCE_SPACE}(?:(?:Fuente|Source|S){SOURCE_SPACE})?\d+)*{SOURCE_SPACE}\]",
     re.IGNORECASE,
 )
 ABSTENTION = "No encontré información suficiente en las evidencias recuperadas para responder esta pregunta."

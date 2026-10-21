@@ -47,6 +47,7 @@ services:
       OLLAMA_NUM_THREADS: ${OLLAMA_NUM_THREADS:-2}
       OLLAMA_NUM_GPU: ${OLLAMA_NUM_GPU:-0}
       LLAMACPP_BASE_URL: ${DOCKER_LLAMACPP_BASE_URL:-}
+      EMBEDDINGGEMMA_BASE_URL: ${DOCKER_EMBEDDINGGEMMA_BASE_URL:-}
       LLAMACPP_MODE: ${LLAMACPP_MODE:-unknown}
       LLAMACPP_MODEL_VERSION: ${LLAMACPP_MODEL_VERSION:-}
       LLAMACPP_EMBEDDING_DIMENSIONS: ${LLAMACPP_EMBEDDING_DIMENSIONS:-768}
@@ -57,9 +58,19 @@ services:
       DEFAULT_EMBEDDING_PROVIDER: ${DEFAULT_EMBEDDING_PROVIDER:-gemini}
       DEFAULT_EMBEDDING_MODEL: ${DEFAULT_EMBEDDING_MODEL:-gemini-embedding-2}
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-768}
+      AUTO_INDEX_LOCAL: ${AUTO_INDEX_LOCAL:-true}
       FRONTEND_HOST: ${FRONTEND_HOST:-http://localhost:5173}
+      FRONTEND_EXTRA_ORIGINS: ${FRONTEND_EXTRA_ORIGINS:-[]}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-50}
       MAX_DOCUMENT_PAGES: ${MAX_DOCUMENT_PAGES:-500}
+      MAX_MEDIA_DURATION_SECONDS: ${MAX_MEDIA_DURATION_SECONDS:-1800}
+      MEDIA_SEGMENT_SECONDS: ${MEDIA_SEGMENT_SECONDS:-10}
+      MAX_SPREADSHEET_SHEETS: ${MAX_SPREADSHEET_SHEETS:-50}
+      MAX_SPREADSHEET_CELLS: ${MAX_SPREADSHEET_CELLS:-200000}
+      MAX_SPREADSHEET_GRID_CELLS: ${MAX_SPREADSHEET_GRID_CELLS:-1000000}
+      MAX_SPREADSHEET_ROWS: ${MAX_SPREADSHEET_ROWS:-50000}
+      MAX_SPREADSHEET_COLUMNS: ${MAX_SPREADSHEET_COLUMNS:-512}
+      MAX_SPREADSHEET_EXPANDED_MB: ${MAX_SPREADSHEET_EXPANDED_MB:-100}
       ENABLE_OCR: ${ENABLE_OCR:-true}
       OCR_LANGUAGE: ${OCR_LANGUAGE:-eng+spa}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
@@ -81,6 +92,12 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      worker-media:
+        condition: service_started
+      worker-extract:
+        condition: service_started
+      worker-index:
+        condition: service_started
     environment: *app-environment
     ports:
       - "127.0.0.1:8000:8000"
@@ -95,7 +112,7 @@ services:
   worker:
     image: renpdf-backend:local
     restart: unless-stopped
-    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--pool=solo", "--concurrency=1", "--loglevel=WARNING"]
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--pool=solo", "--concurrency=1", "--queues=celery", "--loglevel=WARNING"]
     environment: *app-environment
     depends_on:
       prestart:
@@ -106,6 +123,26 @@ services:
       - ./storage:/data/documents
     extra_hosts:
       - "host.docker.internal:host-gateway"
+  worker-media: &media-worker
+    image: renpdf-backend:local
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--pool=solo", "--concurrency=1", "--queues=media", "--hostname=media@%h", "--loglevel=WARNING"]
+    environment: *app-environment
+    depends_on:
+      prestart:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./storage:/data/documents
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  worker-extract:
+    <<: *media-worker
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--pool=solo", "--concurrency=1", "--queues=extract", "--hostname=extract@%h", "--loglevel=WARNING"]
+  worker-index:
+    <<: *media-worker
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--pool=threads", "--concurrency=2", "--prefetch-multiplier=1", "--queues=index", "--hostname=index@%h", "--loglevel=WARNING"]
   scheduler:
     image: renpdf-backend:local
     restart: unless-stopped

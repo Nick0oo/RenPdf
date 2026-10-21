@@ -28,6 +28,8 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   providers: ProviderConfig[]
+  workspaceId?: string
+  inline?: boolean
 }
 const tasks = {
   chat: "Conversación",
@@ -46,7 +48,14 @@ const descriptions = {
   rerank: "Ordena los resultados recuperados.",
 }
 
-export function ModelSettings({ open, onOpenChange, providers }: Props) {
+export function ModelSettings({
+  open,
+  onOpenChange,
+  providers,
+  workspaceId,
+  inline = false,
+}: Props) {
+  const scopeKey = workspaceId ? `workspace:${workspaceId}` : "personal"
   const cache = useQueryClient()
   const [error, setError] = useState("")
   const [tab, setTab] = useState("modelos")
@@ -68,151 +77,169 @@ export function ModelSettings({ open, onOpenChange, providers }: Props) {
     },
     onError: (failure) => setError(errorMessage(failure)),
   })
+  const content = (
+    <>
+      {inline ? (
+        <header className="mb-5">
+          <h2 className="text-xl font-semibold">
+            {workspaceId
+              ? "Modelos de este workspace"
+              : "Modelos y procesamiento"}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Elige un modelo por tarea. Los permisos de nube se administran por
+            documento.
+          </p>
+        </header>
+      ) : (
+        <DialogHeader>
+          <DialogTitle>
+            {workspaceId ? "Modelos del workspace" : "Modelos y procesamiento"}
+          </DialogTitle>
+          <DialogDescription>
+            Elige un modelo por tarea. Los permisos de nube se administran por
+            documento.
+          </DialogDescription>
+        </DialogHeader>
+      )}
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="w-full">
+          <TabsTrigger value="modelos">Modelos por tarea</TabsTrigger>
+          <TabsTrigger value="conexiones">Conexiones</TabsTrigger>
+        </TabsList>
+        <TabsContent value="modelos" className="space-y-5 pt-3">
+          <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
+            {Object.entries(tasks).map(([task, title]) => {
+              const current = routing.data?.find(
+                (row) => row.task === task && row.scope_key === scopeKey,
+              )
+              return (
+                <div key={task} className="space-y-2">
+                  <Label>{title}</Label>
+                  <p className="min-h-8 text-xs leading-relaxed text-muted-foreground">
+                    {descriptions[task as keyof typeof descriptions]}
+                  </p>
+                  <ProviderModelSelect
+                    providers={providers}
+                    task={task as RoutingInput["task"]}
+                    label={`Modelo para ${title}`}
+                    value={
+                      current ? modelValue(current.provider, current.model) : ""
+                    }
+                    disabled={save.isPending}
+                    onValueChange={(value) =>
+                      save.mutate({
+                        ...modelSelection(value),
+                        task: task as RoutingInput["task"],
+                        scope_key: scopeKey,
+                      })
+                    }
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <p className="border-t pt-4 text-xs leading-relaxed text-muted-foreground">
+            Las preferencias se guardan en el ámbito que estás configurando. El
+            modelo de un chat abierto se cambia desde ese chat. Las claves se
+            configuran en el servidor.
+          </p>
+        </TabsContent>
+        <TabsContent value="conexiones" className="space-y-4 pt-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {providers.map((provider) => (
+              <div
+                key={provider.name}
+                className="space-y-2 rounded-xl border p-4"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    {provider.is_cloud ? (
+                      <Cloud size={15} />
+                    ) : (
+                      <Server size={15} />
+                    )}
+                    {provider.name}
+                  </span>
+                  <Badge
+                    variant={
+                      provider.status === "AVAILABLE" ? "secondary" : "outline"
+                    }
+                    className="text-[10px]"
+                  >
+                    {{
+                      AVAILABLE: "Disponible",
+                      UNAVAILABLE: "Sin conexión",
+                      NOT_CONFIGURED: "Sin configurar",
+                    }[provider.status] ?? provider.status}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {provider.is_cloud
+                    ? "Proveedor en la nube"
+                    : "Proveedor local"}
+                </p>
+                <p
+                  className="truncate text-xs text-muted-foreground"
+                  title={provider.endpoint ?? undefined}
+                >
+                  {provider.endpoint || "Endpoint pendiente"}
+                </p>
+                <p className="text-xs">
+                  {provider.models?.length ?? 0} modelos detectados
+                  {provider.error_code ? ` · ${provider.error_code}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void cache.invalidateQueries({ queryKey: ["providers"] })
+              void diagnostics.refetch()
+            }}
+          >
+            Comprobar conexiones
+          </Button>
+          <div className="rounded-xl border bg-muted/15 p-4">
+            <h3 className="mb-3 text-sm font-semibold">
+              Diagnóstico del servidor
+            </h3>
+            {diagnostics.isPending ? (
+              <p className="text-xs text-muted-foreground">
+                Comprobando procesamiento…
+              </p>
+            ) : (
+              <pre className="max-h-48 overflow-auto text-[11px] leading-5">
+                {JSON.stringify(diagnostics.data, null, 2)}
+              </pre>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg bg-destructive/5 p-3 text-xs text-destructive"
+        >
+          {error}
+        </p>
+      )}
+      {save.isSuccess && (
+        <p
+          role="status"
+          className="flex items-center gap-2 text-xs text-primary"
+        >
+          <CheckCircle2 size={14} /> Preferencia guardada.
+        </p>
+      )}
+    </>
+  )
+  if (inline) return <div>{content}</div>
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Modelos y procesamiento</DialogTitle>
-          <DialogDescription>
-            Elige un modelo por tarea. Puedes usar proveedores locales o
-            autorizar envíos a la nube por documento.
-          </DialogDescription>
-        </DialogHeader>
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full">
-            <TabsTrigger value="modelos">Modelos por tarea</TabsTrigger>
-            <TabsTrigger value="conexiones">Conexiones</TabsTrigger>
-          </TabsList>
-          <TabsContent value="modelos" className="space-y-5 pt-3">
-            <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
-              {Object.entries(tasks).map(([task, title]) => {
-                const current = routing.data?.find(
-                  (row) => row.task === task && row.scope_key === "personal",
-                )
-                return (
-                  <div key={task} className="space-y-2">
-                    <Label>{title}</Label>
-                    <p className="min-h-8 text-xs leading-relaxed text-muted-foreground">
-                      {descriptions[task as keyof typeof descriptions]}
-                    </p>
-                    <ProviderModelSelect
-                      providers={providers}
-                      task={task as RoutingInput["task"]}
-                      label={`Modelo para ${title}`}
-                      value={
-                        current
-                          ? modelValue(current.provider, current.model)
-                          : ""
-                      }
-                      disabled={save.isPending}
-                      onValueChange={(value) =>
-                        save.mutate({
-                          ...modelSelection(value),
-                          task: task as RoutingInput["task"],
-                          scope_key: "personal",
-                        })
-                      }
-                    />
-                  </div>
-                )
-              })}
-            </div>
-            <p className="border-t pt-4 text-xs leading-relaxed text-muted-foreground">
-              Las preferencias se guardan para tu cuenta. El modelo de un chat
-              abierto se cambia desde ese chat. Las claves se configuran en el
-              servidor.
-            </p>
-          </TabsContent>
-          <TabsContent value="conexiones" className="space-y-4 pt-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {providers.map((provider) => (
-                <div
-                  key={provider.name}
-                  className="space-y-2 rounded-xl border p-4"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm font-semibold">
-                      {provider.is_cloud ? (
-                        <Cloud size={15} />
-                      ) : (
-                        <Server size={15} />
-                      )}
-                      {provider.name}
-                    </span>
-                    <Badge
-                      variant={
-                        provider.status === "AVAILABLE"
-                          ? "secondary"
-                          : "outline"
-                      }
-                      className="text-[10px]"
-                    >
-                      {{
-                        AVAILABLE: "Disponible",
-                        UNAVAILABLE: "Sin conexión",
-                        NOT_CONFIGURED: "Sin configurar",
-                      }[provider.status] ?? provider.status}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {provider.is_cloud
-                      ? "Proveedor en la nube"
-                      : "Proveedor local"}
-                  </p>
-                  <p
-                    className="truncate text-xs text-muted-foreground"
-                    title={provider.endpoint ?? undefined}
-                  >
-                    {provider.endpoint || "Endpoint pendiente"}
-                  </p>
-                  <p className="text-xs">
-                    {provider.models?.length ?? 0} modelos detectados
-                    {provider.error_code ? ` · ${provider.error_code}` : ""}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                void cache.invalidateQueries({ queryKey: ["providers"] })
-                void diagnostics.refetch()
-              }}
-            >
-              Comprobar conexiones
-            </Button>
-            <div className="rounded-xl border bg-muted/15 p-4">
-              <h3 className="mb-3 text-sm font-semibold">
-                Diagnóstico del servidor
-              </h3>
-              {diagnostics.isPending ? (
-                <p className="text-xs text-muted-foreground">
-                  Comprobando procesamiento…
-                </p>
-              ) : (
-                <pre className="max-h-48 overflow-auto text-[11px] leading-5">
-                  {JSON.stringify(diagnostics.data, null, 2)}
-                </pre>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-        {error && (
-          <p
-            role="alert"
-            className="rounded-lg bg-destructive/5 p-3 text-xs text-destructive"
-          >
-            {error}
-          </p>
-        )}
-        {save.isSuccess && (
-          <p
-            role="status"
-            className="flex items-center gap-2 text-xs text-primary"
-          >
-            <CheckCircle2 size={14} /> Preferencia guardada.
-          </p>
-        )}
+        {content}
       </DialogContent>
     </Dialog>
   )

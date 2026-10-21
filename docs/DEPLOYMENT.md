@@ -7,7 +7,7 @@ uv sync --package app
 uv run --package app python scripts/init_env.py
 docker compose up -d db redis
 uv run --package app python scripts/configure_local.py
-docker compose up -d --build backend worker scheduler
+docker compose up -d --build backend worker worker-media worker-extract worker-index scheduler
 ```
 
 `init_env.py` crea secretos locales sin imprimirlos. Revisar FIRST_SUPERUSER en
@@ -16,14 +16,26 @@ las dos bases dedicadas de Docker, crea un rol propio, instala vector desde el
 usuario administrativo y guarda backup local de la configuración previa. No
 regenera ni cambia passwords de un volumen PostgreSQL existente.
 
-Aplicación compilada: http://localhost:8000. Desarrollo frontend con hot reload:
-`npm ci --ignore-scripts` y `npm run dev`; abrir http://localhost:5173.
+Aplicación compilada estable: http://localhost:8000, con `fastapi run`.
+Desarrollo frontend con hot reload: `npm ci --ignore-scripts` y `npm run dev`;
+abrir http://localhost:5174. Guardar código puede recargar esa página e interrumpir
+su conexión SSE. Para probar en 5173 sin HMR: `npm run build` y
+`./scripts/serve_preview.ps1`. El script conserva assets anteriores y actualiza
+la copia sin reiniciar el servidor de preview.
 API nativa alternativa: desde backend `uv run python -m app.bootstrap`,
 `uv run fastapi dev --host 127.0.0.1`. No arrancar API nativa y contenedor API en
-el mismo puerto. Worker Windows: `uv run celery -A app.workers.celery_app:celery_app worker --pool=solo --concurrency=1`.
+el mismo puerto. Workers Windows: usa consumidores separados para `celery`,
+`extract` y `media` con `--pool=solo --concurrency=1 --hostname=<cola>@%h`.
+Para `index` usa `--pool=threads --concurrency=2 --prefetch-multiplier=1`;
+así un documento largo no monopoliza todas las consultas de indexación.
+Todos ejecutan `uv run celery -A app.workers.celery_app:celery_app worker --queues=<cola>`.
+
+El backend con recarga automática es opt-in:
+`docker compose -f compose.yml -f compose.override.yml -f compose.dev.yml up --watch`.
+La ejecución habitual no activa esa recarga.
 
 Para producción se usa `docker compose -f compose.yml up -d --build`; omite el
-override/hot reload y no publica DB/Redis. API conserva loopback para un reverse
+override de puertos locales y no publica DB/Redis. API conserva loopback para un reverse
 proxy TLS del host. Configurar FRONTEND_HOST y COOKIE_SECURE=true para HTTPS.
 No hay un proxy externo impuesto ni puertos de administración abiertos.
 

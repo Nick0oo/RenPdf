@@ -129,6 +129,44 @@ def page_elements(
                         text, "table", list(table.bbox), structured={"rows": rows}
                     )
                 )
+        # Parser layout output can omit raster images or vector-only diagrams.
+        # Keep their actual regions independently of text/OCR success.
+        visual_regions = [
+            (
+                list(block["bbox"]),
+                hashlib.sha256(block.get("image", b"")).hexdigest(),
+                "raster",
+            )
+            for block in page.get_text("dict")["blocks"]
+            if block["type"] == 1
+        ]
+        for rectangle in page.cluster_drawings():
+            if rectangle.width >= 12 and rectangle.height >= 12:
+                visual_regions.append((list(rectangle), "", "vector"))
+        for coordinates, digest, source in visual_regions:
+            rectangle = pymupdf.Rect(coordinates)
+            if rectangle.is_empty:
+                continue
+            if any(
+                existing.kind in {"figure", "table"}
+                and (rectangle & pymupdf.Rect(existing.source_bbox)).get_area()
+                >= rectangle.get_area() * 0.85
+                for existing in elements
+            ):
+                continue
+            elements.append(
+                ParsedElement(
+                    "",
+                    "figure",
+                    coordinates,
+                    structured={
+                        "vision_status": "NOT_ANALYZED",
+                        "visual_source": source,
+                        "image_hash": digest
+                        or hashlib.sha256(str(coordinates).encode()).hexdigest(),
+                    },
+                )
+            )
         status = "EXTRACTED"
         if not any(element.text.strip() for element in elements):
             status = "OCR_REQUIRED"

@@ -7,11 +7,16 @@
   Layouts académicos complejos pueden requerir esos modelos y revisión. Tesseract Windows no estaba disponible;
   Docker incluye idiomas eng/spa. No se afirma cobertura universal de OCR.
 - Ollama: generación real de gemma4:e2b y una respuesta sobre el PDF personal
-  con tres citas persistidas verificadas; visión local no probada. CPU con dos
+  con citas persistidas verificadas; visión local no probada. CPU con dos
   hilos, contexto limitado y keep_alive=0. Embeddings locales verificados con
   EmbeddingGemma 2 Q8_0 de texto en llama.cpp; no se cargaron sus torres multimodales.
   Ollama 0.34.4 rechazó la variante oficial EmbeddingGemma 2 por exigir actualización;
   el runtime existente no se actualizó. OpenAI compatible externo sigue sin servidor.
+- La extracción histórica por líneas necesita ventanas de contexto para los
+  resúmenes. Se verificó el resumen por HTTP con nueve citas; son fragmentos de
+  ocho páginas, no una revisión exhaustiva de las 72 páginas. Tardó 166,18 s
+  en CPU; el índice de 1.733 fragmentos tardó 525,99 s. El equipo puede ejecutarlo,
+  pero esas latencias no ofrecen interacción instantánea ni garantizan rendimiento general.
 - Reranking tiene contrato y estado NOT_CONFIGURED. No existe reranker ficticio.
   Se usa RRF sin puntuaciones inventadas de un modelo.
 - Embeddings multimodales directos implementados para Gemini Embedding 2 con
@@ -23,6 +28,13 @@
   se limita a la página actual y texto extraído; no hay thumbnails de todas las páginas.
 - Historia completa se conserva. El contexto enviado al modelo usa preguntas
   previas acotadas, no todas las respuestas históricas ni PDFs completos.
+- RAG indexa el contenido extraído de todas las páginas; cada respuesta usa los
+  fragmentos recuperados y su contexto vecino. Indexar todo no equivale a enviar
+  el PDF completo en cada prompt. El resumen general conserva aviso de muestra parcial.
+- La factura real quedó indexada localmente con 33 vectores. La recuperación de
+  una pregunta doble incluyó fecha e importe; Gemma4 local respondió el mes pero
+  omitió el importe en dos intentos. Un índice correcto no garantiza que ese modelo
+  pequeño responda todas las partes; invoice-local-check.json registra esa limitación.
 - Presupuestos/timeouts son configurables; no hay cuotas mensuales acumuladas,
   fallback automático, reranker, billing, SaaS ni multi-tenant.
 - Límite configurado 500 páginas/50 MB no equivale a benchmark de cualquier PDF.
@@ -35,7 +47,43 @@
 - Mypy strict no pasa todavía; ty/Ruff y TypeScript son las verificaciones mantenidas.
   El template conserva módulos admin/items y sus tests, aunque no aparecen en la
   navegación de investigación. Flujos de email requieren configurar SMTP.
+- Studio organiza páginas y transforma copias; no implementa edición de texto,
+  firmas ni redacción segura. CropBox sólo cambia el área visible. Se limita a
+  30 fuentes, 50 MB totales y 500 páginas de salida; no promete conservar firmas
+  ni todos los metadatos/marcadores del original.
+- Laboratorio conserva respuestas separadas por fuente; no es un detector automático
+  de contradicciones. Estudio registra autoevaluación manual, sin notas inventadas
+  de un modelo ni generación automática de fichas.
+- La telemetría se registra para ejecuciones nuevas. El historial anterior no
+  contiene necesariamente tokens, tiempos o política efectiva. No se reconstruyen
+  esos datos como si se hubieran medido.
+- PDF.js se carga sólo al abrir un PDF. El chunk de workspace ronda 351 KB y
+  PdfReader 638 KB sin comprimir; el visor mantiene una advertencia de tamaño.
 
 Estos puntos impiden afirmar que todas las capacidades del superprompt están
 completas. La matriz de aceptación distingue pruebas reales, contractuales y
 pendientes; cualquier ampliación debe mantener persistencia/consentimiento/citas.
+
+- El RAG visual adjunta como máximo dos regiones recuperadas por consulta, de
+  1024 px y 4 MB cada una. La cobertura y los descartes quedan registrados; no
+  implica que el modelo haya leído todas las figuras de un PDF en cada respuesta.
+- El proveedor histórico `llamacpp` de EmbeddingGemma 2 sigue sirviendo sus
+  perfiles de texto. El proveedor `embeddinggemma` usa los encoders oficiales
+  completos para texto, imagen, audio y video en un servicio CPU separado.
+  Gemini Embedding 2 también admite esos perfiles nativos con permiso multimodal.
+  Su rendimiento depende del hardware y del tamaño; CPU no equivale a GPU.
+- Audio y video se indexan directamente por intervalos de 10 segundos; el chat
+  lee los clips recuperados. La transcripción Gemini completa es opcional y
+  conserva su permiso independiente. Las citas indican límites de segmento,
+  no el instante de una palabra. El tamaño máximo es 50 MB y la duración por
+  defecto 30 minutos. El proveedor puede interpretar mal sonidos o imágenes;
+  las citas permiten revisar el intervalo original. El contexto nativo limita
+  cada respuesta a 6 clips/60 segundos/18 MiB y registra las omisiones. Sólo los
+  adaptadores generativos con entrada audiovisual pueden responder sobre clips
+  sin transcripción; no se cambia de proveedor automáticamente.
+- Excel admite XLSX, XLSM, XLS y CSV/TSV UTF-8, con citas por hoja y celda.
+  No ejecuta macros, fórmulas ni conexiones externas. Una fórmula sin resultado
+  guardado se muestra explícitamente como tal; abre y guarda el libro en Excel
+  para actualizar su caché. El visor es de lectura. Gráficos e imágenes incrustadas
+  en Excel todavía no se analizan; la extracción advierte su presencia. XLS
+  conserva los valores guardados, pero su lector no expone el texto de las fórmulas.

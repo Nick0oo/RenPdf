@@ -1,8 +1,8 @@
 # RenPdf
 
 ChatPDF personal y autohospedado sobre el Full Stack FastAPI Template oficial.
-PDFs persistentes, workspaces, extracción por páginas, OCR, pgvector + búsqueda
-bilingüe, chat con Gemini u Ollama, citas verificadas y visor PDF.js con regiones reales.
+PDF, Excel, audio y video persistentes en workspaces, OCR, pgvector y búsqueda
+bilingüe, chat con Gemini u Ollama y citas verificadas en sus visores.
 
 La aplicación funciona sin inferencia cloud: login, biblioteca, lectura y
 extracción local permanecen disponibles. No se envían documentos a un proveedor
@@ -17,26 +17,60 @@ uv sync --package app
 uv run --package app python scripts/init_env.py
 docker compose up -d db redis
 uv run --package app python scripts/configure_local.py
-docker compose up -d --build backend worker scheduler
+docker compose up -d --build backend worker worker-media worker-extract worker-index scheduler
 ```
 
 Abre [RenPdf](http://localhost:8000). La cuenta y su contraseña están en el `.env`
 local: FIRST_SUPERUSER y FIRST_SUPERUSER_PASSWORD. No están en documentación ni
 código. En este entorno ya se prepararon las bases dedicadas y los servicios.
 
+Para probar sin recargas automáticas, usa [localhost:8000](http://localhost:8000).
+También puedes ejecutar `npm run build` y `./scripts/serve_preview.ps1`: sirve una
+copia compilada estable en [localhost:5173](http://localhost:5173), con el mismo backend.
+Repetir el script actualiza esa copia sin reiniciar su servidor y conserva los
+assets anteriores para las pestañas abiertas. Recarga manualmente para ver cambios nuevos.
+
 Para desarrollo del frontend: `npm ci --ignore-scripts` y `npm run dev`, en la raíz.
-Hot reload en [localhost:5173](http://localhost:5173). API Swagger en
+Hot reload en [localhost:5174](http://localhost:5174): guardar código puede interrumpir
+un chat activo en esa dirección. API Swagger en
 [localhost:8000/docs](http://localhost:8000/docs).
 
 ## Flujo de investigación
 
-1. Importa un PDF. Su archivo se guarda y el worker extrae contenido sin usar LLM.
-2. Pulsa **Chatear con PDF** para abrir su conversación; puedes añadir más fuentes.
+1. Crea un workspace e importa varios PDF, Excel, CSV/TSV, audios o videos. PDF y hojas de cálculo se extraen localmente; audio y video requieren autorizar su análisis.
+2. Abre el chat y selecciona las fuentes que quieras consultar juntas.
 3. En Modelos selecciona chat, embeddings, visión, preguntas y resumen.
 4. Si usas nube, en Fuentes y permisos autoriza cada propósito para ese proveedor.
-5. Crea el índice para búsqueda semántica y espera su estado persistido. Puedes
-   consultar texto extraído antes con búsqueda léxica; un índice incompleto nunca se activa.
-6. Pregunta, abre las citas, inspecciona regiones, toma notas o exporta la conversación.
+5. Con embeddings locales configurados, el índice de todas las páginas se crea
+   automáticamente tras la extracción. Espera a que termine; puedes escribir el
+   borrador mientras tanto. Indexar en nube sigue siendo una acción explícita con
+   permiso. Un índice incompleto nunca se activa.
+6. Selecciona las fuentes de la pregunta. Fuentes/notas, chat y visor comparten un escritorio persistente; abrir una cita actualiza el visor y conserva la conversación y el borrador. En móvil, chat y visor se distribuyen verticalmente y las fuentes se abren desde su botón.
+
+## Módulos
+
+Excel conserva hojas, valores, fórmulas y direcciones reales de celda. Las citas
+abren el visor en la ubicación exacta y aparecen en Trazabilidad → RAG y segmentos.
+El visor y el chat tienen scroll independiente; el visor se abre al seleccionar
+una fuente o cita. Alcance y pruebas: [Excel y RAG](docs/SPREADSHEET_RAG.md).
+
+La navegación agrupa **Investigación** (workspaces y biblioteca), **Trazabilidad**,
+**Studio**, **Laboratorio**, **Estudio** y **Configuración**. Cada workspace conserva
+su propósito, fuentes, notas, conversaciones y preferencias de modelos.
+
+- Trazabilidad: actividad, respuestas, documentos y permisos. Las nuevas respuestas
+  registran etapas, contexto, perfiles y política aplicada; la historia sin esos
+  datos se muestra como no reportada.
+- Studio: combinar, organizar páginas, rotar y recortar copias, descargar resultados
+  y consultar el linaje. Los originales se conservan. El recorte visual no elimina
+  de forma segura contenido oculto.
+- Laboratorio: comparar respuestas citadas por PDF, guardar preguntas e informes
+  editables y exportarlos como Markdown.
+- Estudio: fichas con fuentes, mazos y repasos con autoevaluación persistente.
+  Las calificaciones las registra la persona.
+
+Las operaciones PDF y las fichas manuales son locales. La comparación con IA usa
+los mismos modelos y permisos por documento que el chat.
 
 Ollama y llama.cpp son opcionales, con endpoints en el entorno. La app no descarga
 modelos automáticamente. En este equipo se instaló llama.cpp CPU con EmbeddingGemma 2
@@ -47,6 +81,14 @@ Gemini reconoce GEMINI_API_KEY, GOOGLE_API_KEY y GOOGLE_GENERATIVE_AI_API_KEY.
 El modelo se elige del catálogo real; la existencia de un catálogo no verifica
 inferencia. Embeddings iniciales: 768 dimensiones, perfiles aislados por versión.
 Para imágenes, Gemini Embedding 2 exige una autorización multimodal adicional.
+
+## Skills compartidas
+
+Las seis skills de diseño visual, shadcn, React, FastAPI, lógica de negocio y
+arquitectura se incluyen en [`.agents/skills/`](.agents/skills/).
+Se descargan al clonar el repo.
+Para usarlas o compartirlas en otro proyecto, consulta
+[las instrucciones](.agents/README.md).
 
 ## Verificación
 
@@ -87,7 +129,24 @@ Evaluación totalmente local: `uv run --package app python scripts/evaluate_loca
 [Seguridad](docs/SECURITY.md) · [Pruebas](docs/TESTING.md) ·
 [Despliegue](docs/DEPLOYMENT.md) · [ADR](docs/DECISIONS.md) ·
 [Limitaciones](docs/KNOWN_LIMITATIONS.md) · [Matriz por fases](docs/IMPLEMENTATION_REPORT.md) ·
-[Auditoría de diseño](docs/DESIGN_AUDIT.md).
+[Auditoría de diseño](docs/DESIGN_AUDIT.md) ·
+[Studio y Trazabilidad](docs/MODULES_STUDIO_TRACE.md) ·
+[Laboratorio y Estudio](docs/LEARNING_MODULES.md).
+
+La aceptación de PDF visual, comparación entre fuentes y trazabilidad se reproduce con
+`uv run --package app python scripts/evaluate_workspace_rag.py --cloud`. Sólo envía
+PDFs inventados y conserva un workspace sintético para inspección. Resultados en
+[workspace-rag-results.json](docs/workspace-rag-results.json).
+
+Los workspaces también admiten varios audios y videos, análisis nativo Gemini,
+citas con intervalos reproducibles y un visor bajo demanda junto al chat.
+El módulo **RAG y segmentos** reúne fuentes, análisis, chunks y consultas de los
+tres formatos. Ver [Audio/video y trazabilidad](docs/MEDIA_RAG.md) y la
+[aceptación real con fuentes inventadas](docs/media-rag-results.json).
+
+La preparación del corpus completo se detalla en
+[Índice local automático](docs/AUTOMATIC_LOCAL_INDEX.md); la validación real de
+preguntas libres y figuras está en [Resultados RAG](docs/rag-complete-content-results.json).
 
 Docling nativo y HybridChunker funcionan sin descargar modelos ni tokenizers.
 La extracción avanzada con layout neuronal sigue pendiente de artefactos locales.

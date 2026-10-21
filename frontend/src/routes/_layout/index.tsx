@@ -1,18 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
-
-import { ResearchDesk } from "@/features/research/ResearchDesk"
-
+import { WorkspacesOverview } from "@/features/research/WorkspacesOverview"
 export const Route = createFileRoute("/_layout/")({
-  component: Dashboard,
-  head: () => ({
-    meta: [
-      {
-        title: "Biblioteca - RenPdf",
-      },
-    ],
-  }),
+  component: WorkspacesOverview,
+  head: () => ({ meta: [{ title: "Workspaces - RenPdf" }] }),
 })
-
-function Dashboard() {
-  return <ResearchDesk />
-}

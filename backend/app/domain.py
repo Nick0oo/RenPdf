@@ -31,6 +31,10 @@ class Document(SQLModel, table=True):
     storage_key: str
     file_size: int
     page_count: int
+    source_type: str = "pdf"
+    mime_type: str = "application/pdf"
+    duration_seconds: float | None = None
+    sheet_count: int = 0
     status: str = "UPLOADED"
     current_version_id: uuid.UUID | None = None
     active_index_id: uuid.UUID | None = None
@@ -71,6 +75,7 @@ class DocumentPage(SQLModel, table=True):
         foreign_key="documentversion.id", ondelete="CASCADE", index=True
     )
     page_number: int
+    unit_kind: str = "page"
     width: float
     height: float
     rotation: int = 0
@@ -85,6 +90,10 @@ class DocumentElement(SQLModel, table=True):
     )
     element_type: str = "text"
     text: str = ""
+    start_seconds: float | None = None
+    end_seconds: float | None = None
+    sheet_name: str | None = Field(default=None, max_length=255)
+    cell_range: str | None = Field(default=None, max_length=64)
     bbox: dict[str, float] | None = Field(default=None, sa_column=Column(JSON))
     source_coordinates: list[float] = Field(
         default_factory=list, sa_column=Column(JSON)
